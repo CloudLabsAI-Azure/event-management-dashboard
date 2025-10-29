@@ -65,7 +65,7 @@ export default function CatalogHealth() {
         const res = await api.get('/api/catalog')
         const items = Array.isArray(res.data) ? res.data : []
         const mapped = items
-          .filter((it: any) => it && (it.trackName || it.trackTitle))
+          .filter((it: any) => it && (it.trackName || it.trackTitle) && it.type !== 'roadmapItem' && it.type !== 'localizedTrack')
           .map((it: any, idx: number) => ({
             sr: Number(it.sr || idx + 1),
             trackName: String(it.trackName || it.trackTitle || ''),
@@ -80,7 +80,7 @@ export default function CatalogHealth() {
           // seed backend from initialCatalogData
           const seed = initialCatalogData
           for (const it of seed) {
-            await api.post('/api/catalog', it)
+            await api.post('/api/catalog', { ...it, type: 'catalog' })
           }
           const reread = await api.get('/api/catalog')
           const rereadItems = Array.isArray(reread.data) ? reread.data : []
@@ -121,7 +121,7 @@ export default function CatalogHealth() {
       setCatalogData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm } : track))
       ;(async () => {
         try {
-          await api.put(`/api/catalog/${String(editForm.sr)}`, { ...editForm })
+          await api.put(`/api/catalog/${String(editForm.sr)}`, { ...editForm, type: 'catalog' })
           try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
         } catch (e) { /* ignore */ }
       })()
@@ -160,7 +160,7 @@ export default function CatalogHealth() {
   // Add new catalog item
   const handleAddCatalog = async () => {
     try {
-      const newItem = { ...addForm, sr: catalogData.length + 1 };
+      const newItem = { ...addForm, sr: catalogData.length + 1, type: 'catalog' };
       setCatalogData(prev => [...prev, newItem]);
   await api.post(`/api/catalog`, newItem);
   try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
@@ -181,7 +181,7 @@ export default function CatalogHealth() {
     formData.append("file", file);
     try {
   const res = await api.post(`/api/upload-csv?resource=catalog`, formData, { headers: { "Content-Type": "multipart/form-data" } });
-  setCatalogData(res.data.tracks.map((track: Record<string, unknown>, idx: number) => ({ sr: idx + 1, trackName: String(track.trackName || ''), eventDate: String(track.eventDate || ''), status: String(track.status || ''), notesETA: String(track.notesETA || '') })));
+  setCatalogData(res.data.tracks.map((track: Record<string, unknown>, idx: number) => ({ sr: idx + 1, trackName: String(track.trackName || ''), eventDate: String(track.eventDate || ''), status: String(track.status || ''), notesETA: String(track.notesETA || ''), type: 'catalog' })));
       try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
     } catch (err) {
       setCsvError("Failed to upload CSV");

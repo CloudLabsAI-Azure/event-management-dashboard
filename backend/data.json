@@ -358,6 +358,97 @@
       "role": "admin",
       "expiresAt": 1760525521274,
       "source": "b2c"
+    },
+    {
+      "token": "d677a3a501a20edce153403c765593b373b48786264825d6",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760533817659,
+      "source": "b2c"
+    },
+    {
+      "token": "a654a4b5438d5383f937e2f273b74e8076c29cb42f0dec89",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760533911013,
+      "source": "b2c"
+    },
+    {
+      "token": "593cab68d25a3a3d66f07d57a84fd8d4aaa71608b5081279",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760534421752,
+      "source": "b2c"
+    },
+    {
+      "token": "7c3352137d7836dce0b33555d96766bccd883dc10c4cd840",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760560910463,
+      "source": "b2c"
+    },
+    {
+      "token": "9557710def9f9d294ad0040bdd592911ad86af77af914fc9",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761130453717,
+      "source": "b2c"
+    },
+    {
+      "token": "756b87e4f5974fbc6b097e710fc92f9ebffa4a5944a30226",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761136632923,
+      "source": "b2c"
+    },
+    {
+      "token": "223655bfed64b37be18bb44ab50f7473c275acd9139052f0",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761141101065,
+      "source": "b2c"
+    },
+    {
+      "token": "c1674341431a1a15e7b49c0f4951ed52073bd9127054ad01",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761143504953,
+      "source": "b2c"
+    },
+    {
+      "token": "f133804dc809a4d95cf50841fb984e28cea2911a535666db",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1761212942473,
+      "source": "b2c"
+    },
+    {
+      "token": "f5be0eaf8c64b5cf3954bcb9407ab60f3a092b8d2c09f7c9",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1761217756030,
+      "source": "b2c"
+    },
+    {
+      "token": "67df22ee910f5e5bdaa0bafa8d9a1b603c774296c742d182",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761648716251,
+      "source": "b2c"
+    },
+    {
+      "token": "8473d853ae879f357060f47a108ed4d1850ed3750b6d5608",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761724050824,
+      "source": "b2c"
+    },
+    {
+      "token": "82d99b7db735b2f2ce37d8273523b80df7d1ad4858aebcb1",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761769559078,
+      "source": "b2c"
     }
   ],
   "events": [
@@ -460,44 +551,6 @@
     {
       "sr": 1,
       "type": "localizedTrack",
-      "trackTitle": "GitHub Copilot Innovation Workshop",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "simplifiedChinese": "In Progress",
-      "traditionalChinese": "In Progress",
-      "japanese": "Not Available",
-      "trackName": "GitHub Copilot Innovation Workshop",
-      "eventDate": "12-08-2025",
-      "status": "Completed",
-      "notesETA": "14th August"
-    },
-    {
-      "sr": 2,
-      "type": "localizedTrack",
-      "trackTitle": "Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "simplifiedChinese": "Not Available",
-      "traditionalChinese": "Not Available",
-      "japanese": "Not Available",
-      "trackName": "Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
-      "eventDate": "",
-      "status": "Completed",
-      "notesETA": ""
-    },
-    {
-      "sr": 3,
-      "type": "localizedTrack",
-      "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
-      "eventDate": "18th August 2025",
-      "status": "In-progress",
-      "notesETA": "15th August",
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "sr": 4,
-      "type": "localizedTrack",
       "trackTitle": "Cloud Native Applications",
       "eventDate": "20th August 2025",
       "status": "In-progress",
@@ -506,37 +559,7 @@
       "portuguese": "Available"
     },
     {
-      "sr": 5,
-      "type": "localizedTrack",
-      "trackTitle": "Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
-      "eventDate": "20th August 2025",
-      "status": "In-progress",
-      "notesETA": "15th August",
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "sr": 6,
-      "type": "localizedTrack",
-      "trackTitle": "Intelligent App Development with Microsoft Copilot Stack",
-      "eventDate": "20th August 2025",
-      "status": "In-progress",
-      "notesETA": "15th August",
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "sr": 7,
-      "type": "localizedTrack",
-      "trackTitle": "GitHub Copilot - Hackathon",
-      "eventDate": "21st August 2025",
-      "status": "In-progress",
-      "notesETA": "15th August",
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "sr": 8,
+      "sr": 2,
       "type": "localizedTrack",
       "trackTitle": "Introduction To Building AI Apps",
       "eventDate": "21st August 2025",
@@ -547,25 +570,139 @@
     },
     {
       "id": 0,
-      "trackTitle": "Build Agents with Langchain and Azure AI",
+      "trackTitle": "Day Zero",
       "phase": "Development",
-      "eta": "15th October 2025",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 3
+    },
+    {
+      "id": 16,
+      "trackTitle": "Databricks Leverage synergies from recent releases in AI Tour ",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 4
+    },
+    {
+      "id": 16,
+      "trackTitle": " Snowflake+Fabric: Iceberg with OneLake",
+      "phase": "Release-ready",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 5
+    },
+    {
+      "id": 0,
+      "trackTitle": "Chat with your data [Fabric] ",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 6
+    },
+    {
+      "id": 0,
+      "trackTitle": "Copilot Studio in a Day with Retail",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 7
+    },
+    {
+      "id": 0,
+      "trackTitle": "API Mgmt with AI Dev",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 8
+    },
+    {
+      "id": 0,
+      "trackTitle": "Foundry & MCP",
+      "phase": "Development",
+      "eta": "NA",
       "type": "roadmapItem",
       "sr": 9
     },
     {
-      "trackTitle": "Activate GenAI with Azure",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "type": "localizedTrack",
+      "id": 0,
+      "trackTitle": "Develops with Agentic AI",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
       "sr": 10
     },
     {
-      "trackTitle": "Low-Code for Pro-Dev in a Day",
+      "id": 0,
+      "trackTitle": "Apps&AgentsGTM/Dev Sandbox",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 11
+    },
+    {
+      "id": 0,
+      "trackTitle": "MS- Low Code OpenHack",
+      "phase": "Backlog",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 12
+    },
+    {
+      "trackTitle": "GitHub Copilot Innovation Workshop",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 11
+      "sr": 13
+    },
+    {
+      "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 14
+    },
+    {
+      "trackTitle": "​​Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 15
+    },
+    {
+      "trackTitle": "​​Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 16
+    },
+    {
+      "trackTitle": "Intelligent App Development with Microsoft Copilot Stack",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 17
+    },
+    {
+      "trackTitle": "​​GitHub Copilot - Hackathon",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 18
+    },
+    {
+      "trackTitle": "Activate GenAI with Azure​",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 19
+    },
+    {
+      "trackTitle": "Low-Code for Pro-Dev in a Day​",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 20
     }
   ],
   "users": [
@@ -601,6 +738,18 @@
       "username": "goutami.r",
       "email": "goutami.r@spektrasystems.com",
       "role": "admin"
+    },
+    {
+      "id": "u_1761050210643",
+      "username": "Lacey.Strete",
+      "email": "lacey.strete@microsoft.com",
+      "role": "user"
+    },
+    {
+      "id": "u_1761050219606",
+      "username": "jana.elliott",
+      "email": "jana.elliott@gotorazor.com",
+      "role": "user"
     }
   ],
   "metrics": {
@@ -618,8 +767,99 @@
     "dashboard.upcomingEvents": 8,
     "dashboard.avgSatisfaction": 4.2
   },
-  "reviews": [],
+  "reviews": [
+    {
+      "id": "r_1761054691859_eo30ge",
+      "originalName": "image (20).png",
+      "eventName": "MS7789050JN9VJ - Lunch and Learn: Build Custom Copilot Application using Azure AI Foundry (CDT)",
+      "mime": "image/png",
+      "size": 32895,
+      "path": "/uploads/c3d252f39c8576e4c818bd94e3b092f3",
+      "uploadedAt": 1761054691862
+    },
+    {
+      "id": "r_1761054752677_j9cxyg",
+      "originalName": "image (21).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 93597,
+      "path": "/uploads/c19d5f846c4598826ad5e8bb8016e388",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054752677_z7pjpx",
+      "originalName": "image (22).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 31899,
+      "path": "/uploads/62083ac34169f38f8c132b4c061792ea",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054752677_fke3k8",
+      "originalName": "image (23).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 47228,
+      "path": "/uploads/0d5b1335bd14086302eab50de1485717",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054778891_un2t2j",
+      "originalName": "image (24).png",
+      "eventName": "MS354705COG2GG - Get started with Microsoft Fabric with Its Lakehouses (BST)",
+      "mime": "image/png",
+      "size": 117637,
+      "path": "/uploads/2f58ac6934ed41dc5456437b2cceaae0",
+      "uploadedAt": 1761054778891
+    },
+    {
+      "id": "r_1761054826729_ra30l0",
+      "originalName": "image (25).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 104376,
+      "path": "/uploads/e5759485ac60217a9667287757dae1cf",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054826729_om9nes",
+      "originalName": "image (26).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 96910,
+      "path": "/uploads/4dc0853767a6a56634f7c5d37195c152",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054826729_r4u1sw",
+      "originalName": "image (27).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 21742,
+      "path": "/uploads/6ef6739958b2fcd189988e67e63820a7",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054862681_vr1zat",
+      "originalName": "image (28).png",
+      "eventName": "MS757939WWLQJ7 - Effective Utilization of Copilot Studio (CDT)",
+      "mime": "image/png",
+      "size": 72790,
+      "path": "/uploads/7d0c2cb39ffc9a99fda7ef19d033b16d",
+      "uploadedAt": 1761054862681
+    },
+    {
+      "id": "r_1761054862681_elp470",
+      "originalName": "image (29).png",
+      "eventName": "MS757939WWLQJ7 - Effective Utilization of Copilot Studio (CDT)",
+      "mime": "image/png",
+      "size": 34600,
+      "path": "/uploads/0931a39d1516200d66dc62a5321654dc",
+      "uploadedAt": 1761054862681
+    }
+  ],
   "_metadata": {
-    "lastUpdated": "2025-10-14T10:53:12.556Z"
+    "lastUpdated": "2025-10-28T20:25:59.079Z"
   }
 }
