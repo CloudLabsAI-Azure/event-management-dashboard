@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Trash2,
   FileText,
+  BookOpen,
 } from "lucide-react"
 import api from '@/lib/api'
 import metricsService from '@/lib/services/metricsService'
@@ -84,7 +85,7 @@ export function DashboardContent() {
   const [newTrendingDesc, setNewTrendingDesc] = useState("")
   const [liveMetrics, setLiveMetrics] = useState({
     activeParticipants: 0,
-    avgSatisfaction: 0,
+    completedPracticeLabs: 0,
     tracksHealthPercentage: 0,
     lastUpdated: Date.now(),
   })
@@ -161,7 +162,7 @@ export function DashboardContent() {
         setLocalizedProgress(localizedEntries.slice(0, 5))
 
         const activeParticipants = Array.isArray(tr) ? tr.reduce((acc: number, t: any) => acc + Number(t.participants || 0), 0) : 0
-        const avgSatisfaction = 4.2 // Default satisfaction score
+        const completedPracticeLabs = 1247 // Default completed practice labs count
         // Fetch server's last updated timestamp
         let serverLastUpdated = Date.now()
         try {
@@ -176,7 +177,7 @@ export function DashboardContent() {
         // Start from derived counts
         let next = {
           activeParticipants,
-          avgSatisfaction,
+          completedPracticeLabs,
           tracksHealthPercentage,
           lastUpdated: serverLastUpdated,
         }
@@ -186,7 +187,7 @@ export function DashboardContent() {
           if (saved) {
             next = {
               activeParticipants: Number(saved['dashboard.activeParticipants'] ?? next.activeParticipants) || 0,
-              avgSatisfaction: Number(saved['dashboard.avgSatisfaction'] ?? next.avgSatisfaction) || 0,
+              completedPracticeLabs: Number(saved['dashboard.completedPracticeLabs'] ?? next.completedPracticeLabs) || 0,
               tracksHealthPercentage: Number(saved['dashboard.tracksHealthPercentage'] ?? next.tracksHealthPercentage) || next.tracksHealthPercentage,
               lastUpdated: serverLastUpdated,
             }
@@ -422,23 +423,23 @@ export function DashboardContent() {
         </div>
         
         <div className="group transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-amber-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-amber-200/50 dark:border-amber-800/30 p-8 shadow-lg hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-500">
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-slate-500/5 dark:from-amber-400/10 dark:to-slate-400/10"></div>
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-50/60 to-slate-50/60 dark:from-amber-950/30 dark:to-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-200/30 dark:bg-amber-700/20 rounded-full -translate-y-10 translate-x-10"></div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-blue-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-blue-200/50 dark:border-blue-800/30 p-8 shadow-lg hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-slate-500/5 dark:from-blue-400/10 dark:to-slate-400/10"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 to-slate-50/60 dark:from-blue-950/30 dark:to-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200/30 dark:bg-blue-700/20 rounded-full -translate-y-10 translate-x-10"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-6">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200/70 dark:from-amber-900/40 dark:to-amber-800/40 text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                  <Star className="h-6 w-6" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200/70 dark:from-blue-900/40 dark:to-blue-800/40 text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                  <BookOpen className="h-6 w-6" />
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">Satisfaction</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">Completed</p>
                   <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                    <InlineMetric metricKey="dashboard.avgSatisfaction" value={Number(liveMetrics.avgSatisfaction.toFixed(1))} />
+                    <InlineMetric metricKey="dashboard.completedPracticeLabs" value={Number(liveMetrics.completedPracticeLabs)} />
                   </p>
                 </div>
               </div>
-              <p className="text-slate-700 dark:text-slate-300 font-medium">Average Rating</p>
+              <p className="text-slate-700 dark:text-slate-300 font-medium">Practice Labs</p>
             </div>
           </div>
         </div>

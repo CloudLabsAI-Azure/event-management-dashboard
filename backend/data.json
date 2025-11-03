@@ -449,6 +449,55 @@
       "role": "admin",
       "expiresAt": 1761769559078,
       "source": "b2c"
+    },
+    {
+      "token": "764295468709d3ecbbcb84045b7f20d512074e13a31d23c7",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1761818142611,
+      "source": "b2c"
+    },
+    {
+      "token": "7539d004a1c90ada43b7db621fad83e1000f6b213f0e00d7",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1761818743032,
+      "source": "b2c"
+    },
+    {
+      "token": "0dbc39b99d7452c26bb73c162781ec1c7254bd7244fe5754",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761824809373,
+      "source": "b2c"
+    },
+    {
+      "token": "1bba1f6d20d98a4088a7545a8fd55a535775c47cf0ae2716",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1762250111680,
+      "source": "b2c"
+    },
+    {
+      "token": "5168a47d4d6f029f59dcf8e1223530809c468feef9b2ae79",
+      "userId": "u_1762172840793",
+      "role": "user",
+      "expiresAt": 1762259245955,
+      "source": "b2c"
+    },
+    {
+      "token": "c1f56e03170473e82f72a66fc33e3d37eea4c6facd5074e0",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1762259481322,
+      "source": "b2c"
+    },
+    {
+      "token": "dc1a7761fe7bad89734ab54a956e6f034100ef3785bba4f3",
+      "userId": "u_1762172840793",
+      "role": "user",
+      "expiresAt": 1762259502018,
+      "source": "b2c"
     }
   ],
   "events": [
@@ -550,55 +599,73 @@
   "catalog": [
     {
       "sr": 1,
-      "type": "localizedTrack",
+      "type": "catalog",
       "trackTitle": "Cloud Native Applications",
-      "eventDate": "20th August 2025",
+      "eventDate": "4th November 2025",
       "status": "In-progress",
-      "notesETA": "15th August",
+      "notesETA": "",
       "spanish": "Available",
-      "portuguese": "Available"
+      "portuguese": "Available",
+      "trackName": "Microsoft Azure AI OpenHack"
     },
     {
       "sr": 2,
-      "type": "localizedTrack",
+      "type": "catalog",
       "trackTitle": "Introduction To Building AI Apps",
-      "eventDate": "21st August 2025",
+      "eventDate": "12th November 2025",
       "status": "In-progress",
-      "notesETA": "15th August",
+      "notesETA": "",
       "spanish": "Available",
-      "portuguese": "Available"
+      "portuguese": "Available",
+      "trackName": "AI-Assisted Development with GitHub Copilot"
     },
     {
       "id": 0,
       "trackTitle": "Day Zero",
       "phase": "Development",
       "eta": "NA",
-      "type": "roadmapItem",
-      "sr": 3
+      "type": "catalog",
+      "sr": 3,
+      "trackName": "Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
     },
     {
       "id": 16,
       "trackTitle": "Databricks Leverage synergies from recent releases in AI Tour ",
       "phase": "Development",
       "eta": "NA",
-      "type": "roadmapItem",
-      "sr": 4
+      "type": "catalog",
+      "sr": 4,
+      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "5th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
     },
     {
       "id": 16,
       "trackTitle": " Snowflake+Fabric: Iceberg with OneLake",
       "phase": "Release-ready",
       "eta": "NA",
-      "type": "roadmapItem",
-      "sr": 5
+      "type": "catalog",
+      "sr": 5,
+      "trackName": "Get started with Microsoft Fabric with Its Lakehouses",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
     },
     {
       "id": 0,
       "trackTitle": "Chat with your data [Fabric] ",
       "phase": "Development",
       "eta": "NA",
-      "type": "roadmapItem",
-      "sr": 6
+      "type": "catalog",
+      "sr": 6,
+      "trackName": "Activate GenAI With Azure",
+      "eventDate": "11th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
     },
     {
       "id": 0,
@@ -618,11 +685,13 @@
     },
     {
       "id": 0,
-      "trackTitle": "Foundry & MCP",
+      "trackTitle": "Cloud Native Applications",
       "phase": "Development",
       "eta": "NA",
-      "type": "roadmapItem",
-      "sr": 9
+      "type": "localizedTrack",
+      "sr": 9,
+      "spanish": "Available",
+      "portuguese": "Available"
     },
     {
       "id": 0,
@@ -703,6 +772,77 @@
       "portuguese": "Available",
       "type": "localizedTrack",
       "sr": 20
+    },
+    {
+      "sr": 21,
+      "trackName": "Microsoft Azure AI OpenHack",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 22,
+      "trackName": "AI-Assisted Development with GitHub Copilot",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 23,
+      "trackName": "Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 24,
+      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "5th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 25,
+      "trackName": "Get started with Microsoft Fabric with Its Lakehouses",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 26,
+      "trackName": "Activate GenAI With Azure",
+      "eventDate": "11th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 27,
+      "trackName": "Get Data Into Fabric Lakehouse",
+      "eventDate": "3rd November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 28,
+      "trackName": "Migrate Windows Servers To Azure",
+      "eventDate": "13th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "trackTitle": "​Introduction To Building AI Apps",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 29
     }
   ],
   "users": [
@@ -750,6 +890,12 @@
       "username": "jana.elliott",
       "email": "jana.elliott@gotorazor.com",
       "role": "user"
+    },
+    {
+      "id": "u_1762172840793",
+      "username": "sumit.tanwar",
+      "email": "sumit.tanwar@spektrasystems.com",
+      "role": "user"
     }
   ],
   "metrics": {
@@ -765,7 +911,9 @@
     "completed.nonTechEvents": 6,
     "completed.languagesCovered": 2,
     "dashboard.upcomingEvents": 8,
-    "dashboard.avgSatisfaction": 4.2
+    "dashboard.avgSatisfaction": 4.2,
+    "dashboard.activeParticipants": 4008,
+    "dashboard.completedPracticeLabs": 1247
   },
   "reviews": [
     {
@@ -857,9 +1005,27 @@
       "size": 34600,
       "path": "/uploads/0931a39d1516200d66dc62a5321654dc",
       "uploadedAt": 1761054862681
+    },
+    {
+      "id": "r_1762169405570_qgtlpb",
+      "originalName": "image (30).png",
+      "eventName": "MS082632CGOEVW - \t AI-Assisted Development with GitHub Copilot",
+      "mime": "image/png",
+      "size": 22573,
+      "path": "/uploads/5c135b3589dacd1806973f6dfb713669",
+      "uploadedAt": 1762169405571
+    },
+    {
+      "id": "r_1762169405571_5e0uys",
+      "originalName": "image (31).png",
+      "eventName": "MS082632CGOEVW - \t AI-Assisted Development with GitHub Copilot",
+      "mime": "image/png",
+      "size": 13823,
+      "path": "/uploads/8bf0d958a05064c393521954c7f7e738",
+      "uploadedAt": 1762169405572
     }
   ],
   "_metadata": {
-    "lastUpdated": "2025-10-28T20:25:59.079Z"
+    "lastUpdated": "2025-11-03T12:55:33.980Z"
   }
 }
