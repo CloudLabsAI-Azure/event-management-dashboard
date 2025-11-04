@@ -7,16 +7,16 @@ import { Configuration, LogLevel } from "@azure/msal-browser";
  */
 export const msalConfig: Configuration = {
   auth: {
-    clientId: "e76ca0fd-0545-4b4f-ba26-aa96f8999f4a", // This is the ONLY mandatory field that you need to supply.
-    authority: "https://cloudlabsqaai.b2clogin.com/cloudlabsqaai.onmicrosoft.com/B2C_1A_signup_signin_linkedin", // Choose SUSI as your default authority.
-    knownAuthorities: ["cloudlabsqaai.b2clogin.com"], // Mark your B2C tenant's domain as trusted.
-    redirectUri: window.location.origin, // Use current origin to handle both localhost and production
-  postLogoutRedirectUri: window.location.origin, // Return to root which handles login/callback
-    navigateToLoginRequestUrl: false, // Don't navigate to original request - we handle routing manually
+    clientId: "e92e446f-5d92-4100-8c37-7e31fbd69c04",
+    authority: "https://cloudlabsai.b2clogin.com/cloudlabsai.onmicrosoft.com/B2C_1A_CUSTOM_SIGNUP_SIGNIN", 
+    knownAuthorities: ["cloudlabsai.b2clogin.com"], 
+    redirectUri: window.location.origin, 
+  postLogoutRedirectUri: window.location.origin, 
+    navigateToLoginRequestUrl: false, 
   },
   cache: {
-    cacheLocation: "sessionStorage", // Configures cache location. "sessionStorage" is more secure, but "localStorage" gives you SSO between tabs.
-    storeAuthStateInCookie: false, // Set this to "true" if you are having issues on IE11 or Edge.
+    cacheLocation: "sessionStorage", 
+    storeAuthStateInCookie: false, 
   },
   system: {
     loggerOptions: {
