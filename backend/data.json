@@ -1,0 +1,1031 @@
+{
+  "tracks": [
+    {
+      "sr": 1,
+      "trackName": "Activate GenAI With Azure",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Hackathon%20-%20Activate%20GenAI%20with%20Azure/Release-Notes.md"
+    },
+    {
+      "sr": 2,
+      "trackName": "Automate Document Processing using Azure OpenAI",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Automate%20document%20processing%20by%20using%20Azure%20AI%20%26%20OpenAI/Release-Notes.md"
+    },
+    {
+      "sr": 3,
+      "trackName": "Azure API Management",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/%E2%80%8BAzure%20API%20Management/Release-Notes.md"
+    },
+    {
+      "sr": 4,
+      "trackName": "Build Intelligent Apps With Microsoft's Copilot Stack & Azure OpenAI",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Build%20Intelligent%20Apps%20with%20Microsoft's%20Copilot%20stack%20%26%20Azure%20OpenAI%20%20/Release-Notes.md"
+    },
+    {
+      "sr": 5,
+      "trackName": "Build Prompt Engineering With Azure OpenAI Service",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Build%20Prompt%20Engineering%20With%20Azure%20OpenAI%20Service/Release-Notes.md"
+    },
+    {
+      "sr": 6,
+      "trackName": "Business Automation with Azure OpenAI and Document Intelligence",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Business%20Automation%20with%20Azure%20OpenAI%20and%20Document%20Intelligence/Release-Notes.md"
+    },
+    {
+      "sr": 7,
+      "trackName": "Cloud Native Applications",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Cloud-Native%20Applications/Release-Notes.md"
+    },
+    {
+      "sr": 8,
+      "trackName": "Cloud Scale Analytics With Microsoft Fabric",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Cloud%20scale%20analytics%20with%20Microsoft%20Fabric/Release%20Notes.md"
+    },
+    {
+      "sr": 9,
+      "trackName": "Create And Publish PowerBI Dashboards & Reports",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Create%20and%20Publish%20PowerBI%20Dashboards%20%26%20Reports/Release-Notes.md"
+    },
+    {
+      "sr": 10,
+      "trackName": "Develop Generative AI Solutions With Azure OpenAI Service",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Develop%20Generative%20AI%20solutions%20with%20Azure%20OpenAI%20Service/Release-Notes.md"
+    },
+    {
+      "sr": 11,
+      "trackName": "Developing AI Applications with Azure AI Foundry",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Developing%20AI%20Applications%20with%20Azure%20AI%20Foundry/Release-Notes.md"
+    },
+    {
+      "sr": 12,
+      "trackName": "DevOps With GitHub",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/DevOps%20With%20GitHub/Release-Notes.md"
+    },
+    {
+      "sr": 13,
+      "trackName": "Fabric – Analyst In a Day",
+      "testingStatus": "In-progress",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Fabric-Analytics-in-aday/Release-Notes.md"
+    },
+    {
+      "sr": 14,
+      "trackName": "Get Started With OpenAI And Build Natural Language Solution",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Get%20Started%20With%20OpenAI%20And%20Build%20Natural%20Language%20Solution/Release-Notes.md"
+    },
+    {
+      "sr": 15,
+      "trackName": "GitHub Copilot – Hackathon",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Hackathon%20-%20GitHub%20Copilot%20/Release-Notes.md"
+    },
+    {
+      "sr": 16,
+      "trackName": "GitHub Copilot Innovation Workshop",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/GitHub%20Copilot%20Innovation%20Workshop/Release-Notes.md"
+    },
+    {
+      "sr": 17,
+      "trackName": "Implement CI/CD with GitHub Actions",
+      "testingStatus": "In-progress",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Implement%20CI-CD%20with%20GitHub%20Actions/Release-Notes.md"
+    },
+    {
+      "sr": 18,
+      "trackName": "Innovate With AI",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Innovate-with-AI/Release%20Notes.md"
+    },
+    {
+      "sr": 19,
+      "trackName": "Intelligent App Development With Microsoft Copilot Stack",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Intelligent%20App%20Development%20with%20Microsoft%20Copilot%20Stack%20-%201%20Day/Release-Notes.md"
+    },
+    {
+      "sr": 20,
+      "trackName": "Introduction To Building AI Apps",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Introduction%20to%20Building%20AI%20Apps%20-%20Hackathon/Release-Notes.md"
+    },
+    {
+      "sr": 21,
+      "trackName": "Low-Code for Pro-Dev in a Day",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Low%20Code%20for%20Pro-Dev%20in%20a%20Day/Release-Notes.md"
+    },
+    {
+      "sr": 22,
+      "trackName": "Microsoft Azure AI Agents: Hands-on Lab",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Microsoft%20Azure%20AI%20Agents/Release-Notes.md"
+    },
+    {
+      "sr": 23,
+      "trackName": "MS Fabric Foundation For Enterprise Analytics",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/MS%20Fabric%20Foundation%20for%20Enterprise%20Analytics/Release-Notes.md"
+    },
+    {
+      "sr": 24,
+      "trackName": "Securing Repositories with GitHub Advanced Security",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Securing%20Repositories%20with%20GitHub%20Advanced%20Security/Release-Notes.md"
+    },
+    {
+      "sr": 25,
+      "trackName": "Use Azure OpenAI Like A Pro To Build Powerful AI Applications",
+      "testingStatus": "Completed",
+      "releaseNotes": "Release Notes",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Use%20Azure%20Open%20AI%20Like%20A%20Pro%20To%20Build%20Powerful%20AI%20Applications/Release-Notes.md"
+    }
+  ],
+  "tokens": [
+    {
+      "token": "a8abe712ad6cf48d0e860a19f730d1b381ba581c197e5a06",
+      "userId": null,
+      "role": "admin"
+    },
+    {
+      "token": "a769a6fa2a0e5769ebf04db454d9810b21e17bbc149f8ba9",
+      "userId": "admin",
+      "role": "admin"
+    },
+    {
+      "token": "479c3fbd89bb3b8b0c7e3348b0d5d9d2610fb096c2b69791",
+      "userId": "admin",
+      "role": "admin"
+    },
+    {
+      "token": "6fb59d22ccdfa7f39d6bed52140bafcb95628e48616bf0c3",
+      "userId": "u_1756373666632",
+      "role": "user"
+    },
+    {
+      "token": "b109f49b88ddcf27d7af4568ee0c19d55bf3483af038b20d",
+      "userId": "admin",
+      "role": "admin"
+    },
+    {
+      "token": "febae5e4545cc66851c4b4f6762ede5f1d533556f24f3a3d",
+      "userId": "u_1756373666632",
+      "role": "user"
+    },
+    {
+      "token": "4316b42688b09b911525cec05249fe261e4fc0b3cd8ff372",
+      "userId": "admin",
+      "role": "admin"
+    },
+    {
+      "token": "6aee9bc5cd3b437ccb49ee890598286b9572e106308c226a",
+      "userId": "u_1756373666632",
+      "role": "user"
+    },
+    {
+      "token": "7feeb132f683a6e5d7c820b25f91727e9d3249120f8917a6",
+      "userId": "admin",
+      "role": "admin"
+    },
+    {
+      "token": "955f9fd08eacfe17599ad783a1b419ca1afa89dc8bcdc395",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1759326372596
+    },
+    {
+      "token": "3f697dbf488d34792d677f18394f29a9c278dc9d5ce5b3ae",
+      "userId": "admin",
+      "role": "admin",
+      "expiresAt": 1759402508463
+    },
+    {
+      "token": "0a082bf36e6ab8db6372635c38c118d78aa581f2c9226693",
+      "userId": "admin",
+      "role": "admin",
+      "expiresAt": 1759402987521
+    },
+    {
+      "token": "52ccf33d1693c64771203e8732e9ceb7922dc2f1716ddb9c",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1759842923577,
+      "source": "b2c"
+    },
+    {
+      "token": "44c4fe7615770ac0eb07c695f0cfce7843a39512932c12d2",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760024699402,
+      "source": "b2c"
+    },
+    {
+      "token": "d3d65b9f5c535a416fab0832b254b9b3d74e98aabf500792",
+      "userId": "u_1759938590286",
+      "role": "user",
+      "expiresAt": 1760025041641,
+      "source": "b2c"
+    },
+    {
+      "token": "4781822d7358dfacadd4393e5a09a3cd9d7e8a4613738502",
+      "userId": "u_1759938590286",
+      "role": "admin",
+      "expiresAt": 1760025183728,
+      "source": "b2c"
+    },
+    {
+      "token": "f6c6812c7c3a7f787bc59c29fc41df0a7407a4d805f88364",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760025188519,
+      "source": "b2c"
+    },
+    {
+      "token": "b7049270779ca98ab58803da4653c9efed7b3c118c732641",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760025790971,
+      "source": "b2c"
+    },
+    {
+      "token": "f3df973456a070fa91f2885ffd3b475007447a3827944a36",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760167701251,
+      "source": "b2c"
+    },
+    {
+      "token": "04f84fb468b37bbcb59d61b522c11182af01a9250716cc61",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760168302922,
+      "source": "b2c"
+    },
+    {
+      "token": "795b38c3c4b4731659326673fbaf0c21bb7d40a6239b3486",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760170929307,
+      "source": "b2c"
+    },
+    {
+      "token": "cbebe78a8c5d4f0b7da3b0e56fa32bbe9dc595c4a55dff91",
+      "userId": "u_1760081340145",
+      "role": "admin",
+      "expiresAt": 1760178930112,
+      "source": "b2c"
+    },
+    {
+      "token": "fb5a4cf136617541886bea1299c54c8d45b7bab6699ce8e9",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760179120832,
+      "source": "b2c"
+    },
+    {
+      "token": "78e241074c57fcf5b07441634c1d944810c6fc77363b95f2",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760431134124,
+      "source": "b2c"
+    },
+    {
+      "token": "e2287a4a5f4980c53ecab561ceb13dcc7c9be84206d9ca84",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1760445719714,
+      "source": "b2c"
+    },
+    {
+      "token": "b39094644a48e6fa710e82cab437c5107554f614e0d55384",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1760446320869,
+      "source": "b2c"
+    },
+    {
+      "token": "381ecd904f76e17b4bf6c56ff26821357e9d4ccb92546c56",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760476849210,
+      "source": "b2c"
+    },
+    {
+      "token": "acef2e0084f8122b08a2f7f1fdcd67711b373ea029901c5d",
+      "userId": "u_1760081340145",
+      "role": "admin",
+      "expiresAt": 1760512416133,
+      "source": "b2c"
+    },
+    {
+      "token": "53dd1a49626de587cdb71783ad1b93d80916402224f02a40",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760525521274,
+      "source": "b2c"
+    },
+    {
+      "token": "d677a3a501a20edce153403c765593b373b48786264825d6",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760533817659,
+      "source": "b2c"
+    },
+    {
+      "token": "a654a4b5438d5383f937e2f273b74e8076c29cb42f0dec89",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760533911013,
+      "source": "b2c"
+    },
+    {
+      "token": "593cab68d25a3a3d66f07d57a84fd8d4aaa71608b5081279",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1760534421752,
+      "source": "b2c"
+    },
+    {
+      "token": "7c3352137d7836dce0b33555d96766bccd883dc10c4cd840",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1760560910463,
+      "source": "b2c"
+    },
+    {
+      "token": "9557710def9f9d294ad0040bdd592911ad86af77af914fc9",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761130453717,
+      "source": "b2c"
+    },
+    {
+      "token": "756b87e4f5974fbc6b097e710fc92f9ebffa4a5944a30226",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761136632923,
+      "source": "b2c"
+    },
+    {
+      "token": "223655bfed64b37be18bb44ab50f7473c275acd9139052f0",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761141101065,
+      "source": "b2c"
+    },
+    {
+      "token": "c1674341431a1a15e7b49c0f4951ed52073bd9127054ad01",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761143504953,
+      "source": "b2c"
+    },
+    {
+      "token": "f133804dc809a4d95cf50841fb984e28cea2911a535666db",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1761212942473,
+      "source": "b2c"
+    },
+    {
+      "token": "f5be0eaf8c64b5cf3954bcb9407ab60f3a092b8d2c09f7c9",
+      "userId": "u_1759938379414",
+      "role": "admin",
+      "expiresAt": 1761217756030,
+      "source": "b2c"
+    },
+    {
+      "token": "67df22ee910f5e5bdaa0bafa8d9a1b603c774296c742d182",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761648716251,
+      "source": "b2c"
+    },
+    {
+      "token": "8473d853ae879f357060f47a108ed4d1850ed3750b6d5608",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761724050824,
+      "source": "b2c"
+    },
+    {
+      "token": "82d99b7db735b2f2ce37d8273523b80df7d1ad4858aebcb1",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761769559078,
+      "source": "b2c"
+    },
+    {
+      "token": "764295468709d3ecbbcb84045b7f20d512074e13a31d23c7",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1761818142611,
+      "source": "b2c"
+    },
+    {
+      "token": "7539d004a1c90ada43b7db621fad83e1000f6b213f0e00d7",
+      "userId": "u_1758721534627",
+      "role": "admin",
+      "expiresAt": 1761818743032,
+      "source": "b2c"
+    },
+    {
+      "token": "0dbc39b99d7452c26bb73c162781ec1c7254bd7244fe5754",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1761824809373,
+      "source": "b2c"
+    },
+    {
+      "token": "1bba1f6d20d98a4088a7545a8fd55a535775c47cf0ae2716",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1762250111680,
+      "source": "b2c"
+    },
+    {
+      "token": "5168a47d4d6f029f59dcf8e1223530809c468feef9b2ae79",
+      "userId": "u_1762172840793",
+      "role": "user",
+      "expiresAt": 1762259245955,
+      "source": "b2c"
+    },
+    {
+      "token": "c1f56e03170473e82f72a66fc33e3d37eea4c6facd5074e0",
+      "userId": "u_1760081323120",
+      "role": "admin",
+      "expiresAt": 1762259481322,
+      "source": "b2c"
+    },
+    {
+      "token": "dc1a7761fe7bad89734ab54a956e6f034100ef3785bba4f3",
+      "userId": "u_1762172840793",
+      "role": "user",
+      "expiresAt": 1762259502018,
+      "source": "b2c"
+    }
+  ],
+  "events": [
+    {
+      "sr": 1,
+      "title": "Low Code Development With Power Apps & Power Automate",
+      "date": "18th August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 10000,
+      "ticketsSold": 95,
+      "rating": 4.4,
+      "revenue": 12500,
+      "name": "Low Code Development With Power Apps & Power Automate"
+    },
+    {
+      "sr": 2,
+      "title": "Hybrid Cloud Solution (Azure Arc)",
+      "date": "20th August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 220,
+      "ticketsSold": 140,
+      "rating": 4.2,
+      "revenue": 18400
+    },
+    {
+      "sr": 3,
+      "title": "Power Platform – App In A Day",
+      "date": "20th August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 150,
+      "ticketsSold": 110,
+      "rating": 4.6,
+      "revenue": 13250
+    },
+    {
+      "sr": 4,
+      "title": "Build A Fabric Real-Time Intelligence Solution in a Day",
+      "date": "20th August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 200,
+      "ticketsSold": 80,
+      "rating": 4.1,
+      "revenue": 9600
+    },
+    {
+      "sr": 5,
+      "title": "Advanced Workflow Automation with GitHub Actions",
+      "date": "21st August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 170,
+      "ticketsSold": 120,
+      "rating": 4.5,
+      "revenue": 14750
+    },
+    {
+      "sr": 6,
+      "title": "Azure Arc Enabled SQL Servers – Single Pane Of Glass",
+      "date": "21st August 2025",
+      "status": "confirmed",
+      "upcoming": true,
+      "language": "English",
+      "expectedParticipants": 130,
+      "ticketsSold": 75,
+      "rating": 3.9,
+      "revenue": 8900
+    },
+    {
+      "Title": "AI Summit",
+      "Language": "English",
+      "Status": "Confirmed",
+      "Date": "2025-09-15",
+      "ExpectedParticipants": "150"
+    },
+    {
+      "Title": "Cloud Native Workshop",
+      "Language": "Spanish",
+      "Status": "Confirmed",
+      "Date": "2025-09-20",
+      "ExpectedParticipants": "80"
+    },
+    {
+      "Title": "Security Best Practices",
+      "Language": "Portuguese",
+      "Status": "Confirmed",
+      "Date": "2025-09-25",
+      "ExpectedParticipants": "60"
+    }
+  ],
+  "catalog": [
+    {
+      "sr": 1,
+      "type": "catalog",
+      "trackTitle": "Cloud Native Applications",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "trackName": "Microsoft Azure AI OpenHack"
+    },
+    {
+      "sr": 2,
+      "type": "catalog",
+      "trackTitle": "Introduction To Building AI Apps",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "trackName": "AI-Assisted Development with GitHub Copilot"
+    },
+    {
+      "id": 0,
+      "trackTitle": "Day Zero",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "catalog",
+      "sr": 3,
+      "trackName": "Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
+    },
+    {
+      "id": 16,
+      "trackTitle": "Databricks Leverage synergies from recent releases in AI Tour ",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "catalog",
+      "sr": 4,
+      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "5th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
+    },
+    {
+      "id": 16,
+      "trackTitle": " Snowflake+Fabric: Iceberg with OneLake",
+      "phase": "Release-ready",
+      "eta": "NA",
+      "type": "catalog",
+      "sr": 5,
+      "trackName": "Get started with Microsoft Fabric with Its Lakehouses",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
+    },
+    {
+      "id": 0,
+      "trackTitle": "Chat with your data [Fabric] ",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "catalog",
+      "sr": 6,
+      "trackName": "Activate GenAI With Azure",
+      "eventDate": "11th November 2025",
+      "status": "In-progress",
+      "notesETA": ""
+    },
+    {
+      "id": 0,
+      "trackTitle": "Copilot Studio in a Day with Retail",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 7
+    },
+    {
+      "id": 0,
+      "trackTitle": "API Mgmt with AI Dev",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 8
+    },
+    {
+      "id": 0,
+      "trackTitle": "Cloud Native Applications",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "localizedTrack",
+      "sr": 9,
+      "spanish": "Available",
+      "portuguese": "Available"
+    },
+    {
+      "id": 0,
+      "trackTitle": "Develops with Agentic AI",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 10
+    },
+    {
+      "id": 0,
+      "trackTitle": "Apps&AgentsGTM/Dev Sandbox",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 11
+    },
+    {
+      "id": 0,
+      "trackTitle": "MS- Low Code OpenHack",
+      "phase": "Backlog",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "sr": 12
+    },
+    {
+      "trackTitle": "GitHub Copilot Innovation Workshop",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 13
+    },
+    {
+      "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 14
+    },
+    {
+      "trackTitle": "​​Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 15
+    },
+    {
+      "trackTitle": "​​Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 16
+    },
+    {
+      "trackTitle": "Intelligent App Development with Microsoft Copilot Stack",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 17
+    },
+    {
+      "trackTitle": "​​GitHub Copilot - Hackathon",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 18
+    },
+    {
+      "trackTitle": "Activate GenAI with Azure​",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 19
+    },
+    {
+      "trackTitle": "Low-Code for Pro-Dev in a Day​",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 20
+    },
+    {
+      "sr": 21,
+      "trackName": "Microsoft Azure AI OpenHack",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 22,
+      "trackName": "AI-Assisted Development with GitHub Copilot",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 23,
+      "trackName": "Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "eventDate": "4th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 24,
+      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "5th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 25,
+      "trackName": "Get started with Microsoft Fabric with Its Lakehouses",
+      "eventDate": "12th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 26,
+      "trackName": "Activate GenAI With Azure",
+      "eventDate": "11th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 27,
+      "trackName": "Get Data Into Fabric Lakehouse",
+      "eventDate": "3rd November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "sr": 28,
+      "trackName": "Migrate Windows Servers To Azure",
+      "eventDate": "13th November 2025",
+      "status": "In-progress",
+      "notesETA": "",
+      "type": "catalog"
+    },
+    {
+      "trackTitle": "​Introduction To Building AI Apps",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "sr": 29
+    }
+  ],
+  "users": [
+    {
+      "id": "admin",
+      "username": "admin",
+      "email": "admin@events.com",
+      "password": "password",
+      "role": "admin"
+    },
+    {
+      "id": "u_1758721534627",
+      "username": "Aryan",
+      "email": "aryan.p@spektrasystems.com",
+      "password": "$2a$08$7xQmQqxLS8nd0m1MtMWwGezZtRnym77/KvSyZzXETfmjoqEQazUHO",
+      "role": "admin",
+      "mustReset": false
+    },
+    {
+      "id": "u_1759938379414",
+      "username": "Kingson.Jebaraj",
+      "email": "kingson.jebaraj@spektrasystems.com",
+      "role": "admin"
+    },
+    {
+      "id": "u_1760081323120",
+      "username": "shivam.ujawane",
+      "email": "shivam.ujawane@spektrasystems.com",
+      "role": "admin"
+    },
+    {
+      "id": "u_1760081340145",
+      "username": "goutami.r",
+      "email": "goutami.r@spektrasystems.com",
+      "role": "admin"
+    },
+    {
+      "id": "u_1761050210643",
+      "username": "Lacey.Strete",
+      "email": "lacey.strete@microsoft.com",
+      "role": "user"
+    },
+    {
+      "id": "u_1761050219606",
+      "username": "jana.elliott",
+      "email": "jana.elliott@gotorazor.com",
+      "role": "user"
+    },
+    {
+      "id": "u_1762172840793",
+      "username": "sumit.tanwar",
+      "email": "sumit.tanwar@spektrasystems.com",
+      "role": "user"
+    }
+  ],
+  "metrics": {
+    "tracksDelivered": 58,
+    "techEvents": 56,
+    "nonTechEvents": 6,
+    "languagesCovered": 2,
+    "topTracks": [],
+    "dashboard.completedEvents": 60,
+    "completed.tracksDelivered": 60,
+    "upcoming.count": 8,
+    "completed.techEvents": 52,
+    "completed.nonTechEvents": 6,
+    "completed.languagesCovered": 2,
+    "dashboard.upcomingEvents": 8,
+    "dashboard.avgSatisfaction": 4.2,
+    "dashboard.activeParticipants": 4008,
+    "dashboard.completedPracticeLabs": 1247
+  },
+  "reviews": [
+    {
+      "id": "r_1761054691859_eo30ge",
+      "originalName": "image (20).png",
+      "eventName": "MS7789050JN9VJ - Lunch and Learn: Build Custom Copilot Application using Azure AI Foundry (CDT)",
+      "mime": "image/png",
+      "size": 32895,
+      "path": "/uploads/c3d252f39c8576e4c818bd94e3b092f3",
+      "uploadedAt": 1761054691862
+    },
+    {
+      "id": "r_1761054752677_j9cxyg",
+      "originalName": "image (21).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 93597,
+      "path": "/uploads/c19d5f846c4598826ad5e8bb8016e388",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054752677_z7pjpx",
+      "originalName": "image (22).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 31899,
+      "path": "/uploads/62083ac34169f38f8c132b4c061792ea",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054752677_fke3k8",
+      "originalName": "image (23).png",
+      "eventName": "MS483388RG6F1Y - Build, Deploy and Scale Power Apps (IST)",
+      "mime": "image/png",
+      "size": 47228,
+      "path": "/uploads/0d5b1335bd14086302eab50de1485717",
+      "uploadedAt": 1761054752677
+    },
+    {
+      "id": "r_1761054778891_un2t2j",
+      "originalName": "image (24).png",
+      "eventName": "MS354705COG2GG - Get started with Microsoft Fabric with Its Lakehouses (BST)",
+      "mime": "image/png",
+      "size": 117637,
+      "path": "/uploads/2f58ac6934ed41dc5456437b2cceaae0",
+      "uploadedAt": 1761054778891
+    },
+    {
+      "id": "r_1761054826729_ra30l0",
+      "originalName": "image (25).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 104376,
+      "path": "/uploads/e5759485ac60217a9667287757dae1cf",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054826729_om9nes",
+      "originalName": "image (26).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 96910,
+      "path": "/uploads/4dc0853767a6a56634f7c5d37195c152",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054826729_r4u1sw",
+      "originalName": "image (27).png",
+      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
+      "mime": "image/png",
+      "size": 21742,
+      "path": "/uploads/6ef6739958b2fcd189988e67e63820a7",
+      "uploadedAt": 1761054826729
+    },
+    {
+      "id": "r_1761054862681_vr1zat",
+      "originalName": "image (28).png",
+      "eventName": "MS757939WWLQJ7 - Effective Utilization of Copilot Studio (CDT)",
+      "mime": "image/png",
+      "size": 72790,
+      "path": "/uploads/7d0c2cb39ffc9a99fda7ef19d033b16d",
+      "uploadedAt": 1761054862681
+    },
+    {
+      "id": "r_1761054862681_elp470",
+      "originalName": "image (29).png",
+      "eventName": "MS757939WWLQJ7 - Effective Utilization of Copilot Studio (CDT)",
+      "mime": "image/png",
+      "size": 34600,
+      "path": "/uploads/0931a39d1516200d66dc62a5321654dc",
+      "uploadedAt": 1761054862681
+    },
+    {
+      "id": "r_1762169405570_qgtlpb",
+      "originalName": "image (30).png",
+      "eventName": "MS082632CGOEVW - \t AI-Assisted Development with GitHub Copilot",
+      "mime": "image/png",
+      "size": 22573,
+      "path": "/uploads/5c135b3589dacd1806973f6dfb713669",
+      "uploadedAt": 1762169405571
+    },
+    {
+      "id": "r_1762169405571_5e0uys",
+      "originalName": "image (31).png",
+      "eventName": "MS082632CGOEVW - \t AI-Assisted Development with GitHub Copilot",
+      "mime": "image/png",
+      "size": 13823,
+      "path": "/uploads/8bf0d958a05064c393521954c7f7e738",
+      "uploadedAt": 1762169405572
+    }
+  ],
+  "_metadata": {
+    "lastUpdated": "2025-11-03T12:55:33.980Z"
+  }
+}

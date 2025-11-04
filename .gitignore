@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (but keep dist for deployment)
+# dist/ - commented out so dist is included for Azure deployment
+build/
+*.tsbuildinfo
+
+# Environment variables (keep .env.production and .env.development for deployment)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
+tmp/
+temp/
+
+# Optional npm cache directory
+.npm
+
+# Optional ESLint cache
+.eslintcache
+
+# Parcel-bundler cache
+.cache/
+.parcel-cache/
+
+# Vite cache
+.vite/
+
+# Local database files (if any)
+*.db
+*.sqlite
+*.sqlite3
+
+# IMPORTANT: Do NOT ignore data.json - it contains user accounts and app data
+# backend/data.json should be committed and deployed

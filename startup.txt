@@ -1,0 +1,5 @@
+# Azure App Service startup configuration
+# This file tells Azure App Service how to start your Node.js application
+
+# Use npm start to run the application
+npm start

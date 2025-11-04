@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dashboard Reporting Software Design System */
+
+@layer base {
+  :root {
+    /* Light theme - Color theory based palette */
+    --background: 220 20% 97%;
+    --foreground: 220 15% 15%;
+
+    /* Card and surfaces with subtle elevation */
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Primary - Harmonious blue (complementary to orange accents) */
+    --primary: 214 95% 60%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 214 95% 55%;
+    --primary-glow: 214 95% 70%;
+
+    /* Secondary - Analogous purple (creates harmony with primary) */
+    --secondary: 258 85% 65%;
+    --secondary-foreground: 0 0% 98%;
+    --secondary-hover: 258 85% 60%;
+
+    /* Muted colors for subtle hierarchy */
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent - Triadic orange (creates vibrant contrast) */
+    --accent: 32 95% 65%;
+    --accent-foreground: 220 15% 15%;
+    --accent-hover: 32 95% 60%;
+
+    /* Status colors - Semantically clear */
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 70% 50%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 95% 60%;
+    --warning-foreground: 220 15% 15%;
+
+    /* Borders and inputs with subtle contrast */
+    --border: 220 15% 88%;
+    --input: 220 15% 94%;
+    --ring: 214 95% 60%;
+
+    /* Interactive gradients for light theme */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--accent)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--card)), hsl(var(--muted)));
+    --gradient-interactive: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--accent) / 0.1));
+
+    /* Enhanced shadows for depth */
+    --shadow-sm: 0 1px 2px 0 hsl(220 15% 15% / 0.08);
+    --shadow-md: 0 4px 6px -1px hsl(220 15% 15% / 0.12), 0 2px 4px -2px hsl(220 15% 15% / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(220 15% 15% / 0.15), 0 4px 6px -4px hsl(220 15% 15% / 0.08);
+    --shadow-xl: 0 20px 25px -5px hsl(220 15% 15% / 0.15), 0 10px 10px -5px hsl(220 15% 15% / 0.08);
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.25);
+    --shadow-card: 0 2px 8px -2px hsl(220 15% 15% / 0.08);
+    --shadow-interactive: 0 8px 25px -8px hsl(var(--primary) / 0.3);
+
+    /* Smooth animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s ease-out;
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.75rem;
+
+    /* Light theme sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 25%;
+    --sidebar-primary: 214 95% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 15% 96%;
+    --sidebar-accent-foreground: 220 15% 25%;
+    --sidebar-border: 220 15% 92%;
+    --sidebar-ring: 214 95% 60%;
+  }
+
+  .dark {
+    /* Dark theme - Enhanced contrast with color theory */
+    --background: 220 25% 6%;
+    --foreground: 220 15% 95%;
+
+    /* Elevated surfaces in dark mode */
+    --card: 220 20% 10%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 20% 10%;
+    --popover-foreground: 220 15% 95%;
+
+    /* Primary - Brighter blue for dark backgrounds */
+    --primary: 214 95% 65%;
+    --primary-foreground: 220 25% 6%;
+    --primary-hover: 214 95% 70%;
+    --primary-glow: 214 95% 75%;
+
+    /* Secondary - Enhanced purple */
+    --secondary: 258 85% 70%;
+    --secondary-foreground: 220 25% 6%;
+    --secondary-hover: 258 85% 75%;
+
+    /* Muted with better contrast */
+    --muted: 220 20% 15%;
+    --muted-foreground: 220 15% 65%;
+
+    /* Accent - Warmer orange for dark mode */
+    --accent: 32 95% 70%;
+    --accent-foreground: 220 25% 6%;
+    --accent-hover: 32 95% 75%;
+
+    /* Status colors optimized for dark theme */
+    --destructive: 0 75% 65%;
+    --destructive-foreground: 220 25% 6%;
+    --success: 142 70% 55%;
+    --success-foreground: 220 25% 6%;
+    --warning: 38 95% 65%;
+    --warning-foreground: 220 25% 6%;
+
+    /* Dark theme borders and inputs */
+    --border: 220 20% 18%;
+    --input: 220 20% 15%;
+    --ring: 214 95% 65%;
+
+    /* Dark theme gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--accent)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--card)), hsl(var(--background)));
+    --gradient-interactive: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.15));
+
+    /* Enhanced shadows for dark theme */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5), 0 10px 10px -5px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.4);
+    --shadow-card: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-interactive: 0 8px 25px -8px hsl(var(--primary) / 0.4);
+
+    /* Dark theme sidebar */
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 220 15% 85%;
+    --sidebar-primary: 214 95% 65%;
+    --sidebar-primary-foreground: 220 25% 6%;
+    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent-foreground: 220 15% 85%;
+    --sidebar-border: 220 20% 18%;
+    --sidebar-ring: 214 95% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Enhanced gradients */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+
+  .gradient-interactive {
+    background: var(--gradient-interactive);
+  }
+
+  /* Enhanced shadows */
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-interactive {
+    box-shadow: var(--shadow-interactive);
+  }
+
+  /* Enhanced transitions */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  .transition-fast {
+    transition: var(--transition-fast);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  /* Interactive dashboard components */
+  .dashboard-card {
+    @apply transition-smooth hover:scale-[1.02] hover:shadow-interactive transform-gpu;
+  }
+
+  .metric-card {
+    @apply transition-smooth hover:shadow-glow hover:-translate-y-1 cursor-pointer transform-gpu;
+  }
+
+  .nav-item {
+    @apply transition-all duration-200 hover:bg-sidebar-accent hover:translate-x-1 cursor-pointer transform-gpu;
+  }
+
+  .interactive-button {
+    @apply transition-all duration-200 hover:scale-105 hover:shadow-interactive active:scale-95 transform-gpu;
+  }
+
+  .interactive-hover {
+    @apply transition-fast hover:bg-accent/20 hover:backdrop-blur-sm cursor-pointer;
+  }
+
+  .theme-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Glassmorphism effects */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-lg border border-border/50;
+  }
+
+  .glass-sidebar {
+    @apply bg-sidebar-background/95 backdrop-blur-lg border-r border-sidebar-border/50;
+  }
+}
