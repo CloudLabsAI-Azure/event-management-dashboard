@@ -16,10 +16,18 @@ export default function ParticipantFeedbackPage() {
   const [selectedIndex, setSelectedIndex] = useState<number>(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // Filter only image items and get latest 6
+  // Filter only image items, get latest 6, and deduplicate by path
   const imageItems = items
     .filter(item => String(item.mime || '').startsWith('image/'))
-    .slice(0, 6)
+    .sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0)) // Sort by upload time, newest first
+    .reduce((acc: any[], item) => {
+      // Deduplicate by path to avoid showing same image multiple times
+      if (!acc.find(i => i.path === item.path)) {
+        acc.push(item)
+      }
+      return acc
+    }, [])
+    .slice(0, 6) // Limit to 6 images
 
   useEffect(() => {
     ;(async () => {
@@ -89,7 +97,9 @@ export default function ParticipantFeedbackPage() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Feedback Gallery</h1>
-            <p className="text-muted-foreground">Feedback from participants</p>
+            <p className="text-muted-foreground">
+              Feedback from participants {imageItems.length > 0 && `(Showing ${imageItems.length} of ${imageItems.length} images)`}
+            </p>
           </div>
           {role === 'admin' && (
             <FileUploadModal
@@ -105,11 +115,26 @@ export default function ParticipantFeedbackPage() {
           )}
         </div>
 
-        {/* Gallery Grid - 2 rows x 3 columns */}
-        <div className="grid grid-cols-3 gap-6 max-w-6xl">
-          {imageItems.map((item, index) => (
+        {/* Empty state */}
+        {imageItems.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-6 mb-4">
+              <Plus className="h-12 w-12 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              No feedback photos yet
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              Upload photos to showcase participant feedback
+            </p>
+          </div>
+        )}
+
+        {/* Gallery Grid - 2 rows x 3 columns, fixed to show exactly 6 items */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
+          {imageItems.slice(0, 6).map((item, index) => (
             <div 
-              key={item.id} 
+              key={`${item.id}-${item.path}`}
               className="relative group cursor-pointer overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-gray-700"
             >
               {/* Event title at the top */}
@@ -119,13 +144,14 @@ export default function ParticipantFeedbackPage() {
                 </h3>
               </div>
               
-              {/* Image container with proper aspect ratio */}
-              <div className="aspect-[4/3] overflow-hidden">
+              {/* Image container with fixed aspect ratio */}
+              <div className="aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <img 
                   src={item.path} 
                   alt={item.eventName || `Feedback ${index + 1}`}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   onClick={() => openModal(item.path, index)}
+                  loading="lazy"
                 />
               </div>
               
