@@ -123,7 +123,7 @@ export function DashboardContent() {
         
         // derive catalog health from catalog resource
         const catalog = await api.get('/api/catalog').then(r => Array.isArray(r.data) ? r.data : [])
-        const localized = catalog.filter((i: any) => i && (i.type === 'localizedTrack' || i.trackTitle || i.trackName))
+        const localized = catalog.filter((i: any) => i && i.type === 'localizedTrack')
         const toPercent = (status: string) => {
           const s = String(status || '').toLowerCase()
           if (s === 'available' || s === 'completed') return 100
