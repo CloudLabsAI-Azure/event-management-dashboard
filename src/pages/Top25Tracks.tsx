@@ -429,7 +429,7 @@ export default function Top25Tracks() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
