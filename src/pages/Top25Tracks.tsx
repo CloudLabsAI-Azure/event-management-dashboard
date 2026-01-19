@@ -28,35 +28,6 @@ interface TrackItem {
   releaseUrl?: string;
 }
 
-const initialTracksData: TrackItem[] = [
-  { sr: 1, trackName: "Activate GenAI With Azure", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 2, trackName: "Automate Document Processing using Azure OpenAI", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 3, trackName: "Azure API Management", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 4, trackName: "Build Intelligent Apps With Microsoft's Copilot Stack & Azure OpenAI", testingStatus: "Completed", releaseNotes: "Release Notes", releaseUrl: "" },
-  { sr: 4, trackName: "Build Intelligent Apps With Microsoft's Copilot Stack & Azure OpenAI", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 5, trackName: "Build Prompt Engineering With Azure OpenAI Service", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 6, trackName: "Business Automation with Azure OpenAI and Document Intelligence", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 7, trackName: "Cloud Native Applications", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 8, trackName: "Cloud Scale Analytics With Microsoft Fabric", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 9, trackName: "Create And Publish PowerBI Dashboards & Reports", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 10, trackName: "Develop Generative AI Solutions With Azure OpenAI Service", testingStatus: "In-progress", releaseNotes: "Release Notes" },
-  { sr: 11, trackName: "Developing AI Applications with Azure AI Foundry", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 12, trackName: "DevOps With GitHub", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 13, trackName: "Fabric – Analyst In a Day", testingStatus: "In-progress", releaseNotes: "Release Notes" },
-  { sr: 14, trackName: "Get Started With OpenAI And Build Natural Language Solution", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 15, trackName: "GitHub Copilot – Hackathon", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 16, trackName: "GitHub Copilot Innovation Workshop", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 17, trackName: "Implement CI/CD with GitHub Actions", testingStatus: "In-progress", releaseNotes: "Release Notes" },
-  { sr: 18, trackName: "Innovate With AI", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 19, trackName: "Intelligent App Development With Microsoft Copilot Stack", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 20, trackName: "Introduction To Building AI Apps", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 21, trackName: "Low-Code for Pro-Dev in a Day", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 22, trackName: "Microsoft Azure AI Agents: Hands-on Lab", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 23, trackName: "MS Fabric Foundation For Enterprise Analytics", testingStatus: "In-progress", releaseNotes: "Release Notes" },
-  { sr: 24, trackName: "Securing Repositories with GitHub Advanced Security", testingStatus: "Completed", releaseNotes: "Release Notes" },
-  { sr: 25, trackName: "Use Azure OpenAI Like A Pro To Build Powerful AI Applications", testingStatus: "Completed", releaseNotes: "Release Notes" }
-]
-
 const getStatusBadge = (status: string) => {
   if (status === "Completed") {
     return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Completed</Badge>
@@ -67,7 +38,8 @@ const getStatusBadge = (status: string) => {
 }
 
 export default function Top25Tracks() {
-  const [tracksData, setTracksData] = useState<TrackItem[]>(initialTracksData);
+  const [tracksData, setTracksData] = useState<TrackItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   // role determined by auth; read from localStorage (App sets it on login)
   const { userRole: role } = useAuth();
   const [currentPage, setCurrentPage] = useState(1)
@@ -118,13 +90,15 @@ export default function Top25Tracks() {
         setSaving(false)
         return
       }
-      const updated = tracksData.map((t) => (t.sr === editingItem.sr ? { ...editForm } : t));
       // persist to backend
       await tracksService.update(editingItem.sr, { ...editForm })
+      const updated = tracksData.map((t) => (t.sr === editingItem.sr ? { ...editForm } : t));
       setTracksData(updated);
       setIsEditDialogOpen(false);
       setEditingItem(null);
       toast({ title: 'Saved', description: 'Track updated' })
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('tracks:changed'))
     } catch (err) {
       console.warn('Failed to persist edited data', err);
       toast({ title: 'Save failed', description: 'Could not save track', variant: 'destructive' })
@@ -153,6 +127,8 @@ export default function Top25Tracks() {
       const updated = merged.map((t, i) => ({ ...t, sr: i + 1 }))
       setTracksData(updated);
       setIsAddDialogOpen(false);
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('tracks:changed'))
       setAddForm({ sr: updated.length + 1, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "" });
       toast({ title: 'Created', description: 'Track added' })
     } catch (err) {
@@ -169,48 +145,66 @@ export default function Top25Tracks() {
   const handleCancelEdit = () => {
     setIsEditDialogOpen(false)
     setEditingItem(null)
-  setEditForm({ sr: 0, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "" })
+    setEditForm({ sr: 0, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "" })
   }
 
   const handleDelete = async (item: TrackItem) => {
     if (!window.confirm(`Delete track "${item.trackName}"?`)) return
     try {
-      await api.delete(`/api/tracks/${String(item.sr)}`)
+      await tracksService.remove(item.sr)
       const updated = tracksData.filter((t) => t.sr !== item.sr).map((t, idx) => ({ ...t, sr: idx + 1 }));
       setTracksData(updated);
       const newTotalPages = Math.ceil(updated.length / itemsPerPage)
       if (currentPage > newTotalPages && newTotalPages > 0) setCurrentPage(newTotalPages)
       toast({ title: 'Deleted', description: 'Track removed' })
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('tracks:changed'))
     } catch (err) {
       console.warn('Failed to persist delete', err);
       toast({ title: 'Delete failed', description: 'Could not remove track', variant: 'destructive' })
     }
   }
 
-  // Try to load persisted data on mount
+  // Load data from backend on mount
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    const loadTracks = async () => {
+      setIsLoading(true);
       try {
-        // load /api/tracks
         const res = await api.get('/api/tracks').catch(async () => {
           const r = await api.get('/api/data');
           return { data: r.data && r.data.tracks ? r.data.tracks : [] }
         })
         const list = Array.isArray(res.data) ? res.data : (res.data && res.data.tracks ? res.data.tracks : [])
-        if (mounted && Array.isArray(list) && list.length > 0) {
-          setTracksData(list.map((t: any, idx: number) => ({ sr: Number(t.sr || idx+1), trackName: String(t.trackName || t.name || ''), testingStatus: String(t.testingStatus || ''), releaseNotes: String(t.releaseNotes || 'Release Notes'), releaseUrl: t.releaseUrl || t.release_url || '' })));
+        if (mounted) {
+          const mapped = Array.isArray(list) ? list.map((t: any, idx: number) => ({ 
+            sr: Number(t.sr || idx + 1), 
+            trackName: String(t.trackName || t.name || ''), 
+            testingStatus: String(t.testingStatus || ''), 
+            releaseNotes: String(t.releaseNotes || 'Release Notes'), 
+            releaseUrl: t.releaseUrl || t.release_url || '' 
+          })) : [];
+          setTracksData(mapped);
         }
       } catch (err) {
-        // ignore
+        console.error('Failed to load tracks', err);
+        if (mounted) setTracksData([]);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    })()
-    // listen for metrics changes (no-op for now but keeps parity with other pages)
-    const onMetricsChanged = (_: any) => {
-      // could refresh KPIs or other UI here if needed
     }
-    window.addEventListener('metrics:changed', onMetricsChanged as EventListener)
-    return () => { mounted = false; window.removeEventListener('metrics:changed', onMetricsChanged as EventListener) }
+    loadTracks();
+    
+    // Listen for data changes to refresh the list
+    const onTracksChanged = () => {
+      loadTracks();
+    }
+    window.addEventListener('tracks:changed', onTracksChanged as EventListener)
+    
+    return () => { 
+      mounted = false; 
+      window.removeEventListener('tracks:changed', onTracksChanged as EventListener) 
+    }
   }, [])
 
   return (
@@ -243,6 +237,16 @@ export default function Top25Tracks() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-muted-foreground">Loading tracks...</div>
+                </div>
+              ) : tracksData.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-muted-foreground">No tracks found. {role === 'admin' && 'Click "Add Track" to create one.'}</div>
+                </div>
+              ) : (
+                <>
               {/* Scrollable Table Container */}
               <ScrollArea className="h-[600px] w-full rounded-md border">
                 <Table>
@@ -274,82 +278,6 @@ export default function Top25Tracks() {
                             </span>
                           )}
                         </TableCell>
-
-          {/* Add Dialog */}
-          {role === 'admin' && (
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add Lab/Track</DialogTitle>
-                <DialogDescription>
-                  Fill in the details to add a new lab/track.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addTrackName" className="text-right">
-                    Track Name
-                  </Label>
-                  <Input
-                    id="addTrackName"
-                    value={addForm.trackName}
-                    onChange={(e) => setAddForm({ ...addForm, trackName: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addTestingStatus" className="text-right">
-                    Testing Status
-                  </Label>
-                  <Select
-                    value={addForm.testingStatus}
-                    onValueChange={(value) => setAddForm({ ...addForm, testingStatus: value })}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="In-progress">In-progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addReleaseNotes" className="text-right">
-                    Release Notes
-                  </Label>
-                  <Input
-                    id="addReleaseNotes"
-                    value={addForm.releaseNotes}
-                    onChange={(e) => setAddForm({ ...addForm, releaseNotes: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addReleaseUrl" className="text-right">
-                    Release URL
-                  </Label>
-                  <Input
-                    id="addReleaseUrl"
-                    value={(addForm as any).releaseUrl || ''}
-                    onChange={(e) => setAddForm({ ...addForm, releaseUrl: e.target.value })}
-                    placeholder="https://example.com/release-notes"
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddTrack}>
-                  Add
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-            </Dialog>
-          )}
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {role === 'admin' && (
@@ -421,9 +349,87 @@ export default function Top25Tracks() {
                   </Button>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Add Dialog */}
+        {role === 'admin' && (
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Lab/Track</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to add a new lab/track.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addTrackName" className="text-right">
+                    Track Name
+                  </Label>
+                  <Input
+                    id="addTrackName"
+                    value={addForm.trackName}
+                    onChange={(e) => setAddForm({ ...addForm, trackName: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addTestingStatus" className="text-right">
+                    Testing Status
+                  </Label>
+                  <Select
+                    value={addForm.testingStatus}
+                    onValueChange={(value) => setAddForm({ ...addForm, testingStatus: value })}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="In-progress">In-progress</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addReleaseNotes" className="text-right">
+                    Release Notes
+                  </Label>
+                  <Input
+                    id="addReleaseNotes"
+                    value={addForm.releaseNotes}
+                    onChange={(e) => setAddForm({ ...addForm, releaseNotes: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addReleaseUrl" className="text-right">
+                    Release URL
+                  </Label>
+                  <Input
+                    id="addReleaseUrl"
+                    value={(addForm as any).releaseUrl || ''}
+                    onChange={(e) => setAddForm({ ...addForm, releaseUrl: e.target.value })}
+                    placeholder="https://example.com/release-notes"
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddTrack} disabled={saving}>
+                  {saving ? 'Adding...' : 'Add'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
