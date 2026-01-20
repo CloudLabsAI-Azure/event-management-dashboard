@@ -1,4 +1,6 @@
-Track Name,Testing Status,Release Notes,Release URL
+trackName,testingStatus,releaseNotes,releaseUrl
 Activate GenAI With Azure,Completed,Release Notes,https://example.com/release/activate-genai
 Cloud Native Applications,Completed,Release Notes,https://example.com/release/cloud-native
-Develop Generative AI Solutions With Azure OpenAI Service,In-progress,Release Notes,
+Develop Generative AI Solutions With Azure OpenAI Service,In-progress,Release Notes,https://example.com/release/azure-openai
+AI-Powered Track Recommendations,Completed,Implemented machine learning recommendations,https://releases.example.com/ai-recs
+Enhanced User Analytics Dashboard,In-progress,Upgrading analytics with real-time metrics,https://releases.example.com/analytics-v2

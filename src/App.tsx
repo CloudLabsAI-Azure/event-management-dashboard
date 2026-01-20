@@ -67,8 +67,8 @@ const App = () => (
                 {/* Root handles both login and B2C callbacks */}
                 <Route path="/" element={<RootRedirect />} />
                 
-                {/* Keep login route for backward compatibility */}
-                <Route path="/login" element={<Navigate to="/" replace />} />
+                {/* Login route */}
+                <Route path="/login" element={<LoginPage />} />
                 
                 {/* Protected dashboard routes */}
                 <Route path="/dashboard" element={<ProtectedRoute />}>

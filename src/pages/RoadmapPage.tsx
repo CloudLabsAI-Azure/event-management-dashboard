@@ -9,29 +9,21 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Calendar, MapPin, Edit, Trash2, Plus } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
 import { isNonEmptyString } from '@/lib/validation'
+import api from "@/lib/api";
 
 interface RoadmapItem {
-  id: number;
+  id?: string;
+  sr: number;
   trackTitle: string;
   phase: string;
   eta: string;
 }
-
-const initialRoadmapData: RoadmapItem[] = [
-  { id: 1, trackTitle: "GitHub Enterprise Admin Lab", phase: "Development", eta: "31st August 2025" },
-  { id: 2, trackTitle: "GitHub Advanced Lab", phase: "Development", eta: "31st August 2025" },
-  { id: 3, trackTitle: "Vibe Coding", phase: "Development", eta: "31st August 2025" },
-  { id: 4, trackTitle: "Postgres SQL and SK Agents", phase: "Release-ready", eta: "NA" },
-  { id: 5, trackTitle: "Low Code Open Hack", phase: "Backlog", eta: "NA" },
-  { id: 6, trackTitle: "Serverless Hack", phase: "Backlog", eta: "NA" },
-  { id: 7, trackTitle: "Azure Landing Zone", phase: "Backlog", eta: "NA" }
-]
 
 const getPhaseBadge = (phase: string) => {
   if (phase === "Development") {
@@ -45,17 +37,20 @@ const getPhaseBadge = (phase: string) => {
 }
 
 export default function RoadmapPage() {
-  const [roadmapData, setRoadmapData] = useState<RoadmapItem[]>(initialRoadmapData)
+  const [roadmapData, setRoadmapData] = useState<RoadmapItem[]>([])
   const [editingItem, setEditingItem] = useState<RoadmapItem | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editForm, setEditForm] = useState<RoadmapItem>({
-    id: 0,
+    sr: 0,
     trackTitle: "",
     phase: "",
     eta: ""
   })
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvError, setCsvError] = useState("");
 
   useEffect(() => {
     let mounted = true
@@ -66,25 +61,20 @@ export default function RoadmapPage() {
         console.log('Catalog list:', list) // Debug log
         const roadmapItems = list.filter((i: any) => i.type === 'roadmapItem')
         console.log('Filtered roadmap items:', roadmapItems) // Debug log
-        if (roadmapItems.length === 0) {
-          // If no roadmap items exist, use initial data
-          setRoadmapData(initialRoadmapData)
-        } else {
-          setRoadmapData(roadmapItems.map((r: any, idx: number) => ({ 
-            id: Number(r.sr || r.id || idx + 1), 
-            trackTitle: r.trackTitle || r.title || '', 
-            phase: r.phase || '', 
-            eta: r.eta || 'NA' 
-          })))
-        }
+        const mapped = roadmapItems.map((r: any, idx: number) => ({ 
+          id: String(r.id || r._id || `temp_${idx}`),
+          sr: Number(r.sr || idx + 1), 
+          trackTitle: r.trackTitle || r.title || '', 
+          phase: r.phase || '', 
+          eta: r.eta || 'NA' 
+        }))
+        setRoadmapData(mapped)
       } catch (err) {
         console.error('Error loading roadmap data:', err)
-        // Use initial data as fallback
-        setRoadmapData(initialRoadmapData)
         toast({
-          title: "Warning",
-          description: "Could not load roadmap data from server. Using default data.",
-          variant: "default"
+          title: "Error",
+          description: "Could not load roadmap data from server.",
+          variant: "destructive"
         })
       }
     })()
@@ -106,17 +96,22 @@ export default function RoadmapPage() {
       const payload = { ...editForm, type: 'roadmapItem' }
       console.log('Saving roadmap item:', payload) // Debug log
       
-      if (editingItem && editingItem.id && editingItem.id > 0) {
-        await catalogService.update(editingItem.id, payload)
-        setRoadmapData(prevData => prevData.map(track => track.id === editingItem.id ? { ...editForm } : track))
+      if (editingItem && editingItem.sr && editingItem.sr > 0) {
+        await catalogService.update(editingItem.sr, payload)
+        setRoadmapData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm, id: editingItem.id } : track))
       } else {
         const resItem = await catalogService.create(payload)
         console.log('Create response:', resItem) // Debug log
-        const newItem = { ...editForm, id: Number(resItem && (resItem.sr || resItem.id) || Date.now()) }
+        const newItem = { 
+          ...editForm, 
+          id: String(resItem?.id || resItem?._id || ''),
+          sr: Number(resItem?.sr || Date.now()) 
+        }
         setRoadmapData(prev => [...prev, newItem])
       }
       setIsEditDialogOpen(false)
       setEditingItem(null)
+      toast({ title: 'Success', description: 'Roadmap item saved successfully' })
     } catch (err) {
       console.error('Save error:', err)
       throw err // Re-throw to let EntityEditDialog handle the error display
@@ -127,7 +122,7 @@ export default function RoadmapPage() {
     setIsEditDialogOpen(false)
     setEditingItem(null)
     setEditForm({
-      id: 0,
+      sr: 0,
       trackTitle: "",
       phase: "",
       eta: ""
@@ -141,8 +136,8 @@ export default function RoadmapPage() {
       ;(async () => {
         try {
           console.log('Deleting roadmap item:', item) // Debug log
-          if (item.id) await catalogService.remove(item.id)
-          setRoadmapData(prevData => prevData.filter(track => track.id !== item.id))
+          await catalogService.remove(item.sr)
+          setRoadmapData(prevData => prevData.filter(track => track.sr !== item.sr))
           toast({ title: 'Deleted', description: 'Roadmap item removed successfully' })
         } catch (err) {
           console.error('Delete error:', err)
@@ -156,6 +151,72 @@ export default function RoadmapPage() {
     }
   }
 
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCsvError("");
+    setCsvUploading(true);
+    const file = e.target.files?.[0];
+    if (!file) {
+      setCsvUploading(false);
+      return;
+    }
+    
+    // Check file extension
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setCsvError("Please upload a CSV file");
+      setCsvUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      // Roadmap items are stored in catalog with type='roadmapItem'
+      const res = await api.post(`/api/upload-csv?resource=catalog`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      
+      if (!res.data.success) {
+        setCsvError(res.data.error || "Upload failed");
+        return;
+      }
+      
+      // Reload data from API to get the full merged dataset
+      const catalogRes = await api.get('/api/catalog');
+      const items = Array.isArray(catalogRes.data) ? catalogRes.data : [];
+      const roadmapItems = items.filter((i: any) => i.type === 'roadmapItem');
+      const mapped = roadmapItems.map((r: any, idx: number) => ({ 
+        id: String(r.id || r._id || `temp_${idx}`),
+        sr: Number(r.sr || idx + 1), 
+        trackTitle: r.trackTitle || r.title || '', 
+        phase: r.phase || '', 
+        eta: r.eta || 'NA' 
+      }));
+      
+      setRoadmapData(mapped);
+      try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: res.data.message || `Successfully uploaded ${res.data.uploaded || 0} items`,
+      });
+    } catch (err: any) {
+      console.error('CSV upload error:', err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to upload CSV. Please check the file format.";
+      setCsvError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
+    } finally {
+      setCsvUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -168,10 +229,27 @@ export default function RoadmapPage() {
         <div className="flex justify-end">
           {/* Add Roadmap button for admins */}
           {role === 'admin' && (
-            <Button size="sm" onClick={() => { setEditingItem({ id: 0, trackTitle: '', phase: '', eta: '' }); setIsEditDialogOpen(true); }}>
-              <Plus className="h-4 w-4" />
-              Add Roadmap
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '' }); setIsEditDialogOpen(true); }}>
+                <Plus className="h-4 w-4" />
+                Add Roadmap
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                disabled={csvUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {csvUploading ? "Uploading..." : "Bulk Upload (.csv)"}
+              </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept=".csv" 
+                style={{ display: "none" }} 
+                onChange={handleCsvUpload} 
+              />
+            </div>
           )}
         </div>
 
@@ -199,7 +277,7 @@ export default function RoadmapPage() {
                   </TableHeader>
                   <TableBody>
                     {roadmapData.map((track) => (
-                      <TableRow key={track.id}>
+                      <TableRow key={track.id || track.sr}>
                         <TableCell className="font-medium">{track.trackTitle}</TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
                         <TableCell className="text-muted-foreground">
@@ -250,7 +328,7 @@ export default function RoadmapPage() {
           <EntityEditDialog 
             open={isEditDialogOpen} 
             onOpenChange={setIsEditDialogOpen} 
-            title={editingItem?.id ? `Edit Roadmap: ${editingItem.trackTitle}` : 'Add Roadmap Item'} 
+            title={editingItem?.sr && editingItem.sr > 0 ? `Edit Roadmap: ${editingItem.trackTitle}` : 'Add Roadmap Item'} 
             saving={saving} 
             onSave={handleSaveEdit}>
             <div className="grid gap-4 py-4">

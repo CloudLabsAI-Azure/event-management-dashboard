@@ -115,6 +115,12 @@ export function FileUploadModal({ trigger, accept, uploadTo }: FileUploadModalPr
       setSelectedFiles([])
       setEventName('')
       setIsOpen(false)
+      
+      // Trigger page refresh for reviews
+      if (uploadTo === '/api/upload-review') {
+        // Dispatch custom event to refresh the feedback gallery
+        window.dispatchEvent(new CustomEvent('reviews:refresh'))
+      }
     } catch (err) {
       toast({ title: 'Upload failed', description: 'Could not upload files', variant: 'destructive' })
     }
@@ -143,15 +149,16 @@ export function FileUploadModal({ trigger, accept, uploadTo }: FileUploadModalPr
         
         <div className="space-y-4">
           {/* Event Name Field for feedback uploads */}
+          {/* Event Name Field for feedback uploads */}
           {uploadTo === '/api/upload-review' && (
             <div className="space-y-2">
               <Label htmlFor="event-name" className="text-sm font-medium">
-                Event Name <span className="text-red-500">*</span>
+                Track/Event Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="event-name"
                 type="text"
-                placeholder="Enter event name (e.g., AI Workshop 2024)"
+                placeholder="Enter track or event name (e.g., AI Workshop 2024)"
                 value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
                 className="w-full"

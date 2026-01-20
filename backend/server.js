@@ -63,7 +63,21 @@ app.get('/api/data', (req, res) => {
 app.get('/api/last-updated', (req, res) => {
   try {
     const data = readData();
-    const lastUpdated = data._metadata?.lastUpdated || new Date().toISOString();
+    
+    // Try to get lastUpdated from metadata
+    let lastUpdated = data._metadata?.lastUpdated;
+    
+    // If no metadata exists, use file's last modified time as fallback
+    if (!lastUpdated) {
+      try {
+        const stats = fs.statSync(DATA_PATH);
+        lastUpdated = stats.mtime.toISOString();
+      } catch (e) {
+        // Final fallback to current time only if file stat fails
+        lastUpdated = new Date().toISOString();
+      }
+    }
+    
     res.json({ lastUpdated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to get last updated timestamp' });
@@ -232,6 +246,7 @@ function requireAuth(req, res, next) {
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
+  
   const data = readData();
   if (!Array.isArray(data.tokens)) return res.status(401).json({ error: 'Invalid token' });
   // cleanup expired tokens
@@ -250,6 +265,7 @@ function requireAdmin(req, res, next) {
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
+  
   const data = readData();
   const entry = Array.isArray(data.tokens) && data.tokens.find((t) => t && t.token === token);
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
@@ -507,25 +523,98 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
   const resource = String(req.query.resource || 'tracks');
   const results = [];
+  
+  // Define required columns for each resource type
+  const requiredColumns = {
+    catalog: ['trackName', 'eventDate', 'status'],
+    roadmap: ['trackTitle', 'phase', 'eta'], // Special case for roadmap items
+    tracks: ['trackName', 'testingStatus', 'releaseNotes'],
+    events: ['title', 'date', 'status'],
+    users: ['username', 'email', 'role']
+  };
+  
+  let required = requiredColumns[resource] || [];
+  
   fs.createReadStream(req.file.path)
     .pipe(csv())
     .on('data', (data) => results.push(data))
     .on('end', () => {
       try {
+        // Validate that we have data
+        if (results.length === 0) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ 
+            success: false, 
+            error: 'CSV file is empty or could not be parsed' 
+          });
+        }
+        
+        // Check if this is a roadmap CSV (has type='roadmapItem' in first row)
+        const firstRow = results[0];
+        if (resource === 'catalog' && firstRow.type === 'roadmapItem') {
+          required = requiredColumns['roadmap'];
+        }
+        
+        // Validate required columns exist in the first row
+        const missingColumns = required.filter(col => !(col in firstRow));
+        
+        if (missingColumns.length > 0) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ 
+            success: false, 
+            error: `Missing required columns: ${missingColumns.join(', ')}. Expected columns: ${required.join(', ')}` 
+          });
+        }
+        
+        // Filter out empty rows
+        const validResults = results.filter(item => {
+          return required.some(col => item[col] && String(item[col]).trim() !== '');
+        });
+        
+        if (validResults.length === 0) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ 
+            success: false, 
+            error: 'No valid data rows found in CSV. Please check the file format.' 
+          });
+        }
+        
         const existing = getResource(resource);
-        const merged = (existing || []).concat(results);
+        const startingSr = existing.length;
+        
+        console.log(`CSV Upload: Processing ${validResults.length} valid rows for ${resource}`);
+        
+        // Assign unique IDs and serial numbers to new items
+        const processedResults = validResults.map((item, idx) => ({
+          ...item,
+          id: item.id || crypto.randomBytes(8).toString('hex'),
+          sr: startingSr + idx + 1,
+          // Use type from CSV if provided, otherwise default based on resource
+          type: item.type || (resource === 'catalog' ? 'catalog' : (resource === 'tracks' ? 'track' : resource))
+        }));
+        
+        const merged = (existing || []).concat(processedResults);
         setResource(resource, merged);
-        res.json({ success: true, resource, tracks: results });
+        
+        console.log(`CSV Upload: Successfully saved ${processedResults.length} items to ${resource}`);
+        
+        res.json({ 
+          success: true, 
+          resource, 
+          uploaded: processedResults.length,
+          total: results.length,
+          message: `Successfully uploaded ${processedResults.length} items${results.length !== processedResults.length ? ` (${results.length - processedResults.length} rows skipped due to missing data)` : ''}`
+        });
       } catch (err) {
         console.error('CSV save error', err);
-        res.status(500).json({ success: false, error: 'CSV save error' });
+        res.status(500).json({ success: false, error: 'CSV save error: ' + err.message });
       } finally {
         fs.unlink(req.file.path, (err) => { if (err) console.warn('cleanup error', err); });
       }
     })
     .on('error', (err) => {
       console.error('CSV parse error', err);
-      res.status(500).json({ success: false, error: 'CSV parse error' });
+      res.status(500).json({ success: false, error: 'CSV parse error. Please ensure the file is a valid CSV.' });
       fs.unlink(req.file.path, () => {});
     });
 });
@@ -583,9 +672,10 @@ app.post('/api/:resource', requireAdmin, (req, res) => {
     setResource(resource, list);
     return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword });
   }
-  // default: assign numeric sr
+  // For catalog/tracks/events, generate unique ID if missing
   const nextSr = list.length > 0 ? Math.max(...list.map(t => Number(t.sr || 0))) + 1 : 1;
-  const newItem = { ...item, sr: Number(item.sr || nextSr) };
+  const id = item.id || crypto.randomBytes(8).toString('hex');
+  const newItem = { ...item, id, sr: Number(item.sr || nextSr) };
   list.push(newItem);
   setResource(resource, list);
   res.json({ success: true, item: newItem });
@@ -611,16 +701,29 @@ app.put('/api/:resource/:id', requireAdmin, (req, res) => {
 app.delete('/api/:resource/:id', requireAdmin, (req, res) => {
   const resource = String(req.params.resource);
   const id = req.params.id;
+  console.log(`DELETE /${resource}/${id} requested`);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   const list = getResource(resource) || [];
+  console.log(`Before delete: ${list.length} items`);
   const filtered = list.filter((it) => {
-    if (resource === 'users') return String(it && it.id) !== id;
-    return String(it && it.sr) !== id;
+    if (resource === 'users') {
+      // Users use id field
+      return String(it && it.id) !== id;
+    }
+    // For catalog/tracks/events, match either id OR sr
+    const matchesId = String(it && it.id) === id;
+    const matchesSr = String(it && it.sr) === id;
+    const shouldKeep = !matchesId && !matchesSr;
+    if (!shouldKeep) {
+      console.log(`Deleting item: sr=${it.sr}, id=${it.id}, name=${it.trackName || it.name}`);
+    }
+    return shouldKeep;
   }).map((t, idx) => {
     // renumber sr for non-users
     if (resource !== 'users') return { ...t, sr: idx + 1 };
     return t;
   });
+  console.log(`After delete: ${filtered.length} items`);
   setResource(resource, filtered);
   res.json({ success: true });
 });

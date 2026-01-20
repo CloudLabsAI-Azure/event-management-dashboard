@@ -15,7 +15,7 @@ export function DashboardPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || !isAuthorized)) {
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, isAuthorized, isLoading, navigate]);
 

@@ -123,6 +123,9 @@ export function DashboardContent() {
         
         // derive catalog health from catalog resource
         const catalog = await api.get('/api/catalog').then(r => Array.isArray(r.data) ? r.data : [])
+        const catalogItems = catalog.filter((i: any) => 
+          i && i.type === 'catalog' && (i.trackName || i.trackTitle)
+        )
         const localized = catalog.filter((i: any) => i && i.type === 'localizedTrack')
         const toPercent = (status: string) => {
           const s = String(status || '').toLowerCase()
@@ -131,22 +134,21 @@ export function DashboardContent() {
           if (s === 'pending' || s === 'not available' || s === 'not-available') return 20
           return 0
         }
-        const entries: { title: string; percent: number }[] = []
+        
+        // Process catalog items (from Catalog Health page)
+        const catalogEntries: { title: string; percent: number }[] = []
+        catalogItems.forEach((i: any) => {
+          const title = i.trackName || i.trackTitle || i.title || 'Track'
+          const overall = i.status || i.testingStatus || 'Pending'
+          catalogEntries.push({ title, percent: toPercent(String(overall)) })
+        })
+        catalogEntries.sort((a, b) => b.percent - a.percent)
+        setCatalogHealth(catalogEntries.slice(0, 5))
+        
+        // Process localized tracks
         const localizedEntries: { title: string; languages: { name: string; percent: number; status: string }[] }[] = []
         localized.forEach((i: any) => {
           const title = i.trackTitle || i.trackName || i.title || 'Track'
-          // prefer explicit overall status if present
-          const overall = i.status || i.testingStatus || null
-          if (overall) {
-            entries.push({ title, percent: toPercent(String(overall)) })
-          } else {
-            // otherwise derive from language fields by taking the MAX status according to mapping
-            const statusValues = [i.spanish, i.portuguese]
-              .filter(Boolean)
-              .map((s: string) => toPercent(s))
-            const percent = statusValues.length > 0 ? Math.max(...statusValues) : 0
-            entries.push({ title, percent })
-          }
           const langs: { name: string; percent: number; status: string }[] = []
           const mapLang = (name: string, value: any) => {
             const normalized = (value === undefined || value === null || String(value).trim() === '') ? 'Not Available' : String(value)
@@ -157,8 +159,6 @@ export function DashboardContent() {
           mapLang('Portuguese', i.portuguese)
           localizedEntries.push({ title, languages: langs })
         })
-        entries.sort((a, b) => b.percent - a.percent)
-        setCatalogHealth(entries.slice(0, 5))
         setLocalizedProgress(localizedEntries.slice(0, 5))
 
         const activeParticipants = Array.isArray(tr) ? tr.reduce((acc: number, t: any) => acc + Number(t.participants || 0), 0) : 0
