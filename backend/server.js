@@ -45,12 +45,15 @@ function writeData(data) {
       ...data,
       _metadata: {
         ...data._metadata,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        lastModifiedBy: 'system' // Track modification source
       }
     };
     fs.writeFileSync(DATA_PATH, JSON.stringify(dataWithTimestamp, null, 2), 'utf8');
+    console.log('Data written successfully at:', dataWithTimestamp._metadata.lastUpdated);
   } catch (err) {
     console.error('writeData error', err);
+    throw err; // Propagate error so caller knows write failed
   }
 }
 
@@ -64,22 +67,38 @@ app.get('/api/last-updated', (req, res) => {
   try {
     const data = readData();
     
-    // Try to get lastUpdated from metadata
+    // Priority 1: Use metadata timestamp (most reliable)
     let lastUpdated = data._metadata?.lastUpdated;
     
-    // If no metadata exists, use file's last modified time as fallback
+    // Priority 2: If no metadata, use file's last modified time
     if (!lastUpdated) {
       try {
         const stats = fs.statSync(DATA_PATH);
         lastUpdated = stats.mtime.toISOString();
+        
+        // Update metadata with this timestamp for future requests
+        if (!data._metadata) {
+          data._metadata = {};
+        }
+        data._metadata.lastUpdated = lastUpdated;
+        writeData(data);
       } catch (e) {
-        // Final fallback to current time only if file stat fails
-        lastUpdated = new Date().toISOString();
+        console.error('Error reading file stats:', e);
       }
     }
     
-    res.json({ lastUpdated });
+    // Priority 3: Final fallback (shouldn't happen in production)
+    if (!lastUpdated) {
+      lastUpdated = new Date().toISOString();
+      console.warn('Using current time as fallback for last-updated');
+    }
+    
+    res.json({ 
+      lastUpdated,
+      source: data._metadata?.lastUpdated ? 'metadata' : 'file-stat'
+    });
   } catch (err) {
+    console.error('Error in /api/last-updated:', err);
     res.status(500).json({ error: 'Failed to get last updated timestamp' });
   }
 });
