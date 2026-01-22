@@ -9,27 +9,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
 import { useAuth } from '@/components/AuthProvider'
 
 interface CatalogItem {
+  id?: string;
   sr: number;
   trackName: string;
   eventDate: string;
   status: string;
   notesETA: string;
 }
-
-const initialCatalogData: CatalogItem[] = [
-  { sr: 1, trackName: "Low Code Development With Power Apps & Power Automate", eventDate: "18th August 2025", status: "In-progress", notesETA: "15th August" },
-  { sr: 2, trackName: "Hybrid Cloud Solution (Azure Arc)", eventDate: "20th August 2025", status: "In-progress", notesETA: "15th August" },
-  { sr: 3, trackName: "Power Platform – App In A Day", eventDate: "20th August 2025", status: "In-progress", notesETA: "15th August" },
-  { sr: 4, trackName: "Build A Fabric Real-Time Intelligence Solution in a Day", eventDate: "20th August 2025", status: "In-progress", notesETA: "15th August" },
-  { sr: 5, trackName: "Advanced Workflow Automation with GitHub Actions", eventDate: "21st August 2025", status: "In-progress", notesETA: "15th August" },
-  { sr: 6, trackName: "Azure Arc Enabled SQL Servers – Single Pane Of Glass", eventDate: "21st August 2025", status: "In-progress", notesETA: "15th August" }
-]
 
 const getStatusBadge = (status: string) => {
   if (status === "Completed") {
@@ -42,7 +34,8 @@ const getStatusBadge = (status: string) => {
 
 export default function CatalogHealth() {
   const { userRole: role } = useAuth()
-  const [catalogData, setCatalogData] = useState<CatalogItem[]>(initialCatalogData)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [catalogData, setCatalogData] = useState<CatalogItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -65,8 +58,13 @@ export default function CatalogHealth() {
         const res = await api.get('/api/catalog')
         const items = Array.isArray(res.data) ? res.data : []
         const mapped = items
-          .filter((it: any) => it && (it.trackName || it.trackTitle) && it.type !== 'roadmapItem' && it.type !== 'localizedTrack')
+          .filter((it: any) => {
+            // Include items that are explicitly catalog type OR have catalog-like fields
+            if (it.type === 'roadmapItem' || it.type === 'localizedTrack') return false
+            return it && (it.trackName || it.trackTitle)
+          })
           .map((it: any, idx: number) => ({
+            id: String(it.id || it._id || `temp_${idx}`),
             sr: Number(it.sr || idx + 1),
             trackName: String(it.trackName || it.trackTitle || ''),
             eventDate: String(it.eventDate || ''),
@@ -74,25 +72,7 @@ export default function CatalogHealth() {
             notesETA: String(it.notesETA || ''),
           }))
         if (!mounted) return
-        if (mapped.length > 0) {
-          setCatalogData(mapped)
-        } else {
-          // seed backend from initialCatalogData
-          const seed = initialCatalogData
-          for (const it of seed) {
-            await api.post('/api/catalog', { ...it, type: 'catalog' })
-          }
-          const reread = await api.get('/api/catalog')
-          const rereadItems = Array.isArray(reread.data) ? reread.data : []
-          const mapped2 = rereadItems.map((it: any, idx: number) => ({
-            sr: Number(it.sr || idx + 1),
-            trackName: String(it.trackName || it.trackTitle || ''),
-            eventDate: String(it.eventDate || ''),
-            status: String(it.status || it.testingStatus || 'Pending'),
-            notesETA: String(it.notesETA || ''),
-          }))
-          if (mounted) setCatalogData(mapped2)
-        }
+        setCatalogData(mapped)
       } catch (e) { /* ignore */ }
     })()
     return () => { mounted = false }
@@ -176,17 +156,62 @@ export default function CatalogHealth() {
     setCsvError("");
     setCsvUploading(true);
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setCsvUploading(false);
+      return;
+    }
+    
+    // Check file extension
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setCsvError("Please upload a CSV file");
+      setCsvUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
     const formData = new FormData();
     formData.append("file", file);
     try {
-  const res = await api.post(`/api/upload-csv?resource=catalog`, formData, { headers: { "Content-Type": "multipart/form-data" } });
-  setCatalogData(res.data.tracks.map((track: Record<string, unknown>, idx: number) => ({ sr: idx + 1, trackName: String(track.trackName || ''), eventDate: String(track.eventDate || ''), status: String(track.status || ''), notesETA: String(track.notesETA || ''), type: 'catalog' })));
+      const res = await api.post(`/api/upload-csv?resource=catalog`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      
+      if (!res.data.success) {
+        setCsvError(res.data.error || "Upload failed");
+        return;
+      }
+      
+      // Reload data from API to get the full merged dataset
+      const catalogRes = await api.get('/api/catalog');
+      const items = Array.isArray(catalogRes.data) ? catalogRes.data : [];
+      const mapped = items
+        .filter((it: any) => {
+          if (it.type === 'roadmapItem' || it.type === 'localizedTrack') return false;
+          return it && (it.trackName || it.trackTitle);
+        })
+        .map((it: any, idx: number) => ({
+          id: String(it.id || it._id || `temp_${idx}`),
+          sr: Number(it.sr || idx + 1),
+          trackName: String(it.trackName || it.trackTitle || ''),
+          eventDate: String(it.eventDate || ''),
+          status: String(it.status || it.testingStatus || 'Pending'),
+          notesETA: String(it.notesETA || ''),
+        }));
+      
+      setCatalogData(mapped);
       try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
-    } catch (err) {
-      setCsvError("Failed to upload CSV");
+      
+      // Show success message
+      alert(res.data.message || `Successfully uploaded ${res.data.uploaded || 0} items`);
+    } catch (err: any) {
+      console.error('CSV upload error:', err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to upload CSV. Please check the file format.";
+      setCsvError(errorMsg);
+    } finally {
+      setCsvUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
-    setCsvUploading(false);
   };
 
   return (
@@ -206,12 +231,21 @@ export default function CatalogHealth() {
                   <Plus className="h-4 w-4" />
                   Add Track
                 </Button>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Button size="sm" variant="outline" disabled={csvUploading}>
-                    Bulk Upload (.csv)
-                  </Button>
-                  <input type="file" accept=".csv" style={{ display: "none" }} onChange={handleCsvUpload} />
-                </label>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  disabled={csvUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {csvUploading ? "Uploading..." : "Bulk Upload (.csv)"}
+                </Button>
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept=".csv" 
+                  style={{ display: "none" }} 
+                  onChange={handleCsvUpload} 
+                />
               </>
             )}
           </div>
@@ -245,7 +279,7 @@ export default function CatalogHealth() {
                   </TableHeader>
                   <TableBody>
                     {currentData.map((track) => (
-                      <TableRow key={track.sr}>
+                      <TableRow key={track.id || track.sr}>
                         <TableCell className="font-medium">{track.sr}</TableCell>
                         <TableCell className="font-medium">{track.trackName}</TableCell>
                         <TableCell className="text-muted-foreground">{track.eventDate}</TableCell>

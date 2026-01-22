@@ -15,12 +15,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { FileUploadModal } from "@/components/FileUploadModal"
 import MetricsEditor from '@/components/MetricsEditor'
 
 interface TrackItem {
+  id?: string;
   sr: number;
   trackName: string;
   testingStatus: string;
@@ -56,6 +57,9 @@ export default function Top25Tracks() {
   const [addForm, setAddForm] = useState<TrackItem>({ sr: tracksData.length + 1, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "" });
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvError, setCsvError] = useState("");
   // Removed bulk upload and metrics edit for this page per requirements
   
   const itemsPerPage = 10
@@ -178,6 +182,7 @@ export default function Top25Tracks() {
         const list = Array.isArray(res.data) ? res.data : (res.data && res.data.tracks ? res.data.tracks : [])
         if (mounted) {
           const mapped = Array.isArray(list) ? list.map((t: any, idx: number) => ({ 
+            id: String(t.id || t._id || `track_${idx}`),
             sr: Number(t.sr || idx + 1), 
             trackName: String(t.trackName || t.name || ''), 
             testingStatus: String(t.testingStatus || ''), 
@@ -203,9 +208,74 @@ export default function Top25Tracks() {
     
     return () => { 
       mounted = false; 
-      window.removeEventListener('tracks:changed', onTracksChanged as EventListener) 
+      window.removeEventListener('tracks:changed', onTracksChanged as EventListener)
     }
   }, [])
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCsvError("");
+    setCsvUploading(true);
+    const file = e.target.files?.[0];
+    if (!file) {
+      setCsvUploading(false);
+      return;
+    }
+    
+    // Check file extension
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setCsvError("Please upload a CSV file");
+      setCsvUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await api.post(`/api/upload-csv?resource=tracks`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      
+      if (!res.data.success) {
+        setCsvError(res.data.error || "Upload failed");
+        return;
+      }
+      
+      // Reload data from API to get the full merged dataset
+      const tracksRes = await api.get('/api/tracks');
+      const items = Array.isArray(tracksRes.data) ? tracksRes.data : [];
+      const mapped = items.map((t: any, idx: number) => ({
+        id: String(t.id || t._id || `track_${idx}`),
+        sr: Number(t.sr || idx + 1), 
+        trackName: String(t.trackName || t.name || ''), 
+        testingStatus: String(t.testingStatus || ''), 
+        releaseNotes: String(t.releaseNotes || 'Release Notes'), 
+        releaseUrl: t.releaseUrl || t.release_url || '' 
+      }));
+      
+      setTracksData(mapped);
+      try { window.dispatchEvent(new CustomEvent('tracks:changed')) } catch {}
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: res.data.message || `Successfully uploaded ${res.data.uploaded || 0} items`,
+      });
+    } catch (err: any) {
+      console.error('CSV upload error:', err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to upload CSV. Please check the file format.";
+      setCsvError(errorMsg);
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
+    } finally {
+      setCsvUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -221,6 +291,21 @@ export default function Top25Tracks() {
                 <Plus className="h-4 w-4" />
                 Add Track
               </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                disabled={csvUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {csvUploading ? "Uploading..." : "Bulk Upload (.csv)"}
+              </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept=".csv" 
+                style={{ display: "none" }} 
+                onChange={handleCsvUpload} 
+              />
             </div>
           )}
         </div>
@@ -261,7 +346,7 @@ export default function Top25Tracks() {
                   </TableHeader>
                   <TableBody>
                     {currentData.map((track) => (
-                      <TableRow key={track.sr}>
+                      <TableRow key={track.id || track.sr}>
                         <TableCell className="font-medium">{track.sr}</TableCell>
                         <TableCell className="font-medium">{track.trackName}</TableCell>
                         <TableCell>{getStatusBadge(track.testingStatus)}</TableCell>

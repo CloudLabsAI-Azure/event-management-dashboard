@@ -1,6 +1,13 @@
 {
   "tracks": [
-    
+    {
+      "sr": 1,
+      "trackName": "test25",
+      "testingStatus": "Completed",
+      "releaseNotes": "release ntoes",
+      "releaseUrl": "",
+      "id": "4cd761a8dcd712a6"
+    }
   ],
   "tokens": [
     {
@@ -767,254 +774,101 @@
   ],
   "catalog": [
     {
-      "sr": 1,
+      "sr": 129,
+      "trackName": "tesstcataloghealth",
+      "eventDate": "tesstcataloghealth",
+      "status": "Completed",
+      "notesETA": "dome",
       "type": "catalog",
-      "trackTitle": "Introduction To Building AI Apps",
-      "eventDate": "16th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "trackName": "AI-Assisted Development with GitHub Copilot"
+      "id": "3407981c9d136155"
     },
     {
-      "id": 16,
-      "trackTitle": " Snowflake+Fabric: Iceberg with OneLake",
-      "phase": "Release-ready",
-      "eta": "NA",
-      "type": "catalog",
-      "sr": 3,
-      "trackName": "Getting Started with Azure AI Services",
-      "eventDate": "16th December 2025",
-      "status": "Pending",
-      "notesETA": ""
-    },
-    {
-      "id": 0,
-      "trackTitle": "GitHub Copilot - Hackathon",
-      "phase": "Development",
-      "eta": "NA",
-      "type": "catalog",
-      "sr": 4,
-      "trackName": "GitHub Copilot Innovation Workshop",
-      "eventDate": "16th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "id": 7,
-      "trackTitle": "Copilot Studio in a Day with Retail",
-      "phase": "Development",
-      "eta": "In Development",
-      "type": "roadmapItem",
-      "sr": 5
-    },
-    {
-      "id": 8,
-      "trackTitle": "API Mgmt with AI Dev",
-      "phase": "Development",
-      "eta": "In Development",
-      "type": "roadmapItem",
-      "sr": 6
-    },
-    {
-      "id": 0,
-      "trackTitle": "Cloud Native Applications",
-      "phase": "Development",
-      "eta": "NA",
-      "type": "localizedTrack",
-      "sr": 7,
-      "spanish": "Available",
-      "portuguese": "Available"
-    },
-    {
-      "id": 10,
-      "trackTitle": "DevOps with Agentic AI",
-      "phase": "Backlog",
-      "eta": "Pending",
-      "type": "roadmapItem",
-      "sr": 8
-    },
-    {
-      "id": 11,
-      "trackTitle": "Apps&AgentsGTM/Dev Sandbox",
-      "phase": "Backlog",
-      "eta": "Pending",
-      "type": "roadmapItem",
-      "sr": 9
-    },
-    {
-      "id": 12,
-      "trackTitle": "MS- Low Code OpenHack",
-      "phase": "Backlog",
-      "eta": "Pending",
-      "type": "roadmapItem",
-      "sr": 10
-    },
-    {
+      "sr": 130,
       "trackTitle": "GitHub Copilot Innovation Workshop",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 11
+      "id": "a1b2c3d4e5f60001"
     },
     {
-      "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "type": "localizedTrack",
-      "sr": 12
-    },
-    {
-      "trackTitle": "Activate GenAI with Azure​",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "type": "catalog",
-      "sr": 13,
-      "trackName": "Leverage Microsoft 365 Copilot and Copilot Studio for Marketing",
-      "eventDate": "16th December 2025",
-      "status": "Pending",
-      "notesETA": ""
-    },
-    {
-      "trackTitle": "Low-Code for Pro-Dev in a Day​",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "type": "localizedTrack",
-      "sr": 14
-    },
-    {
-      "sr": 15,
-      "trackName": "AI-Assisted Development with GitHub Copilot",
-      "eventDate": "17th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 16,
-      "trackName": "Enterprise-Class Networking",
-      "eventDate": "17th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 17,
-      "trackName": "Leverage Microsoft 365 Copilot and Copilot Studio for Marketing",
-      "eventDate": "18th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 18,
-      "trackName": "Data Security with Microsoft Purview",
-      "eventDate": "19th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 19,
-      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
-      "eventDate": "5th January 2026",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 20,
-      "trackName": "Getting Started with Azure AI Services",
-      "eventDate": "6th January 2026",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 21,
-      "trackName": "Hands-on with Azure AI Foundry and Agent frameworks",
-      "eventDate": "7th January 2026",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 22,
-      "trackName": "Microsoft Azure AI Agents: Hands-on Lab",
-      "eventDate": "8th January 2026",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 23,
-      "trackName": "Fabric Database Mirroring",
-      "eventDate": "9th January 2026",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "sr": 24,
-      "trackName": "Expanding Azure Virtual WAN To Support Your Global Network",
-      "eventDate": "11th December 2025",
-      "status": "Pending",
-      "notesETA": "",
-      "type": "catalog"
-    },
-    {
-      "id": 28,
-      "trackTitle": "Chat with your data [Fabric] ",
-      "phase": "Development",
-      "eta": "In Development",
-      "type": "roadmapItem",
-      "sr": 25
-    },
-    {
-      "id": 8,
-      "trackTitle": " Snowflake+Fabric: Iceberg with OneLake",
-      "phase": "Release-ready",
-      "eta": "Release Ready, In ERM Portal",
-      "type": "roadmapItem",
-      "sr": 26
-    },
-    {
-      "trackTitle": "GitHub Copilot - Hackathon",
-      "spanish": "Available",
-      "portuguese": "Available",
-      "type": "localizedTrack",
-      "sr": 27
-    },
-    {
+      "sr": 131,
       "trackTitle": "Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 28
+      "id": "a1b2c3d4e5f60002"
     },
     {
+      "sr": 132,
+      "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "id": "a1b2c3d4e5f60003"
+    },
+    {
+      "sr": 133,
+      "trackTitle": "Cloud Native Applications",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "id": "a1b2c3d4e5f60004"
+    },
+    {
+      "sr": 134,
       "trackTitle": "Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 29
+      "id": "a1b2c3d4e5f60005"
     },
     {
+      "sr": 135,
       "trackTitle": "Intelligent App Development with Microsoft Copilot Stack",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 30
+      "id": "a1b2c3d4e5f60006"
     },
     {
+      "sr": 136,
+      "trackTitle": "GitHub Copilot – Hackathon",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "id": "a1b2c3d4e5f60007"
+    },
+    {
+      "sr": 137,
       "trackTitle": "Introduction To Building AI Apps",
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "sr": 31
+      "id": "a1b2c3d4e5f60008"
+    },
+    {
+      "sr": 138,
+      "trackTitle": "Activate GenAI with Azure",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "id": "a1b2c3d4e5f60009"
+    },
+    {
+      "sr": 139,
+      "trackTitle": "Low-Code for Pro-Dev in a Day",
+      "spanish": "Available",
+      "portuguese": "Available",
+      "type": "localizedTrack",
+      "id": "a1b2c3d4e5f60010"
+    },
+    {
+      "sr": 140,
+      "trackTitle": "devroad25",
+      "phase": "Release-ready",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "5f7af9fc50456f65"
     }
   ],
   "users": [
@@ -1107,106 +961,16 @@
   },
   "reviews": [
     {
-      "id": "r_1762273322734_e224xf",
-      "originalName": "image (36).png",
-      "eventName": "MS433420ERXWWP - \tUse Azure OpenAI Like A Pro To Build Powerful AI Applications",
+      "id": "r_1768925686439_pbyykl",
+      "originalName": "ChatGPT Image Dec 10, 2025, 07_15_43 PM.png",
+      "eventName": "test",
       "mime": "image/png",
-      "size": 7484,
-      "path": "/uploads/ecb368bc78abc1d50e046d6508c9a585",
-      "uploadedAt": 1762273322734
-    },
-    {
-      "id": "r_1762273388649_yhd6ka",
-      "originalName": "image (35).png",
-      "eventName": "MS270982M9A0RE - Hands-on with Azure AI Foundry and Agent Frameworks",
-      "mime": "image/png",
-      "size": 107867,
-      "path": "/uploads/b5b7c4090358b1733743c7b944e422f4",
-      "uploadedAt": 1762273388649
-    },
-    {
-      "id": "r_1762273417937_psq4dl",
-      "originalName": "image (39).png",
-      "eventName": "MS082632CGOEVW - AI-Assisted Development with GitHub Copilot",
-      "mime": "image/png",
-      "size": 22573,
-      "path": "/uploads/aa60e9e4b12643a1dae72a7d7d845369",
-      "uploadedAt": 1762273417937
-    },
-    {
-      "id": "r_1762273437398_yw0j6a",
-      "originalName": "image (40).png",
-      "eventName": "MS757939WWLQJ7 - Effective Utilization of Copilot Studio (CDT)",
-      "mime": "image/png",
-      "size": 72790,
-      "path": "/uploads/4457d739b8b3484efbfd0dc649281d40",
-      "uploadedAt": 1762273437398
-    },
-    {
-      "id": "r_1762273459029_5wno5b",
-      "originalName": "image (41).png",
-      "eventName": "MS7211993X0WMI - Leverage Microsoft 365 Copilot and Copilot Studio for Sales (IST)",
-      "mime": "image/png",
-      "size": 96910,
-      "path": "/uploads/00ee14daa4d0668fb2817448e776ea18",
-      "uploadedAt": 1762273459029
-    },
-    {
-      "id": "r_1763477204045_1t0dx5",
-      "originalName": "image (47).png",
-      "eventName": "MS719438WWM87C - AI Agents using Microsoft Agent Framework",
-      "mime": "image/png",
-      "size": 15666,
-      "path": "/uploads/46b422b020eb94461f0d8d3bfc7f63be",
-      "uploadedAt": 1763477204045
-    },
-    {
-      "id": "r_1763477283554_8kqu6y",
-      "originalName": "image (50).png",
-      "eventName": "MS6118984MTDJZ - Hands-on with Azure AI Foundry and Agent Frameworks",
-      "mime": "image/png",
-      "size": 102876,
-      "path": "/uploads/ef601b92a73210b8fd5f7c0511c17192",
-      "uploadedAt": 1763477283554
-    },
-    {
-      "id": "r_1763477308496_ei3dvf",
-      "originalName": "image (51).png",
-      "eventName": "MS445092DXY9CB - Hands-on with Azure AI Foundry and Agent Frameworks",
-      "mime": "image/png",
-      "size": 38098,
-      "path": "/uploads/a93580647232e9df6b874170418c53f0",
-      "uploadedAt": 1763477308496
-    },
-    {
-      "id": "r_1763477333274_2vy3dq",
-      "originalName": "image (52).png",
-      "eventName": "MS800200YDM4HC - AI-Assisted Development with GitHub Copilot",
-      "mime": "image/png",
-      "size": 61854,
-      "path": "/uploads/1c8a5500c4de7ee7d634d605948fbf29",
-      "uploadedAt": 1763477333274
-    },
-    {
-      "id": "r_1763477359731_cr95k1",
-      "originalName": "image (53).png",
-      "eventName": "MS955191RKCJKC - Microsoft Defender for Cloud - Security Posture Management",
-      "mime": "image/png",
-      "size": 107925,
-      "path": "/uploads/d7534a4345d836f049d4ffee6897eaaa",
-      "uploadedAt": 1763477359731
-    },
-    {
-      "id": "r_1763477412044_pr4ejs",
-      "originalName": "image (54).png",
-      "eventName": "MS096504TC7LM1 - Copilot Studio Training Workshop",
-      "mime": "image/png",
-      "size": 44412,
-      "path": "/uploads/e4683ff7385336d5398f88334086afab",
-      "uploadedAt": 1763477412044
+      "size": 1542698,
+      "path": "/uploads/6fe15b8a6e79b6da41525e91db21adfd",
+      "uploadedAt": 1768925686439
     }
   ],
   "_metadata": {
-    "lastUpdated": "2026-01-14T17:56:02.006Z"
+    "lastUpdated": "2026-01-20T16:14:46.439Z"
   }
 }

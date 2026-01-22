@@ -21,23 +21,10 @@ import api from '@/lib/api'
 interface LocalizedTrack {
   trackTitle: string
   sr?: number
+  id?: string
   languages: Record<string, string> // key: language name (lowercase id), value: status
   originalOrder?: number
 }
-
-const baseSeed = [
-  "GitHub Copilot Innovation Workshop",
-  "Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
-  "Get Started with OpenAI and Build Natural Language Solution",
-  "Cloud Native Applications",
-  "Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
-  "Intelligent App Development with Microsoft Copilot Stack",
-  "GitHub Copilot – Hackathon",
-  "Introduction To Building AI Apps",
-  "Activate GenAI with Azure",
-  "Low-Code for Pro-Dev in a Day"
-];
-const initialLocalizedTracksData: LocalizedTrack[] = baseSeed.map(title => ({ trackTitle: title, languages: { spanish: 'Available', portuguese: 'Available' } }));
 
 const getAvailabilityBadge = (status: string) => {
   if (status === "Available") {
@@ -53,7 +40,7 @@ const getAvailabilityBadge = (status: string) => {
 
 export default function LocalizedTracksPage() {
   const { userRole: role } = useAuth()
-  const [localizedTracksData, setLocalizedTracksData] = useState<LocalizedTrack[]>(initialLocalizedTracksData)
+  const [localizedTracksData, setLocalizedTracksData] = useState<LocalizedTrack[]>([])
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [editFormData, setEditFormData] = useState<LocalizedTrack>({ trackTitle: "", languages: { spanish: '', portuguese: '' } })
@@ -69,19 +56,23 @@ export default function LocalizedTracksPage() {
         if (!mounted) return
         const items = Array.isArray(res.data) ? res.data : []
         const localized = items.filter((i: any) => i.type === 'localizedTrack')
-        if (localized.length > 0) {
-          const mapped: LocalizedTrack[] = localized.map((i: any) => ({
-            sr: Number(i.sr || i.id || 0),
-            trackTitle: i.trackTitle || i.title || '',
-            languages: {
-              spanish: typeof i.spanish === 'string' ? i.spanish : 'Not Available',
-              portuguese: typeof i.portuguese === 'string' ? i.portuguese : 'Not Available'
-            }
-          }))
-          setLocalizedTracksData(mapped)
-        }
+        const mapped: LocalizedTrack[] = localized.map((i: any) => ({
+          id: String(i.id || i._id || ''),
+          sr: Number(i.sr || 0),
+          trackTitle: i.trackTitle || i.title || '',
+          languages: {
+            spanish: typeof i.spanish === 'string' ? i.spanish : 'Not Available',
+            portuguese: typeof i.portuguese === 'string' ? i.portuguese : 'Not Available'
+          }
+        }))
+        setLocalizedTracksData(mapped)
       } catch (err) {
-        // ignore load errors for now
+        console.error('Error loading localized tracks:', err)
+        toast({
+          title: "Error",
+          description: "Could not load localized tracks from server.",
+          variant: "destructive"
+        })
       }
     })()
     return () => { mounted = false }
@@ -238,37 +229,45 @@ export default function LocalizedTracksPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {localizedTracksData.map((track, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{track.trackTitle}</TableCell>
-                        <TableCell className="text-center">{getAvailabilityBadge(track.languages.spanish || 'Not Available')}</TableCell>
-                        <TableCell className="text-center">{getAvailabilityBadge(track.languages.portuguese || 'Not Available')}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                              {role === 'admin' && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEdit(index)}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDelete(index)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                          </div>
+                    {localizedTracksData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                          No localized tracks yet. Click "Add Track" to create one.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      localizedTracksData.map((track, index) => (
+                        <TableRow key={track.id || track.sr || index}>
+                          <TableCell className="font-medium">{track.trackTitle}</TableCell>
+                          <TableCell className="text-center">{getAvailabilityBadge(track.languages.spanish || 'Not Available')}</TableCell>
+                          <TableCell className="text-center">{getAvailabilityBadge(track.languages.portuguese || 'Not Available')}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                                {role === 'admin' && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEdit(index)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDelete(index)}
+                                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </ScrollArea>
