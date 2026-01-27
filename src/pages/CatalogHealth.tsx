@@ -424,7 +424,7 @@ export default function CatalogHealth() {
                       <TableHead className="w-36">Event Date</TableHead>
                       <TableHead className="w-32">Testing Status</TableHead>
                       <TableHead className="w-36">Last Test Date</TableHead>
-                      <TableHead className="w-32">Notes/ETA</TableHead>
+                      {/* <TableHead className="w-32">Notes/ETA</TableHead> */}
                       <TableHead className="w-36">Release Notes</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
@@ -446,12 +446,12 @@ export default function CatalogHealth() {
                             <span className="text-gray-500">-</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <Clock className="h-4 w-4" />
                             {track.notesETA}
                           </div>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-muted-foreground">
                           {track.releaseNotesUrl ? (
                             <a href={track.releaseNotesUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline whitespace-nowrap">
@@ -601,7 +601,7 @@ export default function CatalogHealth() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              {/* <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notesETA" className="text-right">
                   Notes/ETA
                 </Label>
@@ -611,7 +611,7 @@ export default function CatalogHealth() {
                   onChange={(e) => setEditForm({ ...editForm, notesETA: e.target.value })}
                   className="col-span-3"
                 />
-              </div>
+              </div> */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="lastTestDate" className="text-right">
                   Last Test Date
@@ -707,7 +707,7 @@ export default function CatalogHealth() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
+              {/* <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="addNotesETA" className="text-right">
                   Notes/ETA
                 </Label>
@@ -717,7 +717,7 @@ export default function CatalogHealth() {
                   onChange={(e) => setAddForm({ ...addForm, notesETA: e.target.value })}
                   className="col-span-3"
                 />
-              </div>
+              </div> */}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
