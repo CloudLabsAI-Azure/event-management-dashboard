@@ -18,12 +18,9 @@ import EntityEditDialog from '@/components/EntityEditDialog'
 interface TTTSession {
   id?: string
   sr: number
-  courseName: string
-  trainerName: string
+  trackName: string
   sessionDate: string
-  participants: number
   status: string
-  certificationIssued?: boolean
   notes?: string
 }
 
@@ -46,12 +43,9 @@ export default function TTTPage() {
   const [editingSession, setEditingSession] = useState<TTTSession | null>(null)
   const [editForm, setEditForm] = useState<TTTSession>({
     sr: 0,
-    courseName: "",
-    trainerName: "",
+    trackName: "",
     sessionDate: "",
-    participants: 0,
     status: "",
-    certificationIssued: false,
     notes: ""
   })
   const [saving, setSaving] = useState(false)
@@ -70,12 +64,9 @@ export default function TTTPage() {
         .map((i: any) => ({
           id: String(i.id || i._id || ''),
           sr: Number(i.sr || 0),
-          courseName: i.courseName || '',
-          trainerName: i.trainerName || '',
+          trackName: i.trackName || i.courseName || '',
           sessionDate: i.sessionDate || '',
-          participants: Number(i.participants || 0),
           status: i.status || 'Scheduled',
-          certificationIssued: Boolean(i.certificationIssued),
           notes: i.notes || ''
         }))
       
@@ -94,12 +85,9 @@ export default function TTTPage() {
     setEditingSession(null)
     setEditForm({
       sr: 0,
-      courseName: "",
-      trainerName: "",
+      trackName: "",
       sessionDate: new Date().toISOString().split('T')[0],
-      participants: 0,
       status: "Scheduled",
-      certificationIssued: false,
       notes: ""
     })
     setIsEditDialogOpen(true)
@@ -112,19 +100,10 @@ export default function TTTPage() {
   }
 
   const handleSave = async () => {
-    if (!editForm.courseName || editForm.courseName.trim().length < 3) {
+    if (!editForm.trackName || editForm.trackName.trim().length < 3) {
       toast({
         title: 'Validation Error',
-        description: 'Course name is required (min 3 characters)',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!editForm.trainerName || editForm.trainerName.trim().length < 2) {
-      toast({
-        title: 'Validation Error',
-        description: 'Trainer name is required',
+        description: 'Track name is required (min 3 characters)',
         variant: 'destructive'
       })
       return
@@ -158,7 +137,7 @@ export default function TTTPage() {
   }
 
   const handleDelete = async (session: TTTSession) => {
-    if (!window.confirm(`Delete TTT session "${session.courseName}"?`)) return
+    if (!window.confirm(`Delete TTT session "${session.trackName}"?`)) return
 
     try {
       if (session.sr) {
@@ -181,8 +160,7 @@ export default function TTTPage() {
   // Calculate statistics
   const totalSessions = tttSessions.length
   const completedSessions = tttSessions.filter(s => s.status === 'Completed').length
-  const totalParticipants = tttSessions.reduce((sum, s) => sum + s.participants, 0)
-  const certificationCount = tttSessions.filter(s => s.certificationIssued).length
+  const scheduledSessions = tttSessions.filter(s => s.status === 'Scheduled').length
 
   return (
     <DashboardLayout>
@@ -198,7 +176,7 @@ export default function TTTPage() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Sessions</CardDescription>
@@ -213,14 +191,8 @@ export default function TTTPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Participants</CardDescription>
-              <CardTitle className="text-3xl text-blue-600">{totalParticipants}</CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Certifications Issued</CardDescription>
-              <CardTitle className="text-3xl text-purple-600">{certificationCount}</CardTitle>
+              <CardDescription>Scheduled</CardDescription>
+              <CardTitle className="text-3xl text-blue-600">{scheduledSessions}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -251,20 +223,17 @@ export default function TTTPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-16">Sr.</TableHead>
-                    <TableHead className="min-w-[200px]">Course Name</TableHead>
-                    <TableHead className="w-40">Trainer</TableHead>
+                    <TableHead className="w-20">Event ID</TableHead>
+                    <TableHead className="min-w-[200px]">Track Name</TableHead>
                     <TableHead className="w-32">Session Date</TableHead>
-                    <TableHead className="w-24 text-center">Participants</TableHead>
                     <TableHead className="w-32">Status</TableHead>
-                    <TableHead className="w-32 text-center">Certification</TableHead>
                     <TableHead className="w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tttSessions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         No TTT sessions yet. Click "Add Session" to create one.
                       </TableCell>
                     </TableRow>
@@ -272,27 +241,14 @@ export default function TTTPage() {
                     tttSessions.map((session) => (
                       <TableRow key={session.id || session.sr}>
                         <TableCell className="font-medium">{session.sr}</TableCell>
-                        <TableCell className="font-medium">{session.courseName}</TableCell>
-                        <TableCell>{session.trainerName}</TableCell>
+                        <TableCell className="font-medium">{session.trackName}</TableCell>
                         <TableCell className="text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
                             {new Date(session.sessionDate).toLocaleDateString()}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary">{session.participants}</Badge>
-                        </TableCell>
                         <TableCell>{getStatusBadge(session.status)}</TableCell>
-                        <TableCell className="text-center">
-                          {session.certificationIssued ? (
-                            <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">
-                              ✓ Issued
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {role === 'admin' && (
@@ -330,29 +286,30 @@ export default function TTTPage() {
         <EntityEditDialog
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
-          title={editingSession ? `Edit TTT Session: ${editingSession.courseName}` : 'Add TTT Session'}
+          title={editingSession ? `Edit TTT Session: ${editingSession.trackName}` : 'Add TTT Session'}
           saving={saving}
           onSave={handleSave}
         >
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="courseName" className="text-right">Course Name</Label>
+              <Label htmlFor="sr" className="text-right">Event ID</Label>
               <Input
-                id="courseName"
-                value={editForm.courseName}
-                onChange={(e) => setEditForm({ ...editForm, courseName: e.target.value })}
+                id="sr"
+                type="number"
+                value={editForm.sr}
+                onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="e.g., Azure Administrator Training"
+                placeholder="Event ID"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="trainerName" className="text-right">Trainer Name</Label>
+              <Label htmlFor="trackName" className="text-right">Track Name</Label>
               <Input
-                id="trainerName"
-                value={editForm.trainerName}
-                onChange={(e) => setEditForm({ ...editForm, trainerName: e.target.value })}
+                id="trackName"
+                value={editForm.trackName}
+                onChange={(e) => setEditForm({ ...editForm, trackName: e.target.value })}
                 className="col-span-3"
-                placeholder="e.g., John Doe"
+                placeholder="e.g., Azure Administrator Training"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -362,17 +319,6 @@ export default function TTTPage() {
                 type="date"
                 value={editForm.sessionDate}
                 onChange={(e) => setEditForm({ ...editForm, sessionDate: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="participants" className="text-right">Participants</Label>
-              <Input
-                id="participants"
-                type="number"
-                min="0"
-                value={editForm.participants}
-                onChange={(e) => setEditForm({ ...editForm, participants: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
               />
             </div>
@@ -392,19 +338,6 @@ export default function TTTPage() {
                   <SelectItem value="Cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="certification" className="text-right">Certification</Label>
-              <div className="col-span-3 flex items-center space-x-2">
-                <input
-                  id="certification"
-                  type="checkbox"
-                  checked={editForm.certificationIssued}
-                  onChange={(e) => setEditForm({ ...editForm, certificationIssued: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="certification" className="text-sm">Certification Issued</label>
-              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="notes" className="text-right">Notes</Label>
