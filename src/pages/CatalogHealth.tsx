@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2 } from "lucide-react"
+import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
 import { useAuth } from '@/components/AuthProvider'
 import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
+import { findBestMatch, type MatchResult } from '@/lib/fuzzyMatch'
+import { useToast } from '@/hooks/use-toast'
 
 interface CatalogItem {
   id?: string;
@@ -37,6 +39,7 @@ const getStatusBadge = (status: string) => {
 
 export default function CatalogHealth() {
   const { userRole: role } = useAuth()
+  const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [catalogData, setCatalogData] = useState<CatalogItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -55,6 +58,15 @@ export default function CatalogHealth() {
   const [addForm, setAddForm] = useState<CatalogItem>({ sr: catalogData.length + 1, trackName: "", eventDate: "", status: "", notesETA: "", lastTestDate: "", releaseNotesUrl: "" });
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
+  
+  // Auto-match state
+  const [isAutoMatching, setIsAutoMatching] = useState(false);
+  const [matchPreview, setMatchPreview] = useState<Array<{
+    catalogItem: CatalogItem;
+    match: MatchResult | null;
+    selected: boolean;
+  }>>([]);
+  const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
   // Load catalog from backend on mount; seed if empty
   useEffect(() => {
     let mounted = true
@@ -221,6 +233,120 @@ export default function CatalogHealth() {
     }
   };
 
+  // Auto-match release notes
+  const handleAutoMatch = async () => {
+    setIsAutoMatching(true);
+    try {
+      // Fetch GitHub folders
+      const githubResponse = await api.get('/api/github-release-notes');
+      const githubFolders = githubResponse.data.folders || [];
+
+      // Find items without release notes URLs
+      const itemsToMatch = catalogData.filter(item => !item.releaseNotesUrl || item.releaseNotesUrl.trim() === '');
+
+      if (itemsToMatch.length === 0) {
+        toast({
+          title: "No items to match",
+          description: "All catalog items already have release notes URLs.",
+        });
+        return;
+      }
+
+      // Find matches for each item
+      const matches = itemsToMatch.map(item => {
+        const match = findBestMatch(item.trackName, githubFolders, 60);
+        return {
+          catalogItem: item,
+          match,
+          selected: match !== null // Auto-select if match found
+        };
+      });
+
+      const foundMatches = matches.filter(m => m.match !== null).length;
+      
+      if (foundMatches === 0) {
+        toast({
+          title: "No matches found",
+          description: "Could not find any matching GitHub folders for your catalog items.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setMatchPreview(matches);
+      setIsMatchPreviewOpen(true);
+      
+      toast({
+        title: `Found ${foundMatches} matches`,
+        description: `Review and apply the suggested release notes URLs.`,
+      });
+    } catch (error) {
+      console.error('Auto-match error:', error);
+      toast({
+        title: "Failed to auto-match",
+        description: "Could not fetch GitHub release notes. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAutoMatching(false);
+    }
+  };
+
+  // Apply selected matches
+  const handleApplyMatches = async () => {
+    const selectedMatches = matchPreview.filter(m => m.selected && m.match);
+    
+    if (selectedMatches.length === 0) {
+      toast({
+        title: "No matches selected",
+        description: "Please select at least one match to apply.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Update catalog data
+      const updatedData = catalogData.map(item => {
+        const matchEntry = selectedMatches.find(m => m.catalogItem.sr === item.sr);
+        if (matchEntry && matchEntry.match) {
+          return { ...item, releaseNotesUrl: matchEntry.match.folderUrl };
+        }
+        return item;
+      });
+
+      setCatalogData(updatedData);
+
+      // Save to backend
+      for (const matchEntry of selectedMatches) {
+        if (matchEntry.match) {
+          await api.put(`/api/catalog/${matchEntry.catalogItem.sr}`, {
+            ...matchEntry.catalogItem,
+            releaseNotesUrl: matchEntry.match.folderUrl,
+            type: 'catalog'
+          });
+        }
+      }
+
+      toast({
+        title: "Success!",
+        description: `Applied ${selectedMatches.length} release notes URLs.`,
+      });
+
+      setIsMatchPreviewOpen(false);
+      setMatchPreview([]);
+      
+      try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+    } catch (error) {
+      console.error('Apply matches error:', error);
+      toast({
+        title: "Failed to apply matches",
+        description: "Some updates may not have been saved. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -237,6 +363,16 @@ export default function CatalogHealth() {
                 <Button size="sm" className="flex items-center gap-2" onClick={() => setIsAddDialogOpen(true)}>
                   <Plus className="h-4 w-4" />
                   Add Track
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isAutoMatching}
+                  onClick={handleAutoMatch}
+                >
+                  <Wand2 className="h-4 w-4" />
+                  {isAutoMatching ? "Matching..." : "Auto-Match URLs"}
                 </Button>
                 <Button 
                   size="sm" 
@@ -276,7 +412,7 @@ export default function CatalogHealth() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead className="w-16">Sr.</TableHead>
+                      <TableHead className="w-16">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Name</TableHead>
                       <TableHead className="w-36">Event Date</TableHead>
                       <TableHead className="w-32">Status</TableHead>
@@ -405,6 +541,18 @@ export default function CatalogHealth() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="eventId" className="text-right">
+                  Event ID
+                </Label>
+                <Input
+                  id="eventId"
+                  type="number"
+                  value={editForm.sr}
+                  onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
+                  className="col-span-3"
+                />
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="trackName" className="text-right">
                   Track Name
@@ -570,6 +718,77 @@ export default function CatalogHealth() {
               <Button onClick={handleAddCatalog}>
                 Add
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Auto-Match Preview Dialog */}
+        <Dialog open={isMatchPreviewOpen} onOpenChange={setIsMatchPreviewOpen}>
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Auto-Match Release Notes Preview</DialogTitle>
+              <DialogDescription>
+                Review the suggested matches below. Uncheck any you don't want to apply.
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-3">
+                {matchPreview.map((item, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={(e) => {
+                          const updated = [...matchPreview];
+                          updated[idx].selected = e.target.checked;
+                          setMatchPreview(updated);
+                        }}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <div className="font-medium text-sm">{item.catalogItem.trackName}</div>
+                        {item.match ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {item.match.score}% Match
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">→</span>
+                              <span className="text-xs text-green-600">{item.match.folderName}</span>
+                            </div>
+                            <a 
+                              href={item.match.folderUrl} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="text-xs text-primary hover:underline block truncate"
+                            >
+                              {item.match.folderUrl}
+                            </a>
+                          </>
+                        ) : (
+                          <div className="text-xs text-muted-foreground">No match found</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <DialogFooter>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-sm text-muted-foreground">
+                  {matchPreview.filter(m => m.selected).length} of {matchPreview.length} selected
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsMatchPreviewOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleApplyMatches}>
+                    Apply Selected
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
