@@ -58,11 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!email) return;
     const attempts = attemptRef.current[email] || 0;
     if (attempts >= MAX_ATTEMPTS) {
-      console.log('Skipping validation — max attempts reached for', email);
       return;
     }
     if (validatingRef.current) {
-      console.log('Validation already in progress; skipping concurrent call');
       return;
     }
     validatingRef.current = true;
@@ -72,7 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPhase('validating-backend');
       setIsLoading(true);
       if (attempts === 0) setAuthError(null); // clear error only on first attempt
-      console.log(`Validating user (attempt ${attemptRef.current[email]} of ${MAX_ATTEMPTS}) with email:`, email);
       const apiUrl = window.location.hostname === 'localhost'
         ? 'http://localhost:4000/api/validate-b2c-user'
         : '/api/validate-b2c-user';
@@ -87,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeoutId);
       let result: any = {};
       try { result = await response.json(); } catch {}
-      console.log('API Response:', { status: response.status, result });
       if (response.ok && result.success) {
         localStorage.setItem('authToken', result.token);
         const cacheEntry = { email, role: result.user.role, token: result.token, user: result.user, expiresAt: Date.now() + 10 * 60 * 1000 };
@@ -96,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(result.user.role);
         setIsAuthorized(true);
         setAuthError(null);
-        console.log('✅ User authorized successfully');
       } else {
         if (response.status === 403) {
           setAuthError(result.error || 'User not found in authorized list');
@@ -111,10 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setIsAuthorized(false);
         localStorage.removeItem('authToken');
-        console.log('❌ User authorization failed');
         // If we still have attempts left and error is transient (not 403 user not found), schedule one retry
         if (attemptRef.current[email] < MAX_ATTEMPTS && response.status !== 403) {
-          console.log('Scheduling retry in 800ms...');
           setTimeout(() => validateUserInBackend(email), 800);
         }
       }
@@ -131,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthorized(false);
       localStorage.removeItem('authToken');
       if (attemptRef.current[email] < MAX_ATTEMPTS) {
-        console.log('Scheduling retry after exception in 800ms...');
         setTimeout(() => validateUserInBackend(email), 800);
       }
     } finally {
@@ -143,17 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('AuthProvider state:', { 
-      inProgress, 
-      msalAuthenticated, 
-      rawUsername: b2cUser?.username,
-      claimedEmail: (b2cUser as any)?.idTokenClaims?.email,
-      claimedEmailsArr: (b2cUser as any)?.idTokenClaims?.emails,
-      resolvedPrimaryEmail: primaryEmail,
-      accountsCount: accounts.length,
-      phase
-    });
-
     if (inProgress !== 'none') {
       setPhase('msal');
       return; // still processing MSAL
@@ -168,7 +149,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(cacheRaw);
           if (parsed.email === primaryEmail && parsed.expiresAt > Date.now()) {
-            console.log('Using cached authorization for user:', parsed.email);
             setValidatedUser(parsed.user);
             setUserRole(parsed.role);
             setIsAuthorized(true);
@@ -177,14 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
             usedCache = true;
           } else if (parsed.email === primaryEmail && parsed.expiresAt <= Date.now()) {
-            console.log('Cached authorization expired, revalidating...');
+            // Cache expired, will revalidate
           }
         } catch (_) {
           // Ignore parse errors
         }
       }
       if (!usedCache && (!validatedUser || validatedUser.email !== primaryEmail)) {
-        console.log('Validating B2C user (no valid cache):', primaryEmail);
         validateUserInBackend(primaryEmail);
       }
     } else {

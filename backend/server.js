@@ -689,6 +689,70 @@ app.put('/api/metrics', requireAdmin, async (req, res) => {
   res.json({ success: true, metrics: payload });
 });
 
+// GitHub Release Notes - Fetch available lab folders (must be before /api/:resource)
+app.get('/api/github-release-notes', async (req, res) => {
+  try {
+    const githubApiUrl = 'api.github.com';
+    const path = '/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents';
+    
+    const options = {
+      hostname: githubApiUrl,
+      path: path,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'MS-Innovation-Dashboard'
+      }
+    };
+
+    const githubRequest = new Promise((resolve, reject) => {
+      const req = https.request(options, (response) => {
+        let data = '';
+        
+        response.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        response.on('end', () => {
+          if (response.statusCode !== 200) {
+            reject(new Error(`GitHub API returned ${response.statusCode}: ${data}`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error('Failed to parse GitHub response'));
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        reject(error);
+      });
+      
+      req.end();
+    });
+
+    const data = await githubRequest;
+    
+    // Filter only directories and format for frontend
+    const folders = data
+      .filter(item => item.type === 'dir')
+      .map(item => ({
+        name: item.name,
+        path: item.path,
+        url: `https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/${encodeURIComponent(item.name)}/Release-Notes.md`
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
+    console.log(`✅ Fetched ${folders.length} labs from GitHub`);
+    res.json({ folders, count: folders.length });
+  } catch (err) {
+    console.error('❌ Error fetching GitHub release notes:', err.message);
+    res.status(500).json({ error: 'Failed to fetch release notes from GitHub', details: err.message });
+  }
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -770,83 +834,6 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
   console.log(`After delete: ${filtered.length} items`);
   await setResource(resource, filtered);
   res.json({ success: true });
-});
-
-// Return current user info based on token
-app.get('/api/me', requireAuth, (req, res) => {
-  try {
-    const data = readData();
-    const userId = req.user && req.user.id;
-    const user = (data.users || []).find((u) => String(u.id) === String(userId));
-    if (!user) return res.json({ id: userId, role: req.user && req.user.role ? req.user.role : 'user' });
-    return res.json({ id: user.id, username: user.username, role: user.role });
-  } catch (err) {
-    return res.status(500).json({ error: 'me lookup failed' });
-  }
-});
-
-// GitHub Release Notes - Fetch available lab folders
-app.get('/api/github-release-notes', async (req, res) => {
-  try {
-    const githubApiUrl = 'api.github.com';
-    const path = '/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents';
-    
-    const options = {
-      hostname: githubApiUrl,
-      path: path,
-      method: 'GET',
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'MS-Innovation-Dashboard'
-      }
-    };
-
-    const githubRequest = new Promise((resolve, reject) => {
-      const req = https.request(options, (response) => {
-        let data = '';
-        
-        response.on('data', (chunk) => {
-          data += chunk;
-        });
-        
-        response.on('end', () => {
-          if (response.statusCode !== 200) {
-            reject(new Error(`GitHub API returned ${response.statusCode}: ${data}`));
-            return;
-          }
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) {
-            reject(new Error('Failed to parse GitHub response'));
-          }
-        });
-      });
-      
-      req.on('error', (error) => {
-        reject(error);
-      });
-      
-      req.end();
-    });
-
-    const data = await githubRequest;
-    
-    // Filter only directories and format for frontend
-    const folders = data
-      .filter(item => item.type === 'dir')
-      .map(item => ({
-        name: item.name,
-        path: item.path,
-        url: `https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/${encodeURIComponent(item.name)}/Release-Notes.md`
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    
-    console.log(`✅ Fetched ${folders.length} labs from GitHub`);
-    res.json({ folders, count: folders.length });
-  } catch (err) {
-    console.error('❌ Error fetching GitHub release notes:', err.message);
-    res.status(500).json({ error: 'Failed to fetch release notes from GitHub', details: err.message });
-  }
 });
 
 // Start server
