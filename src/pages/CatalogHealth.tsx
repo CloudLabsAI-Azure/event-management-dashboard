@@ -82,7 +82,7 @@ export default function CatalogHealth() {
           })
           .map((it: any, idx: number) => ({
             id: String(it.id || it._id || `temp_${idx}`),
-            sr: Number(it.sr || idx + 1),
+            sr: String(it.sr || idx + 1),
             trackName: String(it.trackName || it.trackTitle || ''),
             eventDate: String(it.eventDate || ''),
             status: String(it.status || it.testingStatus || 'Pending'),
@@ -208,7 +208,7 @@ export default function CatalogHealth() {
         })
         .map((it: any, idx: number) => ({
           id: String(it.id || it._id || `temp_${idx}`),
-          sr: Number(it.sr || idx + 1),
+          sr: String(it.sr || idx + 1),
           trackName: String(it.trackName || it.trackTitle || ''),
           eventDate: String(it.eventDate || ''),
           status: String(it.status || it.testingStatus || 'Pending'),
@@ -412,7 +412,7 @@ export default function CatalogHealth() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead className="w-16">Event ID</TableHead>
+                    <TableHead className="w-16">Sr.</TableHead>
                       <TableHead className="min-w-[250px]">Track Name</TableHead>
                       <TableHead className="w-36">Event Date</TableHead>
                       <TableHead className="w-32">Status</TableHead>
@@ -543,7 +543,7 @@ export default function CatalogHealth() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="eventId" className="text-right">
-                  Event ID
+                  Sr.
                 </Label>
                 <Input
                   id="eventId"
@@ -551,6 +551,7 @@ export default function CatalogHealth() {
                   value={editForm.sr}
                   onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
                   className="col-span-3"
+                  disabled
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

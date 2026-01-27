@@ -223,7 +223,7 @@ export default function TTTPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-20">Event ID</TableHead>
+                    <TableHead className="w-20">Sr.</TableHead>
                     <TableHead className="min-w-[200px]">Track Name</TableHead>
                     <TableHead className="w-32">Session Date</TableHead>
                     <TableHead className="w-32">Status</TableHead>
@@ -292,14 +292,15 @@ export default function TTTPage() {
         >
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sr" className="text-right">Event ID</Label>
+              <Label htmlFor="sr" className="text-right">Sr.</Label>
               <Input
                 id="sr"
                 type="number"
                 value={editForm.sr}
                 onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
                 className="col-span-3"
-                placeholder="Event ID"
+                placeholder="Serial number"
+                disabled
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
