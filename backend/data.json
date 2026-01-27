@@ -7,6 +7,231 @@
       "releaseNotes": "release ntoes",
       "releaseUrl": "",
       "id": "4cd761a8dcd712a6"
+    },
+    {
+      "trackName": "Microsoft Azure AI Agents: Hands-on Lab",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Microsoft Azure AI Agents/Release-Notes.md at main � CloudLabsAI-Azure/?",
+      "id": "83e5069c924f5e0b",
+      "sr": 2,
+      "type": "track"
+    },
+    {
+      "trackName": "Hands-on with Azure AI Foundry and Agent frameworks",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Hands-on with Microsoft Foundry and Agent frameworks/Release-Notes.md a?",
+      "id": "804e5e3f0066e77e",
+      "sr": 3,
+      "type": "track"
+    },
+    {
+      "trackName": "GitHub Copilot Innovation Workshop",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/GitHub%20Copilot%20Innov?",
+      "id": "629e91a526428ae1",
+      "sr": 4,
+      "type": "track"
+    },
+    {
+      "trackName": "AI-Assisted Development with GitHub Copilot",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/AI-Assisted Development with GitHub Copilot/Release-Notes.md at main � ?",
+      "id": "a7f2444fc2329b16",
+      "sr": 5,
+      "type": "track"
+    },
+    {
+      "trackName": "Effective Utilization of Copilot Studio",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Effective Utilization of Copilot Studio/Release-Notes.md at main � Clou?",
+      "id": "7c1e9ca80569fcf6",
+      "sr": 6,
+      "type": "track"
+    },
+    {
+      "trackName": "Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Build Agentic AI with Semantic Kernel and GraphRAG on PostgreSQL/releas?",
+      "id": "eec2ee6731b5d83a",
+      "sr": 7,
+      "type": "track"
+    },
+    {
+      "trackName": "AI Developer - Azure AI Foundry and Semantic Kernel Fundamentals",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Azure_AI_Foundry_and_Semantic_Kernel_Fundamentals/Release-Notes.md at m?",
+      "id": "a2e60f56333490a3",
+      "sr": 8,
+      "type": "track"
+    },
+    {
+      "trackName": "Microsoft Defender for Cloud - AI Workload Protection",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Microsoft Defender for Cloud - AI Workload Protection/Release Notes.md ?",
+      "id": "da12b6bc421e38b9",
+      "sr": 9,
+      "type": "track"
+    },
+    {
+      "trackName": "Fabric - Analyst In a Day",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Fabric-Analytics-in-aday?",
+      "id": "01ff42ff5ec1f512",
+      "sr": 10,
+      "type": "track"
+    },
+    {
+      "trackName": "Microsoft Defender For Cloud Workshop",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Defender for Cloud Security Posture Management/Release Notes.md at main?",
+      "id": "269ca27802b64adf",
+      "sr": 11,
+      "type": "track"
+    },
+    {
+      "trackName": "Migrate Linux Servers To Azure",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Migrate Linux Servers to Azure/Release-Notes.md at main � CloudLabsAI-A?",
+      "id": "cbe37706c7e1e327",
+      "sr": 12,
+      "type": "track"
+    },
+    {
+      "trackName": "MS Fabric Foundation For Enterprise Analytics",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/MS Fabric Foundation for Enterprise Analytics/Release-Notes.md at main ?",
+      "id": "ad007b6f6d5546da",
+      "sr": 13,
+      "type": "track"
+    },
+    {
+      "trackName": "Fabric Copilot Hands-on Lab",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Fabric Copilot/Release-Notes.md at main � CloudLabsAI-Azure/MS-Innovati?",
+      "id": "a2f0148b55413756",
+      "sr": 14,
+      "type": "track"
+    },
+    {
+      "trackName": "AI Agents using Microsoft Agent Framework",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/AI-Agents-using-Microsoft-Frameworks/Release-Notes.md at main � CloudLa?",
+      "id": "a39bb69ff9d09aae",
+      "sr": 15,
+      "type": "track"
+    },
+    {
+      "trackName": "Lunch and Learn: Build Custom Copilot Application using Azure AI Foundry",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Lunch and Learn: Build Custom Copilot Application using Azure AI Foundr?",
+      "id": "0654dd07c19e267a",
+      "sr": 16,
+      "type": "track"
+    },
+    {
+      "trackName": "Get started with Microsoft Fabric with Its Lakehouses",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Get Started with Microsoft Fabric with Its Lakehouses/Release-Notes.md ?",
+      "id": "958c536b31d2d228",
+      "sr": 17,
+      "type": "track"
+    },
+    {
+      "trackName": "GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across the SDLC",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across th?",
+      "id": "d45cff4befe263b8",
+      "sr": 18,
+      "type": "track"
+    },
+    {
+      "trackName": "Leverage Microsoft 365 Copilot and Copilot Studio for Marketing",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Leverage-Microsoft-365-Copilot-and-Copilot-Studio-for-Marketing/Release?",
+      "id": "72e7d17215a50acf",
+      "sr": 19,
+      "type": "track"
+    },
+    {
+      "trackName": "Getting Started with Azure AI Services",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Getting_started_with_Azure_AI_services/Release-Notes.md at main � Cloud?",
+      "id": "c425ff3019719550",
+      "sr": 20,
+      "type": "track"
+    },
+    {
+      "trackName": "Leverage Microsoft 365 Copilot and Copilot Studio for Sales",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Leverage-Microsoft-365-Copilot-and-Copilot-Studio-for-Sales/Release-Not?",
+      "id": "e2bd7899e9d4a095",
+      "sr": 21,
+      "type": "track"
+    },
+    {
+      "trackName": "Enterprise-Class Networking",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Enterprise-Class Networking in Azure/Release-Notes.md at main � CloudLa?",
+      "id": "112d2f74e2efdef3",
+      "sr": 22,
+      "type": "track"
+    },
+    {
+      "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Infrastructure and Application Security/Release-Notes.md at main � Clou?",
+      "id": "dbedf24fc668e7e8",
+      "sr": 23,
+      "type": "track"
+    },
+    {
+      "trackName": "Leverage Microsoft 365 Copilot and Copilot Studio for Human Resource",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Leverage-Microsoft365-Copilot-and-Copilot-Studio-for-Human-Resources/Re?",
+      "id": "25273dc769410e0e",
+      "sr": 24,
+      "type": "track"
+    },
+    {
+      "trackName": "Build A Fabric Real-Time Intelligence Solution in a Day",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "MS-Innovation-Release-Notes/Build A Fabric Real-Time Intelligence Solution in a Day/Release-Notes.m?",
+      "id": "a6b833e9bf536855",
+      "sr": 25,
+      "type": "track"
+    },
+    {
+      "trackName": "Introduction To Building AI Apps",
+      "releaseNotes": "Release Notes",
+      "testingStatus": "Completed",
+      "releaseUrl": "https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/Introduction%20to%20Buil?",
+      "id": "b7acb92750effe5c",
+      "sr": 26,
+      "type": "track"
     }
   ],
   "tokens": [
@@ -788,7 +1013,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60001"
+      "id": "a1b2c3d4e5f60001",
+      "lastUpdated": "2025-01-15"
     },
     {
       "sr": 131,
@@ -796,7 +1022,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60002"
+      "id": "a1b2c3d4e5f60002",
+      "lastUpdated": "2025-01-10"
     },
     {
       "sr": 132,
@@ -804,7 +1031,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60003"
+      "id": "a1b2c3d4e5f60003",
+      "lastUpdated": "2025-01-08"
     },
     {
       "sr": 133,
@@ -812,7 +1040,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60004"
+      "id": "a1b2c3d4e5f60004",
+      "lastUpdated": "2025-01-12"
     },
     {
       "sr": 134,
@@ -820,7 +1049,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60005"
+      "id": "a1b2c3d4e5f60005",
+      "lastUpdated": "2025-01-05"
     },
     {
       "sr": 135,
@@ -828,7 +1058,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60006"
+      "id": "a1b2c3d4e5f60006",
+      "lastUpdated": "2025-01-18"
     },
     {
       "sr": 136,
@@ -836,7 +1067,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60007"
+      "id": "a1b2c3d4e5f60007",
+      "lastUpdated": "2025-01-20"
     },
     {
       "sr": 137,
@@ -844,7 +1076,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60008"
+      "id": "a1b2c3d4e5f60008",
+      "lastUpdated": "2025-01-14"
     },
     {
       "sr": 138,
@@ -852,7 +1085,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60009"
+      "id": "a1b2c3d4e5f60009",
+      "lastUpdated": "2025-01-11"
     },
     {
       "sr": 139,
@@ -860,7 +1094,8 @@
       "spanish": "Available",
       "portuguese": "Available",
       "type": "localizedTrack",
-      "id": "a1b2c3d4e5f60010"
+      "id": "a1b2c3d4e5f60010",
+      "lastUpdated": "2025-01-09"
     },
     {
       "sr": 140,
@@ -869,6 +1104,412 @@
       "eta": "NA",
       "type": "roadmapItem",
       "id": "5f7af9fc50456f65"
+    },
+    {
+      "sr": 141,
+      "trackTitle": "Q3-1 Databricks",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "ba2da71bcf309eef",
+      "eventId": "EVT-2025-DB",
+      "programType": "Program Sponsored",
+      "approvalDate": "2025-02-01"
+    },
+    {
+      "sr": 142,
+      "trackTitle": "Q3-2 MSO with Unified Platform Agent Hackathon",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "c45a7eb7d5e24e80",
+      "eventId": "EVT-2025-MSO",
+      "programType": "Third Party",
+      "approvalDate": "2025-02-15"
+    },
+    {
+      "sr": 143,
+      "trackTitle": "Q3-3 AI Assisted Development (VibeCoding)",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "73a586e1e1c7308c",
+      "eventId": "EVT-2025-AIAD",
+      "programType": "Program Sponsored",
+      "approvalDate": "2025-03-01"
+    },
+    {
+      "sr": 144,
+      "trackTitle": "Q3-5 Defender for Cloud - AI Workload Protection",
+      "phase": "Development",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "b2f7065e67dfa822",
+      "eventId": "EVT-2025-DFC",
+      "programType": "Program Sponsored",
+      "approvalDate": "2025-03-10"
+    },
+    {
+      "sr": 145,
+      "trackTitle": "Q2-3-Copilot Studio",
+      "phase": "Testing",
+      "eta": "NA",
+      "type": "roadmapItem",
+      "id": "4dd15b91b6b0470e",
+      "eventId": "EVT-2025-CS",
+      "programType": "Third Party",
+      "approvalDate": "2025-01-20"
+    },
+    {
+      "sr": 146,
+      "trackName": "Skills Navigator - Fabric - Analyst In a Day",
+      "eventDate": "2026-01-26",
+      "status": "Completed",
+      "lastTestDate": "2025-01-25",
+      "type": "catalog",
+      "id": "521a52b4c1716a4c"
+    },
+    {
+      "sr": 147,
+      "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
+      "eventDate": "2026-01-26",
+      "status": "Completed",
+      "lastTestDate": "2025-01-24",
+      "type": "catalog",
+      "id": "1c44adf5fbeb8cc1"
+    },
+    {
+      "sr": 148,
+      "trackName": "Accelerator: AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "2026-01-26",
+      "status": "Completed",
+      "lastTestDate": "2025-01-23",
+      "type": "catalog",
+      "id": "cd653d08928ba9d4"
+    },
+    {
+      "sr": 149,
+      "trackName": "Webinar: Integre o Azure OpenAI em seu Aplicativo",
+      "eventDate": "2026-01-26",
+      "status": "Completed",
+      "lastTestDate": "2025-01-22",
+      "type": "catalog",
+      "id": "5554778f42685687"
+    },
+    {
+      "sr": 150,
+      "trackName": "Skills Navigator - Fabric - Analyst In a Day",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-25",
+      "type": "catalog",
+      "id": "d7152f4f4cd93a54"
+    },
+    {
+      "sr": 151,
+      "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-24",
+      "type": "catalog",
+      "id": "8ad9f6fc16cf2d22"
+    },
+    {
+      "sr": 152,
+      "trackName": "GitHub Copilot Innovation Workshop",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "93b1d9f94db4b82d"
+    },
+    {
+      "sr": 153,
+      "trackName": "GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across the SDLC",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "c9b6cb71455caf01"
+    },
+    {
+      "sr": 154,
+      "trackName": "Journée de la sécurité Microsoft pour les universités du Québec : Innover pour un avenir numérique plus sûr",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-25",
+      "type": "catalog",
+      "id": "d3953bac42e28843"
+    },
+    {
+      "sr": 155,
+      "trackName": "Microsoft Defender for Cloud - Security Posture Management",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-24",
+      "type": "catalog",
+      "id": "3452baef5f70c17d"
+    },
+    {
+      "sr": 156,
+      "trackName": "Azure Landing Zone",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-23",
+      "type": "catalog",
+      "id": "f1c4e78603ed7f22"
+    },
+    {
+      "sr": 157,
+      "trackName": "Accelerator: Hands-on with Microsoft Foundry and Agent Frameworks",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "fe901f1d30648977"
+    },
+    {
+      "sr": 158,
+      "trackName": "GitHub Copilot Innovation Workshop",
+      "eventDate": "2026-01-27",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "a1c8b231bfe63a56"
+    },
+    {
+      "sr": 159,
+      "trackName": "Explorer l'IA: opportunités et impact pour les universités québécoises",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "c4f3c57f12da87a1"
+    },
+    {
+      "sr": 160,
+      "trackName": "Skills Navigator | Fabric - Analyst In a Day",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "73baa95669015427"
+    },
+    {
+      "sr": 161,
+      "trackName": "Skills Navigator | Fabric - Analyst In a Day",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "2105970e0e0e6098"
+    },
+    {
+      "sr": 162,
+      "trackName": "Seguridad 360° para la Era de la IA: Protege tus Plataformas, Apps y Agentes",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "6be6442f101b8d15"
+    },
+    {
+      "sr": 163,
+      "trackName": "Microsoft Azure AI Agent Open Hack | In-Person in Boston, MA",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "503f1453322fe17b"
+    },
+    {
+      "sr": 164,
+      "trackName": "AI-Assisted Development with GitHub Copilot",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "d288a0b52f0c5949"
+    },
+    {
+      "sr": 165,
+      "trackName": "Data Security Immersion Workshop - On the Brink",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "b2d115d7a801250e"
+    },
+    {
+      "sr": 166,
+      "trackName": "Accelerator: Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "9da37fa5d90dee87"
+    },
+    {
+      "sr": 167,
+      "trackName": "Train-the-Trainer: Mastering GitHub Copilot Across the SDLC",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "c4856417b5c32a46"
+    },
+    {
+      "sr": 168,
+      "trackName": "GitHub Copilot Innovation Workshop",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "467dcfa7958e4d9a"
+    },
+    {
+      "sr": 169,
+      "trackName": "AI-Assisted Development with GitHub Copilot",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "8b3ce3b91f5f200a"
+    },
+    {
+      "sr": 170,
+      "trackName": "Unlock the Power of Chat-GPT Gov Edition on Azure",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-26",
+      "type": "catalog",
+      "id": "131894d8442b8d46"
+    },
+    {
+      "sr": 171,
+      "trackName": "NIQ - Mastering GitHub Copilot Across the SDLC",
+      "eventDate": "2026-01-28",
+      "status": "Completed",
+      "lastTestDate": "2025-01-27",
+      "type": "catalog",
+      "id": "7342623bdaf72d74"
+    },
+    {
+      "sr": 172,
+      "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "2dbfc4dd381cb156"
+    },
+    {
+      "sr": 173,
+      "trackName": "AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "7b9b20acf833240b"
+    },
+    {
+      "sr": 174,
+      "trackName": "AI in HiEd Discovery Days - Ottawa",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "c5cc41cb944a036d"
+    },
+    {
+      "sr": 175,
+      "trackName": "GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across the SDLC",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "3585648d379087f3"
+    },
+    {
+      "sr": 176,
+      "trackName": "Microsoft Azure AI Agents: Hands-on Lab",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "6774220c14f2abd1"
+    },
+    {
+      "sr": 177,
+      "trackName": "AI Agents using Microsoft Agent Framework",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "3020cbf45824c91a"
+    },
+    {
+      "sr": 178,
+      "trackName": "Événement hebdomadaire : Découverte de Microsoft 365 Copilot Chat",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "2b785b0151f84612"
+    },
+    {
+      "sr": 179,
+      "trackName": "Accelerator: SQL Datawarehouse With Synapse",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "db0435b435598391"
+    },
+    {
+      "sr": 180,
+      "trackName": "Accelerator: Microsoft Azure AI Agents: Hands-on Lab",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "35cdc8607156ca40"
+    },
+    {
+      "sr": 181,
+      "trackName": "AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "69cf41a81570075c"
+    },
+    {
+      "sr": 182,
+      "trackName": "Introducción a Data Warehouses e Ingesta de Datos con Dataflows Gen2",
+      "eventDate": "2026-01-29",
+      "status": "Completed",
+      "lastTestDate": "2025-01-28",
+      "type": "catalog",
+      "id": "1be20544b6ef4a77"
+    },
+    {
+      "sr": 183,
+      "trackName": "TTT | Accessibility w/GitHub Copilot",
+      "eventDate": "2026-01-30",
+      "status": "Completed",
+      "lastTestDate": "2025-01-29",
+      "type": "catalog",
+      "id": "17136c381cc8e74c"
+    },
+    {
+      "sr": 184,
+      "trackName": "Accelerator: Work With Data Lake And Data Factory Pipelines In Microsoft Fabric",
+      "eventDate": "2026-01-30",
+      "status": "Completed",
+      "lastTestDate": "2025-01-29",
+      "type": "catalog",
+      "id": "563806bd7b0fc51a"
     }
   ],
   "users": [
@@ -959,18 +1600,9 @@
     "dashboard.activeParticipants": 1941,
     "dashboard.completedPracticeLabs": 73
   },
-  "reviews": [
-    {
-      "id": "r_1768925686439_pbyykl",
-      "originalName": "ChatGPT Image Dec 10, 2025, 07_15_43 PM.png",
-      "eventName": "test",
-      "mime": "image/png",
-      "size": 1542698,
-      "path": "/uploads/6fe15b8a6e79b6da41525e91db21adfd",
-      "uploadedAt": 1768925686439
-    }
-  ],
+  "reviews": [],
   "_metadata": {
-    "lastUpdated": "2026-01-20T16:14:46.439Z"
+    "lastUpdated": "2026-01-27T07:50:09.204Z",
+    "lastModifiedBy": "system"
   }
 }

@@ -21,6 +21,7 @@ interface CatalogItem {
   eventDate: string;
   status: string;
   notesETA: string;
+  lastTestDate?: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -44,10 +45,11 @@ export default function CatalogHealth() {
     trackName: "",
     eventDate: "",
     status: "",
-    notesETA: ""
+    notesETA: "",
+    lastTestDate: ""
   })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [addForm, setAddForm] = useState<CatalogItem>({ sr: catalogData.length + 1, trackName: "", eventDate: "", status: "", notesETA: "" });
+  const [addForm, setAddForm] = useState<CatalogItem>({ sr: catalogData.length + 1, trackName: "", eventDate: "", status: "", notesETA: "", lastTestDate: "" });
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   // Load catalog from backend on mount; seed if empty
@@ -70,6 +72,7 @@ export default function CatalogHealth() {
             eventDate: String(it.eventDate || ''),
             status: String(it.status || it.testingStatus || 'Pending'),
             notesETA: String(it.notesETA || ''),
+            lastTestDate: String(it.lastTestDate || '')
           }))
         if (!mounted) return
         setCatalogData(mapped)
@@ -270,9 +273,10 @@ export default function CatalogHealth() {
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead className="w-16">Sr.</TableHead>
-                      <TableHead className="min-w-[300px]">Track Name</TableHead>
-                      <TableHead className="w-40">Event Date</TableHead>
+                      <TableHead className="min-w-[250px]">Track Name</TableHead>
+                      <TableHead className="w-36">Event Date</TableHead>
                       <TableHead className="w-32">Status</TableHead>
+                      <TableHead className="w-36">Last Test Date</TableHead>
                       <TableHead className="w-32">Notes/ETA</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
@@ -284,6 +288,16 @@ export default function CatalogHealth() {
                         <TableCell className="font-medium">{track.trackName}</TableCell>
                         <TableCell className="text-muted-foreground">{track.eventDate}</TableCell>
                         <TableCell>{getStatusBadge(track.status)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.lastTestDate ? (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4 text-blue-500" />
+                              {new Date(track.lastTestDate).toLocaleDateString()}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
                             <Clock className="h-4 w-4" />
@@ -425,6 +439,18 @@ export default function CatalogHealth() {
                   id="notesETA"
                   value={editForm.notesETA}
                   onChange={(e) => setEditForm({ ...editForm, notesETA: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastTestDate" className="text-right">
+                  Last Test Date
+                </Label>
+                <Input
+                  id="lastTestDate"
+                  type="date"
+                  value={editForm.lastTestDate}
+                  onChange={(e) => setEditForm({ ...editForm, lastTestDate: e.target.value })}
                   className="col-span-3"
                 />
               </div>

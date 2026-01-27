@@ -23,6 +23,9 @@ interface RoadmapItem {
   trackTitle: string;
   phase: string;
   eta: string;
+  eventId?: string;
+  programType?: string;
+  approvalDate?: string;
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -44,7 +47,10 @@ export default function RoadmapPage() {
     sr: 0,
     trackTitle: "",
     phase: "",
-    eta: ""
+    eta: "",
+    eventId: "",
+    programType: "",
+    approvalDate: ""
   })
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -66,7 +72,10 @@ export default function RoadmapPage() {
           sr: Number(r.sr || idx + 1), 
           trackTitle: r.trackTitle || r.title || '', 
           phase: r.phase || '', 
-          eta: r.eta || 'NA' 
+          eta: r.eta || 'NA',
+          eventId: r.eventId || '',
+          programType: r.programType || '',
+          approvalDate: r.approvalDate || ''
         }))
         setRoadmapData(mapped)
       } catch (err) {
@@ -230,7 +239,7 @@ export default function RoadmapPage() {
           {/* Add Roadmap button for admins */}
           {role === 'admin' && (
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '' }); setIsEditDialogOpen(true); }}>
+              <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '', eventId: '', programType: '', approvalDate: '' }); setIsEditDialogOpen(true); }}>
                 <Plus className="h-4 w-4" />
                 Add Roadmap
               </Button>
@@ -269,17 +278,34 @@ export default function RoadmapPage() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead className="min-w-[300px]">Track Title</TableHead>
+                      <TableHead className="w-32">Event ID</TableHead>
+                      <TableHead className="min-w-[250px]">Track Title</TableHead>
                       <TableHead className="w-40">Phase</TableHead>
+                      <TableHead className="w-40">Sponsored by</TableHead>
                       <TableHead className="w-40">ETA</TableHead>
+                      <TableHead className="w-40">Approval Date</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {roadmapData.map((track) => (
                       <TableRow key={track.id || track.sr}>
+                        <TableCell className="font-mono text-sm">{track.eventId || '-'}</TableCell>
                         <TableCell className="font-medium">{track.trackTitle}</TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
+                        <TableCell>
+                          {track.programType ? (
+                            <Badge variant="outline" className={
+                              track.programType === "Program Sponsored" 
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500" 
+                                : "bg-blue-500/10 text-blue-500 border-blue-500"
+                            }>
+                              {track.programType}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {track.eta === "NA" ? (
                             <span className="text-gray-500">Not Available</span>
@@ -288,6 +314,16 @@ export default function RoadmapPage() {
                               <Calendar className="h-4 w-4" />
                               {track.eta}
                             </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.approvalDate ? (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4 text-green-500" />
+                              <span className="text-sm">Approved on: {track.approvalDate}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -333,6 +369,10 @@ export default function RoadmapPage() {
             onSave={handleSaveEdit}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="eventId" className="text-right">Event ID</Label>
+                <Input id="eventId" value={editForm.eventId} onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })} className="col-span-3" placeholder="e.g., EVT-2025-001" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="trackTitle" className="text-right">Track Title</Label>
                 <Input id="trackTitle" value={editForm.trackTitle} onChange={(e) => setEditForm({ ...editForm, trackTitle: e.target.value })} className="col-span-3" />
               </div>
@@ -350,8 +390,22 @@ export default function RoadmapPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="programType" className="text-right">Sponsored by</Label>
+                <Select value={editForm.programType} onValueChange={(value) => setEditForm({ ...editForm, programType: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select sponsor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                    <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="eta" className="text-right">ETA</Label>
                 <Input id="eta" value={editForm.eta} onChange={(e) => setEditForm({ ...editForm, eta: e.target.value })} className="col-span-3" placeholder="e.g., 31st August 2025 or NA" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="approvalDate" className="text-right">Approval Date</Label>
+                <Input id="approvalDate" type="date" value={editForm.approvalDate} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
               </div>
             </div>
           </EntityEditDialog>

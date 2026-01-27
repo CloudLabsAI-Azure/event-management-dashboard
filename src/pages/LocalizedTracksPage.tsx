@@ -24,6 +24,7 @@ interface LocalizedTrack {
   id?: string
   languages: Record<string, string> // key: language name (lowercase id), value: status
   originalOrder?: number
+  lastUpdated?: string
 }
 
 const getAvailabilityBadge = (status: string) => {
@@ -43,7 +44,7 @@ export default function LocalizedTracksPage() {
   const [localizedTracksData, setLocalizedTracksData] = useState<LocalizedTrack[]>([])
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editFormData, setEditFormData] = useState<LocalizedTrack>({ trackTitle: "", languages: { spanish: '', portuguese: '' } })
+  const [editFormData, setEditFormData] = useState<LocalizedTrack>({ trackTitle: "", languages: { spanish: '', portuguese: '' }, lastUpdated: '' })
   // Only Spanish & Portuguese are supported.
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -63,7 +64,8 @@ export default function LocalizedTracksPage() {
           languages: {
             spanish: typeof i.spanish === 'string' ? i.spanish : 'Not Available',
             portuguese: typeof i.portuguese === 'string' ? i.portuguese : 'Not Available'
-          }
+          },
+          lastUpdated: i.lastUpdated || i.updatedAt || new Date().toISOString().split('T')[0]
         }))
         setLocalizedTracksData(mapped)
       } catch (err) {
@@ -222,16 +224,17 @@ export default function LocalizedTracksPage() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead className="min-w-[300px]">Track Title</TableHead>
+                      <TableHead className="min-w-[250px]">Track Title</TableHead>
                       <TableHead className="w-32 text-center capitalize">Spanish</TableHead>
                       <TableHead className="w-32 text-center capitalize">Portuguese</TableHead>
+                      <TableHead className="w-40 text-center">Last Updated</TableHead>
                       <TableHead className="w-32 text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {localizedTracksData.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           No localized tracks yet. Click "Add Track" to create one.
                         </TableCell>
                       </TableRow>
@@ -241,6 +244,9 @@ export default function LocalizedTracksPage() {
                           <TableCell className="font-medium">{track.trackTitle}</TableCell>
                           <TableCell className="text-center">{getAvailabilityBadge(track.languages.spanish || 'Not Available')}</TableCell>
                           <TableCell className="text-center">{getAvailabilityBadge(track.languages.portuguese || 'Not Available')}</TableCell>
+                          <TableCell className="text-center text-muted-foreground text-sm">
+                            {track.lastUpdated ? new Date(track.lastUpdated).toLocaleDateString() : '-'}
+                          </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                                 {role === 'admin' && (
