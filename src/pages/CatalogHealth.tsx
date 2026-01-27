@@ -281,6 +281,7 @@ export default function CatalogHealth() {
                       <TableHead className="w-32">Status</TableHead>
                       <TableHead className="w-36">Last Test Date</TableHead>
                       <TableHead className="w-32">Notes/ETA</TableHead>
+                      <TableHead className="w-36">Release Notes</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -306,6 +307,15 @@ export default function CatalogHealth() {
                             <Clock className="h-4 w-4" />
                             {track.notesETA}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.releaseNotesUrl ? (
+                            <a href={track.releaseNotesUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline">
+                              View Notes
+                            </a>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

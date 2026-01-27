@@ -357,12 +357,12 @@ export default function Top25Tracks() {
                         <TableCell>{getStatusBadge(track.testingStatus)}</TableCell>
                         <TableCell>
                           {track.releaseUrl ? (
-                            <a href={track.releaseUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline flex items-center gap-1">
+                            <a href={track.releaseUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline inline-flex items-center gap-1">
                               <FileText className="h-4 w-4" />
                               <span>{track.releaseNotes || 'Release Notes'}</span>
                             </a>
                           ) : (
-                            <span className="text-muted-foreground flex items-center gap-1">
+                            <span className="text-muted-foreground inline-flex items-center gap-1">
                               <FileText className="h-4 w-4" />
                               <span>{track.releaseNotes || 'Release Notes'}</span>
                             </span>

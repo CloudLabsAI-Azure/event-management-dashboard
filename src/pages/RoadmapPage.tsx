@@ -285,7 +285,7 @@ export default function RoadmapPage() {
                       <TableHead className="w-40">Phase</TableHead>
                       <TableHead className="w-40">Sponsored by</TableHead>
                       <TableHead className="w-40">ETA</TableHead>
-                      <TableHead className="w-40">Approval Date</TableHead>
+                      <TableHead className="w-40">Approval Month</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -299,7 +299,9 @@ export default function RoadmapPage() {
                           {track.programType ? (
                             <Badge variant="outline" className={
                               track.programType === "Program Sponsored" 
-                                ? "bg-purple-500/10 text-purple-500 border-purple-500" 
+                                ? "bg-green-500/10 text-green-500 border-green-500" 
+                                : track.programType === "Spektra Sponsored"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500"
                                 : "bg-blue-500/10 text-blue-500 border-blue-500"
                             }>
                               {track.programType}
@@ -409,7 +411,7 @@ export default function RoadmapPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="approvalDate" className="text-right">Approval Month</Label>
-                <Input id="approvalDate" type="month" value={editForm.approvalDate?.substring(0, 7) || ''} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
+                <Input id="approvalDate" type="month" value={editForm.approvalDate && editForm.approvalDate.length >= 7 ? editForm.approvalDate.substring(0, 7) : editForm.approvalDate || ''} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
               </div>
             </div>
           </EntityEditDialog>
