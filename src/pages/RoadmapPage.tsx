@@ -64,9 +64,23 @@ export default function RoadmapPage() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   
+  // Filter state
+  const [phaseFilter, setPhaseFilter] = useState<string>("all");
+  const [sponsorFilter, setSponsorFilter] = useState<string>("all");
+  
   // Notes popup state
   const [selectedItem, setSelectedItem] = useState<RoadmapItem | null>(null);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+
+  // Filtered data based on phase and sponsor filters
+  const filteredRoadmapData = roadmapData.filter(item => {
+    const matchesPhase = phaseFilter === "all" || item.phase === phaseFilter;
+    const matchesSponsor = sponsorFilter === "all" || item.programType === sponsorFilter;
+    return matchesPhase && matchesSponsor;
+  });
+
+  // Get unique sponsors for filter dropdown
+  const uniqueSponsors = Array.from(new Set(roadmapData.map(item => item.programType).filter(Boolean)));
 
   useEffect(() => {
     let mounted = true
@@ -285,6 +299,45 @@ export default function RoadmapPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div className="flex gap-4 items-center">
+                <div className="flex items-center gap-2">
+                  <Label>Phase:</Label>
+                  <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Phases" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Phases</SelectItem>
+                      <SelectItem value="Under assessment">Under assessment</SelectItem>
+                      <SelectItem value="Development">Development</SelectItem>
+                      <SelectItem value="Testing">Testing</SelectItem>
+                      <SelectItem value="Release-ready">Release-ready</SelectItem>
+                      <SelectItem value="Released">Released</SelectItem>
+                      <SelectItem value="Backlog">Backlog</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label>Sponsored by:</Label>
+                  <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="All Sponsors" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sponsors</SelectItem>
+                      {uniqueSponsors.map(sponsor => (
+                        <SelectItem key={sponsor} value={sponsor}>{sponsor}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(phaseFilter !== "all" || sponsorFilter !== "all") && (
+                  <Button variant="outline" size="sm" onClick={() => { setPhaseFilter("all"); setSponsorFilter("all"); }}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
               <ScrollArea className="h-[600px] w-full rounded-md border">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
@@ -299,7 +352,7 @@ export default function RoadmapPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {roadmapData.map((track) => (
+                    {filteredRoadmapData.map((track) => (
                       <TableRow 
                         key={track.id || track.sr}
                         className="cursor-pointer hover:bg-muted/50"

@@ -249,14 +249,14 @@ export default function LocalizedTracksPage() {
                       <TableHead className="min-w-[250px]">Track Title</TableHead>
                       <TableHead className="w-32 text-center capitalize">Spanish</TableHead>
                       <TableHead className="w-32 text-center capitalize">Portuguese</TableHead>
-                      <TableHead className="w-40 text-center">Last Updated</TableHead>
+                      {/* <TableHead className="w-40 text-center">Last Updated</TableHead> */}
                       <TableHead className="w-32 text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {localizedTracksData.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                           No localized tracks yet. Click "Add Track" to create one.
                         </TableCell>
                       </TableRow>
@@ -266,9 +266,9 @@ export default function LocalizedTracksPage() {
                           <TableCell className="font-medium">{track.trackTitle}</TableCell>
                           <TableCell className="text-center">{getAvailabilityBadge(track.languages.spanish || 'Not Available')}</TableCell>
                           <TableCell className="text-center">{getAvailabilityBadge(track.languages.portuguese || 'Not Available')}</TableCell>
-                          <TableCell className="text-center text-muted-foreground text-sm">
+                          {/* <TableCell className="text-center text-muted-foreground text-sm">
                             {track.lastUpdated ? new Date(track.lastUpdated).toLocaleDateString() : '-'}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                                 {role === 'admin' && (
