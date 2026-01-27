@@ -38,7 +38,6 @@ interface GeneralAnnouncement {
   title: string
   message: string
   announcementDate: string
-  priority?: 'low' | 'medium' | 'high'
 }
 
 export default function Announcements() {
@@ -79,8 +78,7 @@ export default function Announcements() {
     sr: 0,
     title: "",
     message: "",
-    announcementDate: new Date().toISOString().split('T')[0],
-    priority: 'medium'
+    announcementDate: new Date().toISOString().split('T')[0]
   })
   const [savingAnnouncement, setSavingAnnouncement] = useState(false)
 
@@ -128,8 +126,7 @@ export default function Announcements() {
           sr: Number(i.sr || 0),
           title: i.title || '',
           message: i.message || '',
-          announcementDate: i.announcementDate || new Date().toISOString().split('T')[0],
-          priority: i.priority || 'medium'
+          announcementDate: i.announcementDate || new Date().toISOString().split('T')[0]
         }))
         .sort((a: any, b: any) => new Date(b.announcementDate).getTime() - new Date(a.announcementDate).getTime())
       setGeneralAnnouncements(announcements)
@@ -313,8 +310,7 @@ export default function Announcements() {
       sr: 0,
       title: "",
       message: "",
-      announcementDate: new Date().toISOString().split('T')[0],
-      priority: 'medium'
+      announcementDate: new Date().toISOString().split('T')[0]
     })
     setIsAnnouncementDialogOpen(true)
   }
@@ -438,25 +434,11 @@ export default function Announcements() {
                   generalAnnouncements.map((announcement) => (
                     <div 
                       key={announcement.id || announcement.sr} 
-                      className={`p-4 border rounded-lg hover:bg-accent/50 ${
-                        announcement.priority === 'high' 
-                          ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20' 
-                          : announcement.priority === 'medium'
-                          ? 'border-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20'
-                          : 'border-gray-300'
-                      }`}
+                      className="p-4 border rounded-lg hover:bg-accent/50"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-semibold">{announcement.title}</h4>
-                            {announcement.priority === 'high' && (
-                              <Badge variant="destructive" className="text-xs">High Priority</Badge>
-                            )}
-                            {announcement.priority === 'medium' && (
-                              <Badge variant="default" className="text-xs bg-yellow-500">Medium</Badge>
-                            )}
-                          </div>
+                          <h4 className="font-semibold">{announcement.title}</h4>
                           <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
                             {announcement.message}
                           </p>
@@ -863,19 +845,6 @@ export default function Announcements() {
                 className="col-span-3 min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="Enter announcement message..."
               />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="announcement-priority" className="text-right">Priority</Label>
-              <select
-                id="announcement-priority"
-                value={announcementForm.priority}
-                onChange={(e) => setAnnouncementForm({ ...announcementForm, priority: e.target.value as 'low' | 'medium' | 'high' })}
-                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="announcement-date" className="text-right">Date</Label>

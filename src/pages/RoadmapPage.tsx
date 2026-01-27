@@ -350,7 +350,10 @@ export default function RoadmapPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEdit(track)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(track);
+                              }}
                               className="h-8 w-8 p-0"
                             >
                               <Edit className="h-4 w-4" />
@@ -360,7 +363,10 @@ export default function RoadmapPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDelete(track)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(track);
+                              }}
                               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               <Trash2 className="h-4 w-4" />
