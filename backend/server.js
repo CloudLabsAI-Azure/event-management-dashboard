@@ -1,4 +1,4 @@
-// Simple Express server with local JSON file storage
+// Simple Express server with Azure Blob Storage
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -8,6 +8,7 @@ import csv from 'csv-parser';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists } from './blobStorageService.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,52 +27,81 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_PATH = path.join(__dirname, 'data.json');
 
-// Helper to read/write JSON file safely
-function readData() {
-  try {
-    if (!fs.existsSync(DATA_PATH)) return {};
-    const raw = fs.readFileSync(DATA_PATH, 'utf8');
-    return raw ? JSON.parse(raw) : {};
-  } catch (err) {
-    console.error('readData error', err);
-    return {};
+// Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
+const STORAGE_MODE = process.env.STORAGE_MODE || 'blob';
+
+// Helper to read/write JSON - supports both blob and local storage
+async function readData() {
+  if (STORAGE_MODE === 'blob') {
+    return await readDataFromBlob();
+  } else {
+    // Local file system fallback
+    try {
+      if (!fs.existsSync(DATA_PATH)) return {};
+      const raw = fs.readFileSync(DATA_PATH, 'utf8');
+      return raw ? JSON.parse(raw) : {};
+    } catch (err) {
+      console.error('readData error', err);
+      return {};
+    }
   }
 }
 
-function writeData(data) {
-  try {
-    // Add lastUpdated timestamp to track when data was modified
-    const dataWithTimestamp = {
-      ...data,
-      _metadata: {
-        ...data._metadata,
-        lastUpdated: new Date().toISOString(),
-        lastModifiedBy: 'system' // Track modification source
-      }
-    };
-    fs.writeFileSync(DATA_PATH, JSON.stringify(dataWithTimestamp, null, 2), 'utf8');
-    console.log('Data written successfully at:', dataWithTimestamp._metadata.lastUpdated);
-  } catch (err) {
-    console.error('writeData error', err);
-    throw err; // Propagate error so caller knows write failed
+async function writeData(data) {
+  if (STORAGE_MODE === 'blob') {
+    await writeDataToBlob(data);
+  } else {
+    // Local file system fallback
+    try {
+      const dataWithTimestamp = {
+        ...data,
+        _metadata: {
+          ...data._metadata,
+          lastUpdated: new Date().toISOString(),
+          lastModifiedBy: 'system'
+        }
+      };
+      fs.writeFileSync(DATA_PATH, JSON.stringify(dataWithTimestamp, null, 2), 'utf8');
+      console.log('Data written successfully at:', dataWithTimestamp._metadata.lastUpdated);
+    } catch (err) {
+      console.error('writeData error', err);
+      throw err;
+    }
   }
 }
 
 // Routes
-app.get('/api/data', (req, res) => {
-  res.json(readData());
+app.get('/api/data', async (req, res) => {
+  try {
+    const data = await readData();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
 });
 
 // Get last updated timestamp
-app.get('/api/last-updated', (req, res) => {
+app.get('/api/last-updated', async (req, res) => {
   try {
-    const data = readData();
+    if (STORAGE_MODE === 'blob') {
+      // Use blob metadata for timestamp
+      const metadata = await getBlobMetadata();
+      if (metadata) {
+        return res.json({
+          lastUpdated: metadata.lastModified.toISOString(),
+          source: 'blob-metadata'
+        });
+      }
+    }
+    
+    const data = await readData();
     
     // Priority 1: Use metadata timestamp (most reliable)
     let lastUpdated = data._metadata?.lastUpdated;
     
-    // Priority 2: If no metadata, use file's last modified time
-    if (!lastUpdated) {
+    // Priority 2: If no metadata and using local storage, use file's last modified time
+    if (!lastUpdated && STORAGE_MODE === 'local') {
       try {
         const stats = fs.statSync(DATA_PATH);
         lastUpdated = stats.mtime.toISOString();
@@ -104,11 +134,11 @@ app.get('/api/last-updated', (req, res) => {
 });
 
 // Reviews screenshots upload (images or PDFs). Multiple files accepted.
-app.post('/api/upload-review', requireAdmin, upload.array('files', 10), (req, res) => {
+app.post('/api/upload-review', requireAdmin, upload.array('files', 10), async (req, res) => {
   try {
     const files = Array.isArray(req.files) ? req.files : []
     const eventName = req.body.eventName || ''
-    const data = readData()
+    const data = await readData()
     data.reviews = Array.isArray(data.reviews) ? data.reviews : []
     const saved = files.map(f => ({
       id: `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
@@ -120,7 +150,7 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 10), (req, re
       uploadedAt: Date.now(),
     }))
     data.reviews.push(...saved)
-    writeData(data)
+    await writeData(data)
     return res.json({ success: true, items: saved })
   } catch (err) {
     console.error('upload-review error', err)
@@ -128,16 +158,16 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 10), (req, re
   }
 })
 
-app.post('/api/data', (req, res) => {
-  writeData(req.body || {});
+app.post('/api/data', async (req, res) => {
+  await writeData(req.body || {});
   res.json({ success: true });
 });
 
 // Delete review endpoint
-app.delete('/api/reviews/:id', requireAdmin, (req, res) => {
+app.delete('/api/reviews/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params
-    const data = readData()
+    const data = await readData()
     
     if (!Array.isArray(data.reviews)) {
       return res.status(404).json({ success: false, error: 'Review not found' })
@@ -150,7 +180,7 @@ app.delete('/api/reviews/:id', requireAdmin, (req, res) => {
     
     // Remove the review from data
     const deletedReview = data.reviews.splice(reviewIndex, 1)[0]
-    writeData(data)
+    await writeData(data)
     
     // Optionally delete the file from filesystem
     try {
@@ -193,31 +223,31 @@ app.get(/^(?!\/api\/).*/, (req, res, next) => {
 const VALID_RESOURCES = new Set(['tracks', 'catalog', 'users', 'events']);
 
 // expose metrics as a top-level editable resource
-function getMetrics() {
-  const data = readData();
+async function getMetrics() {
+  const data = await readData();
   return data.metrics || null;
 }
 
-function setMetrics(metrics) {
-  const data = readData();
+async function setMetrics(metrics) {
+  const data = await readData();
   data.metrics = metrics;
-  writeData(data);
+  await writeData(data);
 }
 
-function getResource(name) {
-  const data = readData();
+async function getResource(name) {
+  const data = await readData();
   return data[name] || [];
 }
 
-function setResource(name, arr) {
-  const data = readData();
+async function setResource(name, arr) {
+  const data = await readData();
   data[name] = arr;
-  writeData(data);
+  await writeData(data);
 }
 
 // Ensure data schema (tokens as objects, users list) exists and normalize old tokens
-function ensureDataSchema() {
-  const data = readData();
+async function ensureDataSchema() {
+  const data = await readData();
   let changed = false;
   if (!Array.isArray(data.tokens)) {
     data.tokens = [];
@@ -254,23 +284,23 @@ function ensureDataSchema() {
     console.warn('No users found in data.json — creating default admin: admin@example.com/password (hashed)');
     changed = true;
   }
-  if (changed) writeData(data);
+  if (changed) await writeData(data);
 }
 
-ensureDataSchema();
+await ensureDataSchema();
 
 // Simple auth middleware: expects Authorization: Bearer <token>
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const auth = req.headers['authorization'] || '';
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
-  const data = readData();
+  const data = await readData();
   if (!Array.isArray(data.tokens)) return res.status(401).json({ error: 'Invalid token' });
   // cleanup expired tokens
   data.tokens = (data.tokens || []).filter((t) => !t.expiresAt || Number(t.expiresAt) > Date.now());
-  writeData(data);
+  await writeData(data);
   const entry = data.tokens.find((t) => t && t.token === token);
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
   // attach user metadata for downstream handlers
@@ -278,14 +308,14 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   // ensure authenticated first
   const auth = req.headers['authorization'] || '';
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
-  const data = readData();
+  const data = await readData();
   const entry = Array.isArray(data.tokens) && data.tokens.find((t) => t && t.token === token);
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
   if (entry.expiresAt && Number(entry.expiresAt) <= Date.now()) return res.status(401).json({ error: 'Token expired' });
@@ -296,11 +326,11 @@ function requireAdmin(req, res, next) {
 
 // Login endpoint: POST /api/login { email, password } or { username, password }
 // Supports login with either email or username for backward compatibility
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, username, password } = req.body || {};
   const loginField = email || username; // Use email if provided, otherwise username
   try {
-    const data = readData();
+    const data = await readData();
     // Find user by email or username
     const user = Array.isArray(data.users) && data.users.find((u) => {
       if (!u) return false;
@@ -325,10 +355,10 @@ app.post('/api/login', (req, res) => {
     if (!ok) {
       // fallback: if stored password equals provided plaintext, migrate to hash
       if (user.password && String(user.password) === provided) {
-        const data2 = readData();
+        const data2 = await readData();
         // update the user's password to hashed
         data2.users = (data2.users || []).map((u) => (String(u.id) === String(user.id) ? { ...u, password: bcrypt.hashSync(provided, 8) } : u));
-        writeData(data2);
+        await writeData(data2);
         ok = true;
       }
     }
@@ -344,7 +374,7 @@ app.post('/api/login', (req, res) => {
   const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
   data.tokens = data.tokens || [];
   data.tokens.push({ token, userId: user.id, role: user.role || 'user', expiresAt });
-    writeData(data);
+    await writeData(data);
     return res.json({ success: true, token, role: user.role || 'user' });
   } catch (err) {
     console.error('Login handler error', err && err.stack ? err.stack : err);
@@ -353,7 +383,7 @@ app.post('/api/login', (req, res) => {
 });
 
 // B2C Authentication validation endpoint
-app.post('/api/validate-b2c-user', (req, res) => {
+app.post('/api/validate-b2c-user', async (req, res) => {
   const { email } = req.body;
   
   if (!email) {
@@ -364,7 +394,7 @@ app.post('/api/validate-b2c-user', (req, res) => {
   }
 
   try {
-    const data = readData();
+    const data = await readData();
     
     // Find user by email in the users array
     const user = Array.isArray(data.users) && data.users.find(u => 
@@ -385,7 +415,7 @@ app.post('/api/validate-b2c-user', (req, res) => {
         expiresAt,
         source: 'b2c' // Mark as B2C authenticated
       });
-      writeData(data);
+      await writeData(data);
       
       return res.json({ 
         success: true, 
@@ -415,12 +445,12 @@ app.post('/api/validate-b2c-user', (req, res) => {
 });
 
 // Self-service password reset: user provides email/username, oldPassword (temporary) and newPassword
-app.post('/api/reset-password', (req, res) => {
+app.post('/api/reset-password', async (req, res) => {
   const { email, username, oldPassword, newPassword } = req.body || {};
   const loginField = email || username;
   if (!loginField || !oldPassword || !newPassword) return res.status(400).json({ success: false, error: 'Missing parameters' });
   try {
-    const data = readData();
+    const data = await readData();
     const users = data.users || [];
     // Find user by email or username
     const user = users.find((u) => {
@@ -450,7 +480,7 @@ app.post('/api/reset-password', (req, res) => {
     const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7;
     data.tokens = data.tokens || [];
     data.tokens.push({ token, userId: user.id, role: user.role || 'user', expiresAt });
-    writeData(data);
+    await writeData(data);
     return res.json({ success: true, token, role: user.role || 'user' });
   } catch (err) {
     console.error('reset-password error', err);
@@ -460,15 +490,15 @@ app.post('/api/reset-password', (req, res) => {
 
 // Users management endpoints (admin only for create/update/delete)
 // List users (admin only under SSO model)
-app.get('/api/users', requireAdmin, (req, res) => {
-  const data = readData();
+app.get('/api/users', requireAdmin, async (req, res) => {
+  const data = await readData();
   const users = (data.users || []).map((u) => ({ id: u.id, username: u.username, email: u.email, role: u.role }));
   res.json(users);
 });
 
-app.post('/api/users', requireAdmin, (req, res) => {
+app.post('/api/users', requireAdmin, async (req, res) => {
   const payload = req.body || {};
-  const data = readData();
+  const data = await readData();
   const users = data.users || [];
   const id = String(payload.id || `u_${Date.now()}`);
 
@@ -489,56 +519,56 @@ app.post('/api/users', requireAdmin, (req, res) => {
   };
   users.push(newUser);
   data.users = users;
-  writeData(data);
+  await writeData(data);
   return res.json({ success: true, user: { id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role } });
 });
 
-app.put('/api/users/:id', requireAdmin, (req, res) => {
+app.put('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
-  const data = readData();
+  const data = await readData();
   const body = { ...req.body };
   // Ignore any password fields under SSO model
   delete body.password;
   delete body.mustReset;
   if (body.email) body.email = String(body.email).toLowerCase();
   data.users = (data.users || []).map((u) => (String(u.id) === id ? { ...u, ...body } : u));
-  writeData(data);
+  await writeData(data);
   const updated = (data.users || []).find(u => String(u.id) === id);
   res.json({ success: true, user: updated ? { id: updated.id, username: updated.username, email: updated.email, role: updated.role } : null });
 });
 
 // Logout: invalidate token
-app.post('/api/logout', requireAuth, (req, res) => {
+app.post('/api/logout', requireAuth, async (req, res) => {
   const auth = req.headers['authorization'] || '';
   const parts = String(auth).split(' ');
   const token = parts[1];
-  const data = readData();
+  const data = await readData();
   data.tokens = (data.tokens || []).filter((t) => t.token !== token);
-  writeData(data);
+  await writeData(data);
   res.json({ success: true });
 });
 
-app.delete('/api/users/:id', requireAdmin, (req, res) => {
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
-  const data = readData();
+  const data = await readData();
   data.users = (data.users || []).filter((u) => String(u.id) !== id);
-  writeData(data);
+  await writeData(data);
   res.json({ success: true });
 });
 
 // Compatibility endpoint: append to tracks
-app.post('/api/add-track', (req, res) => {
+app.post('/api/add-track', async (req, res) => {
   const item = req.body || {};
-  const tracks = getResource('tracks');
+  const tracks = await getResource('tracks');
   const nextSr = tracks.length > 0 ? Math.max(...tracks.map(t => Number(t.sr || 0))) + 1 : 1;
   const newItem = { ...item, sr: Number(item.sr || nextSr) };
   tracks.push(newItem);
-  setResource('tracks', tracks);
+  await setResource('tracks', tracks);
   res.json({ success: true, item: newItem });
 });
 
 // Generic CSV upload: ?resource=tracks|catalog|users|events (defaults to tracks)
-app.post('/api/upload-csv', requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/upload-csv', requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
   const resource = String(req.query.resource || 'tracks');
   const results = [];
@@ -557,7 +587,7 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), (req, res) => {
   fs.createReadStream(req.file.path)
     .pipe(csv())
     .on('data', (data) => results.push(data))
-    .on('end', () => {
+    .on('end', async () => {
       try {
         // Validate that we have data
         if (results.length === 0) {
@@ -598,7 +628,7 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), (req, res) => {
           });
         }
         
-        const existing = getResource(resource);
+        const existing = await getResource(resource);
         const startingSr = existing.length;
         
         console.log(`CSV Upload: Processing ${validResults.length} valid rows for ${resource}`);
@@ -613,7 +643,7 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), (req, res) => {
         }));
         
         const merged = (existing || []).concat(processedResults);
-        setResource(resource, merged);
+        await setResource(resource, merged);
         
         console.log(`CSV Upload: Successfully saved ${processedResults.length} items to ${resource}`);
         
@@ -653,42 +683,43 @@ app.get('/api/me', requireAuth, (req, res) => {
 });
 
 // metrics endpoints (must be defined before the generic /api/:resource route)
-app.get('/api/metrics', (req, res) => {
-  const metrics = getMetrics();
+app.get('/api/metrics', async (req, res) => {
+  const metrics = await getMetrics();
   if (!metrics) return res.status(404).json({ error: 'No metrics found' });
   res.json(metrics);
 });
 
-app.put('/api/metrics', requireAdmin, (req, res) => {
+app.put('/api/metrics', requireAdmin, async (req, res) => {
   const payload = req.body || {};
-  setMetrics(payload);
+  await setMetrics(payload);
   res.json({ success: true, metrics: payload });
 });
 
-app.get('/api/:resource', (req, res) => {
+app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
-  res.json(getResource(resource));
+  const data = await getResource(resource);
+  res.json(data);
 });
 
-app.post('/api/:resource', requireAdmin, (req, res) => {
+app.post('/api/:resource', requireAdmin, async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   const item = req.body || {};
-  const list = getResource(resource) || [];
+  const list = await getResource(resource) || [];
   if (resource === 'users') {
     const id = String(item.id || `u_${Date.now()}`);
     // If caller provided password, hash it; otherwise generate temporary password and mustReset flag
     if (item.password) {
       const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 8), mustReset: false };
       list.push(newItem);
-      setResource(resource, list);
+      await setResource(resource, list);
       return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role } });
     }
     const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
     const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 8), mustReset: true };
     list.push(newItem);
-    setResource(resource, list);
+    await setResource(resource, list);
     return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword });
   }
   // For catalog/tracks/events, generate unique ID if missing
@@ -696,15 +727,15 @@ app.post('/api/:resource', requireAdmin, (req, res) => {
   const id = item.id || crypto.randomBytes(8).toString('hex');
   const newItem = { ...item, id, sr: Number(item.sr || nextSr) };
   list.push(newItem);
-  setResource(resource, list);
+  await setResource(resource, list);
   res.json({ success: true, item: newItem });
 });
 
-app.put('/api/:resource/:id', requireAdmin, (req, res) => {
+app.put('/api/:resource/:id', requireAdmin, async (req, res) => {
   const resource = String(req.params.resource);
   const id = req.params.id;
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
-  const list = getResource(resource) || [];
+  const list = await getResource(resource) || [];
   const updated = list.map((it) => {
     if (resource === 'users') {
       if (String(it && it.id) === id) return { ...it, ...req.body };
@@ -713,16 +744,16 @@ app.put('/api/:resource/:id', requireAdmin, (req, res) => {
     }
     return it;
   });
-  setResource(resource, updated);
+  await setResource(resource, updated);
   res.json({ success: true });
 });
 
-app.delete('/api/:resource/:id', requireAdmin, (req, res) => {
+app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
   const resource = String(req.params.resource);
   const id = req.params.id;
   console.log(`DELETE /${resource}/${id} requested`);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
-  const list = getResource(resource) || [];
+  const list = await getResource(resource) || [];
   console.log(`Before delete: ${list.length} items`);
   const filtered = list.filter((it) => {
     if (resource === 'users') {
@@ -743,7 +774,7 @@ app.delete('/api/:resource/:id', requireAdmin, (req, res) => {
     return t;
   });
   console.log(`After delete: ${filtered.length} items`);
-  setResource(resource, filtered);
+  await setResource(resource, filtered);
   res.json({ success: true });
 });
 
