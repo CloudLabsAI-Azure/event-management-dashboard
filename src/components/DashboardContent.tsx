@@ -87,7 +87,7 @@ export function DashboardContent() {
     activeParticipants: 0,
     completedPracticeLabs: 0,
     tracksHealthPercentage: 0,
-    lastUpdated: Date.now(),
+    lastUpdated: null as number | null,
   })
   const [roadmapStats, setRoadmapStats] = useState({
     development: 0,
@@ -164,14 +164,15 @@ export function DashboardContent() {
         const activeParticipants = Array.isArray(tr) ? tr.reduce((acc: number, t: any) => acc + Number(t.participants || 0), 0) : 0
         const completedPracticeLabs = 1247 // Default completed practice labs count
         // Fetch server's last updated timestamp
-        let serverLastUpdated = Date.now()
+        let serverLastUpdated: number | null = null
         try {
           const lastUpdatedResponse = await api.get('/api/last-updated')
           if (lastUpdatedResponse.data?.lastUpdated) {
             serverLastUpdated = new Date(lastUpdatedResponse.data.lastUpdated).getTime()
           }
         } catch {
-          // Use current time as fallback
+          // If fetch fails, use current time as fallback
+          serverLastUpdated = Date.now()
         }
 
         // Start from derived counts

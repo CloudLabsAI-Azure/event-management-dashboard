@@ -310,8 +310,8 @@ export default function CatalogHealth() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {track.releaseNotesUrl ? (
-                            <a href={track.releaseNotesUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline">
-                              View Notes
+                            <a href={track.releaseNotesUrl} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 underline whitespace-nowrap">
+                              View Release Notes
                             </a>
                           ) : (
                             <span className="text-gray-500">-</span>
