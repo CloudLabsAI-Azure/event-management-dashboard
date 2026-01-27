@@ -22,6 +22,7 @@ interface CatalogItem {
   status: string;
   notesETA: string;
   lastTestDate?: string;
+  releaseNotesUrl?: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -46,10 +47,11 @@ export default function CatalogHealth() {
     eventDate: "",
     status: "",
     notesETA: "",
-    lastTestDate: ""
+    lastTestDate: "",
+    releaseNotesUrl: ""
   })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [addForm, setAddForm] = useState<CatalogItem>({ sr: catalogData.length + 1, trackName: "", eventDate: "", status: "", notesETA: "", lastTestDate: "" });
+  const [addForm, setAddForm] = useState<CatalogItem>({ sr: catalogData.length + 1, trackName: "", eventDate: "", status: "", notesETA: "", lastTestDate: "", releaseNotesUrl: "" });
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   // Load catalog from backend on mount; seed if empty
@@ -72,7 +74,8 @@ export default function CatalogHealth() {
             eventDate: String(it.eventDate || ''),
             status: String(it.status || it.testingStatus || 'Pending'),
             notesETA: String(it.notesETA || ''),
-            lastTestDate: String(it.lastTestDate || '')
+            lastTestDate: String(it.lastTestDate || ''),
+            releaseNotesUrl: String(it.releaseNotesUrl || '')
           }))
         if (!mounted) return
         setCatalogData(mapped)
@@ -452,6 +455,19 @@ export default function CatalogHealth() {
                   value={editForm.lastTestDate}
                   onChange={(e) => setEditForm({ ...editForm, lastTestDate: e.target.value })}
                   className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="releaseNotesUrl" className="text-right">
+                  Release Notes
+                </Label>
+                <Input
+                  id="releaseNotesUrl"
+                  type="url"
+                  value={editForm.releaseNotesUrl}
+                  onChange={(e) => setEditForm({ ...editForm, releaseNotesUrl: e.target.value })}
+                  className="col-span-3"
+                  placeholder="https://..."
                 />
               </div>
             </div>
