@@ -94,13 +94,7 @@ app.get('/api/last-updated', async (req, res) => {
       try {
         const stats = fs.statSync(DATA_PATH);
         lastUpdated = stats.mtime.toISOString();
-        
-        // Update metadata with this timestamp for future requests
-        if (!data._metadata) {
-          data._metadata = {};
-        }
-        data._metadata.lastUpdated = lastUpdated;
-        writeData(data);
+        // Don't write back to avoid updating the timestamp
       } catch (e) {
         console.error('Error reading file stats:', e);
       }
@@ -109,12 +103,14 @@ app.get('/api/last-updated', async (req, res) => {
     // Priority 3: Final fallback (shouldn't happen in production)
     if (!lastUpdated) {
       lastUpdated = new Date().toISOString();
-      console.warn('Using current time as fallback for last-updated');
+      console.warn('⚠️  Using current time as fallback for last-updated - no metadata found');
     }
+    
+    console.log('📅 Last updated timestamp:', lastUpdated, 'Source:', data._metadata?.lastUpdated ? 'metadata' : (STORAGE_MODE === 'local' ? 'file-stat' : 'fallback'));
     
     res.json({ 
       lastUpdated,
-      source: data._metadata?.lastUpdated ? 'metadata' : 'file-stat'
+      source: data._metadata?.lastUpdated ? 'metadata' : (STORAGE_MODE === 'local' ? 'file-stat' : 'fallback')
     });
   } catch (err) {
     console.error('Error in /api/last-updated:', err);
@@ -273,7 +269,12 @@ async function ensureDataSchema() {
     console.warn('No users found in data.json — creating default admin: admin@example.com/password (hashed)');
     changed = true;
   }
-  if (changed) await writeData(data);
+  if (changed) {
+    console.log('📝 Schema changes detected, updating data...');
+    await writeData(data);
+  } else {
+    console.log('✅ Data schema is up to date, no changes needed');
+  }
 }
 
 await ensureDataSchema();
