@@ -29,7 +29,9 @@ interface RoadmapItem {
 }
 
 const getPhaseBadge = (phase: string) => {
-  if (phase === "Development") {
+  if (phase === "In assessment") {
+    return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">In assessment</Badge>
+  } else if (phase === "Development") {
     return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
   } else if (phase === "Release-ready") {
     return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-ready</Badge>
@@ -381,10 +383,11 @@ export default function RoadmapPage() {
                 <Select value={editForm.phase} onValueChange={(value) => setEditForm({ ...editForm, phase: value })}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select phase" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="In assessment">In assessment</SelectItem>
                     <SelectItem value="Development">Development</SelectItem>
+                    <SelectItem value="Testing">Testing</SelectItem>
                     <SelectItem value="Release-ready">Release-ready</SelectItem>
                     <SelectItem value="Backlog">Backlog</SelectItem>
-                    <SelectItem value="Testing">Testing</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
@@ -395,6 +398,7 @@ export default function RoadmapPage() {
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select sponsor" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                    <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
                     <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -404,8 +408,8 @@ export default function RoadmapPage() {
                 <Input id="eta" value={editForm.eta} onChange={(e) => setEditForm({ ...editForm, eta: e.target.value })} className="col-span-3" placeholder="e.g., 31st August 2025 or NA" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="approvalDate" className="text-right">Approval Date</Label>
-                <Input id="approvalDate" type="date" value={editForm.approvalDate} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
+                <Label htmlFor="approvalDate" className="text-right">Approval Month</Label>
+                <Input id="approvalDate" type="month" value={editForm.approvalDate} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
               </div>
             </div>
           </EntityEditDialog>
