@@ -84,20 +84,9 @@ app.get('/api/data', async (req, res) => {
 // Get last updated timestamp
 app.get('/api/last-updated', async (req, res) => {
   try {
-    if (STORAGE_MODE === 'blob') {
-      // Use blob metadata for timestamp
-      const metadata = await getBlobMetadata();
-      if (metadata) {
-        return res.json({
-          lastUpdated: metadata.lastModified.toISOString(),
-          source: 'blob-metadata'
-        });
-      }
-    }
-    
     const data = await readData();
     
-    // Priority 1: Use metadata timestamp (most reliable)
+    // Priority 1: Use metadata timestamp from data (most reliable)
     let lastUpdated = data._metadata?.lastUpdated;
     
     // Priority 2: If no metadata and using local storage, use file's last modified time
