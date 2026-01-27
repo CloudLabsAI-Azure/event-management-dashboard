@@ -79,7 +79,7 @@ export default function CatalogHealth() {
         const mapped = items
           .filter((it: any) => {
             // Include items that are explicitly catalog type OR have catalog-like fields
-            if (it.type === 'roadmapItem' || it.type === 'localizedTrack') return false
+            if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || it.type === 'tttSession') return false
             return it && (it.trackName || it.trackTitle)
           })
           .map((it: any, idx: number) => ({
@@ -207,7 +207,7 @@ export default function CatalogHealth() {
       const items = Array.isArray(catalogRes.data) ? catalogRes.data : [];
       const mapped = items
         .filter((it: any) => {
-          if (it.type === 'roadmapItem' || it.type === 'localizedTrack') return false;
+          if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || it.type === 'tttSession') return false;
           return it && (it.trackName || it.trackTitle);
         })
         .map((it: any, idx: number) => ({
