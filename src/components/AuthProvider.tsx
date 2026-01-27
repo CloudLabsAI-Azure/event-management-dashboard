@@ -154,6 +154,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phase
     });
 
+    // Check for dev bypass token (localhost only)
+    const token = localStorage.getItem('authToken');
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+    
+    if (token === 'dev-bypass-token-local' && isLocalhost) {
+      const cache = localStorage.getItem('authCache');
+      if (cache) {
+        try {
+          const parsed = JSON.parse(cache);
+          if (parsed.expiresAt > Date.now()) {
+            console.log('🚀 Using dev bypass token - Admin access granted');
+            setValidatedUser(parsed.user);
+            setUserRole(parsed.role || 'admin');
+            setIsAuthorized(true);
+            setPhase('ready');
+            setIsLoading(false);
+            setAuthError(null);
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing authCache:', e);
+        }
+      }
+    }
+
     if (inProgress !== 'none') {
       setPhase('msal');
       return; // still processing MSAL

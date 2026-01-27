@@ -9,6 +9,7 @@ import { AuthProvider } from "./components/AuthProvider";
 import { LoginPage } from "./components/LoginPage";
 import { DashboardPage } from "./components/DashboardPage";
 import { RootRedirect } from "./components/RootRedirect";
+import LocalDevBypass from "./pages/LocalDevBypass";
 import Index from "./pages/Index";
 import UsersPage from "./pages/Users";
 import CatalogHealth from "./pages/CatalogHealth";
@@ -16,6 +17,7 @@ import Top25Tracks from "./pages/Top25Tracks";
 import RoadmapPage from "./pages/RoadmapPage";
 import LocalizedTracksPage from "./pages/LocalizedTracksPage";
 import ParticipantFeedbackPage from "./pages/ParticipantFeedbackPage";
+import SyncConfigurationPage from "./pages/SyncConfigurationPage";
 // Removed AuthTest page (deprecated)
 import NotFound from "./pages/NotFound";
 
@@ -67,6 +69,9 @@ const App = () => (
                 {/* Root handles both login and B2C callbacks */}
                 <Route path="/" element={<RootRedirect />} />
                 
+                {/* DEV BYPASS: Local testing route (REMOVE IN PRODUCTION) */}
+                <Route path="/dev-bypass" element={<LocalDevBypass />} />
+                
                 {/* Login route */}
                 <Route path="/login" element={<LoginPage />} />
                 
@@ -79,6 +84,7 @@ const App = () => (
                   <Route path="roadmap" element={<RoadmapPage />} />
                   <Route path="localized-tracks" element={<LocalizedTracksPage />} />
                   <Route path="participant-feedback" element={<ParticipantFeedbackPage />} />
+                  <Route path="sync-configuration" element={<SyncConfigurationPage />} />
                   {/* Access denied dedicated route (component added separately) */}
                   <Route path="access-denied" element={<div className="p-6 text-sm">Access denied</div>} />
                 </Route>

@@ -11,6 +11,7 @@ import {
   Globe,
   MessageSquare,
   Shield,
+  RefreshCw,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "./AuthProvider"
@@ -40,6 +41,7 @@ const reportItems = [
 
 const settingsItems = [
   { title: "Users", url: "/dashboard/users", icon: Users, adminOnly: true },
+  { title: "Data Sync", url: "/dashboard/sync-configuration", icon: RefreshCw, adminOnly: true },
 ]
 
 export function AppSidebar() {

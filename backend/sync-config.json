@@ -1,0 +1,226 @@
+{
+  "autoSyncEnabled": true,
+  "syncInterval": "daily",
+  "resources": {
+    "catalog": {
+      "enabled": true,
+      "excelUrl": "https://copilots47e37hf4wbpe.blob.core.windows.net/container/Book1.csv",
+      "syncMode": "merge",
+      "deleteNotInExcel": false,
+      "lastSync": "2026-01-26T14:38:16.772Z",
+      "lastStatus": "success",
+      "lastError": null
+    },
+    "tracks": {
+      "enabled": false,
+      "excelUrl": "",
+      "syncMode": "merge",
+      "deleteNotInExcel": false,
+      "lastSync": null,
+      "lastStatus": null,
+      "lastError": null
+    },
+    "roadmap": {
+      "enabled": false,
+      "excelUrl": "",
+      "syncMode": "merge",
+      "deleteNotInExcel": false,
+      "lastSync": null,
+      "lastStatus": null,
+      "lastError": null
+    },
+    "localizedTrack": {
+      "enabled": false,
+      "excelUrl": "",
+      "syncMode": "merge",
+      "deleteNotInExcel": false,
+      "lastSync": null,
+      "lastStatus": null,
+      "lastError": null
+    }
+  },
+  "syncHistory": [
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "success",
+      "itemsProcessed": 40,
+      "timestamp": "2026-01-26T14:38:16.774Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Downloaded file is not a valid Excel file (invalid file signature)",
+      "timestamp": "2026-01-26T14:35:23.323Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Downloaded file is not a valid Excel file. SharePoint may require authentication for this link.",
+      "timestamp": "2026-01-26T14:28:15.839Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Downloaded file is not a valid Excel file. SharePoint may require authentication for this link.",
+      "timestamp": "2026-01-26T14:27:07.964Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "SharePoint returned HTML instead of the Excel file. The link may require authentication or cookies. Please use the upload button to upload the file manually.",
+      "timestamp": "2026-01-26T14:25:32.215Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid HTML: could not find <table>",
+      "timestamp": "2026-01-26T13:25:01.009Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T13:24:32.197Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Downloaded file is not a valid Excel file. SharePoint may require authentication for this link.",
+      "timestamp": "2026-01-26T13:20:14.799Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid HTML: could not find <table>",
+      "timestamp": "2026-01-26T13:18:12.828Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid HTML: could not find <table>",
+      "timestamp": "2026-01-26T13:18:00.911Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "SharePoint sharing links require authentication. Please use a direct download URL or local file.",
+      "timestamp": "2026-01-26T13:14:04.271Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "SharePoint sharing links require authentication. Please use a direct download URL or local file.",
+      "timestamp": "2026-01-26T13:13:43.861Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid HTML: could not find <table>",
+      "timestamp": "2026-01-26T13:10:28.910Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:42:32.564Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:40:22.572Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:39:01.938Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL: Invalid URL",
+      "timestamp": "2026-01-26T11:38:26.251Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL: Invalid URL",
+      "timestamp": "2026-01-26T11:37:31.042Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:35:06.554Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:34:50.908Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:34:14.994Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Invalid URL",
+      "timestamp": "2026-01-26T11:33:04.239Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Request failed with status code 403",
+      "timestamp": "2026-01-26T11:30:02.242Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Request failed with status code 403",
+      "timestamp": "2026-01-26T11:27:01.651Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Request failed with status code 403",
+      "timestamp": "2026-01-26T11:24:24.940Z"
+    },
+    {
+      "resourceType": "catalog",
+      "mode": "merge",
+      "status": "error",
+      "error": "Request failed with status code 403",
+      "timestamp": "2026-01-26T11:23:59.131Z"
+    }
+  ]
+}

@@ -12,6 +12,17 @@ class AzureApiClient {
   }
 
   private async getToken(): Promise<string | null> {
+    // Check for dev bypass token first (localhost only)
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+    
+    const storedToken = localStorage.getItem('authToken');
+    if (storedToken === 'dev-bypass-token-local' && isLocalhost) {
+      console.log('🚀 Using dev bypass token for API request');
+      return storedToken;
+    }
+    
     if (!this.msalInstance) {
       console.warn('MSAL instance not set');
       return null;
