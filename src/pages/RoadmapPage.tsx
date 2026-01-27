@@ -36,6 +36,8 @@ const getPhaseBadge = (phase: string) => {
     return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
   } else if (phase === "Release-ready") {
     return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-ready</Badge>
+  } else if (phase === "Released") {
+    return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Released</Badge>
   } else if (phase === "Backlog") {
     return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600 text-white">Backlog</Badge>
   }
@@ -409,6 +411,7 @@ export default function RoadmapPage() {
                     <SelectItem value="Development">Development</SelectItem>
                     <SelectItem value="Testing">Testing</SelectItem>
                     <SelectItem value="Release-ready">Release-ready</SelectItem>
+                    <SelectItem value="Released">Released</SelectItem>
                     <SelectItem value="Backlog">Backlog</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                   </SelectContent>
