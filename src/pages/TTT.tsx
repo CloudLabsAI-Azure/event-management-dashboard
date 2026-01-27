@@ -72,6 +72,15 @@ export default function TTTPage() {
           status: i.status || 'Scheduled',
           notes: i.notes || ''
         }))
+        .sort((a, b) => {
+          // Scheduled sessions first, Completed last
+          if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1
+          if (a.status !== 'Scheduled' && b.status === 'Scheduled') return 1
+          if (a.status === 'Completed' && b.status !== 'Completed') return 1
+          if (a.status !== 'Completed' && b.status === 'Completed') return -1
+          // For same status, sort by session date (most recent first)
+          return new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+        })
       
       setTttSessions(sessions)
     } catch (err) {
