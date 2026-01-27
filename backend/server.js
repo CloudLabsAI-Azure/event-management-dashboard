@@ -784,6 +784,43 @@ app.get('/api/me', requireAuth, (req, res) => {
   }
 });
 
+// GitHub Release Notes - Fetch available lab folders
+app.get('/api/github-release-notes', async (req, res) => {
+  try {
+    const githubApiUrl = 'https://api.github.com/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents';
+    
+    // Fetch with minimal caching (5 minutes)
+    const response = await fetch(githubApiUrl, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'MS-Innovation-Dashboard'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('GitHub API error:', response.status, response.statusText);
+      return res.status(response.status).json({ error: 'Failed to fetch from GitHub' });
+    }
+    
+    const data = await response.json();
+    
+    // Filter only directories and format for frontend
+    const folders = data
+      .filter(item => item.type === 'dir')
+      .map(item => ({
+        name: item.name,
+        path: item.path,
+        url: `https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/${encodeURIComponent(item.name)}/Release-Notes.md`
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
+    res.json({ folders, count: folders.length });
+  } catch (err) {
+    console.error('Error fetching GitHub release notes:', err);
+    res.status(500).json({ error: 'Failed to fetch release notes from GitHub' });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

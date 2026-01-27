@@ -13,6 +13,7 @@ import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
 import { useAuth } from '@/components/AuthProvider'
+import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
 
 interface CatalogItem {
   id?: string;
@@ -471,14 +472,22 @@ export default function CatalogHealth() {
                 <Label htmlFor="releaseNotesUrl" className="text-right">
                   Release Notes
                 </Label>
-                <Input
-                  id="releaseNotesUrl"
-                  type="url"
-                  value={editForm.releaseNotesUrl}
-                  onChange={(e) => setEditForm({ ...editForm, releaseNotesUrl: e.target.value })}
-                  className="col-span-3"
-                  placeholder="https://..."
-                />
+                <div className="col-span-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="releaseNotesUrl"
+                      type="url"
+                      value={editForm.releaseNotesUrl}
+                      onChange={(e) => setEditForm({ ...editForm, releaseNotesUrl: e.target.value })}
+                      className="flex-1"
+                      placeholder="https://..."
+                    />
+                    <GitHubReleasePicker
+                      currentUrl={editForm.releaseNotesUrl || ''}
+                      onSelect={(url) => setEditForm({ ...editForm, releaseNotesUrl: url })}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <DialogFooter>

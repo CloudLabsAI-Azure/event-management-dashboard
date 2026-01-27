@@ -19,6 +19,7 @@ import { useEffect, useState, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { FileUploadModal } from "@/components/FileUploadModal"
 import MetricsEditor from '@/components/MetricsEditor'
+import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
 
 interface TrackItem {
   id?: string;
@@ -499,13 +500,21 @@ export default function Top25Tracks() {
                   <Label htmlFor="addReleaseUrl" className="text-right">
                     Release URL
                   </Label>
-                  <Input
-                    id="addReleaseUrl"
-                    value={(addForm as any).releaseUrl || ''}
-                    onChange={(e) => setAddForm({ ...addForm, releaseUrl: e.target.value })}
-                    placeholder="https://example.com/release-notes"
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        id="addReleaseUrl"
+                        value={(addForm as any).releaseUrl || ''}
+                        onChange={(e) => setAddForm({ ...addForm, releaseUrl: e.target.value })}
+                        placeholder="https://example.com/release-notes"
+                        className="flex-1"
+                      />
+                      <GitHubReleasePicker
+                        currentUrl={(addForm as any).releaseUrl || ''}
+                        onSelect={(url) => setAddForm({ ...addForm, releaseUrl: url })}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="addLastTestDate" className="text-right">
@@ -584,7 +593,21 @@ export default function Top25Tracks() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="releaseUrl" className="text-right">Release URL</Label>
-                <Input id="releaseUrl" value={(editForm as any).releaseUrl || ''} onChange={(e) => setEditForm({ ...editForm, releaseUrl: e.target.value })} placeholder="https://example.com/release-notes" className="col-span-3" />
+                <div className="col-span-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Input 
+                      id="releaseUrl" 
+                      value={(editForm as any).releaseUrl || ''} 
+                      onChange={(e) => setEditForm({ ...editForm, releaseUrl: e.target.value })} 
+                      placeholder="https://example.com/release-notes" 
+                      className="flex-1" 
+                    />
+                    <GitHubReleasePicker
+                      currentUrl={(editForm as any).releaseUrl || ''}
+                      onSelect={(url) => setEditForm({ ...editForm, releaseUrl: url })}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="lastTestDate" className="text-right">Last Test Date</Label>
