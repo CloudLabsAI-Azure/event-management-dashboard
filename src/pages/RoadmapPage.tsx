@@ -30,8 +30,8 @@ interface RoadmapItem {
 }
 
 const getPhaseBadge = (phase: string) => {
-  if (phase === "In assessment") {
-    return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">In assessment</Badge>
+  if (phase === "Under assessment") {
+    return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Under assessment</Badge>
   } else if (phase === "Development") {
     return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
   } else if (phase === "Release-ready") {
@@ -407,7 +407,7 @@ export default function RoadmapPage() {
                 <Select value={editForm.phase} onValueChange={(value) => setEditForm({ ...editForm, phase: value })}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select phase" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="In assessment">In assessment</SelectItem>
+                    <SelectItem value="Under assessment">Under assessment</SelectItem>
                     <SelectItem value="Development">Development</SelectItem>
                     <SelectItem value="Testing">Testing</SelectItem>
                     <SelectItem value="Release-ready">Release-ready</SelectItem>

@@ -222,10 +222,10 @@ export default function LocalizedTracksPage() {
                 </Select>
               </div>
             ))}
-            <div className="grid grid-cols-4 items-center gap-4">
+            {/* <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="lastTestDate" className="text-right">Last Test Date</Label>
               <Input id="lastTestDate" type="date" value={editFormData.lastTestDate || ''} onChange={(e) => setEditFormData({ ...editFormData, lastTestDate: e.target.value })} className="col-span-3" />
-            </div>
+            </div> */}
             {/* Any additional languages are displayed read-only inside table; not editable here */}
           </div>
         </EntityEditDialog>
