@@ -18,6 +18,7 @@ import EntityEditDialog from '@/components/EntityEditDialog'
 interface TTTSession {
   id?: string
   sr: number
+  eventId?: string
   trackName: string
   sessionDate: string
   status: string
@@ -43,6 +44,7 @@ export default function TTTPage() {
   const [editingSession, setEditingSession] = useState<TTTSession | null>(null)
   const [editForm, setEditForm] = useState<TTTSession>({
     sr: 0,
+    eventId: "",
     trackName: "",
     sessionDate: "",
     status: "",
@@ -64,6 +66,7 @@ export default function TTTPage() {
         .map((i: any) => ({
           id: String(i.id || i._id || ''),
           sr: Number(i.sr || 0),
+          eventId: String(i.eventId || ''),
           trackName: i.trackName || i.courseName || '',
           sessionDate: i.sessionDate || '',
           status: i.status || 'Scheduled',
@@ -85,6 +88,7 @@ export default function TTTPage() {
     setEditingSession(null)
     setEditForm({
       sr: 0,
+      eventId: "",
       trackName: "",
       sessionDate: new Date().toISOString().split('T')[0],
       status: "Scheduled",
@@ -223,7 +227,7 @@ export default function TTTPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-20">Sr.</TableHead>
+                    <TableHead className="w-24">Event ID</TableHead>
                     <TableHead className="min-w-[200px]">Track Name</TableHead>
                     <TableHead className="w-32">Session Date</TableHead>
                     <TableHead className="w-32">Status</TableHead>
@@ -240,7 +244,7 @@ export default function TTTPage() {
                   ) : (
                     tttSessions.map((session) => (
                       <TableRow key={session.id || session.sr}>
-                        <TableCell className="font-medium">{session.sr}</TableCell>
+                        <TableCell className="font-medium">{session.eventId || '-'}</TableCell>
                         <TableCell className="font-medium">{session.trackName}</TableCell>
                         <TableCell className="text-muted-foreground">
                           <div className="flex items-center gap-1">
@@ -292,15 +296,14 @@ export default function TTTPage() {
         >
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sr" className="text-right">Sr.</Label>
+              <Label htmlFor="eventId" className="text-right">Event ID</Label>
               <Input
-                id="sr"
-                type="number"
-                value={editForm.sr}
-                onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
+                id="eventId"
+                type="text"
+                value={editForm.eventId || ''}
+                onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })}
                 className="col-span-3"
-                placeholder="Serial number"
-                disabled
+                placeholder="e.g., EVT-001 or TRAIN-2024-A"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

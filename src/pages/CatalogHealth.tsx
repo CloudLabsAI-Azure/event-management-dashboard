@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 interface CatalogItem {
   id?: string;
   sr: number;
+  eventId?: string;
   trackName: string;
   eventDate: string;
   status: string;
@@ -47,6 +48,7 @@ export default function CatalogHealth() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editForm, setEditForm] = useState<CatalogItem>({
     sr: 0,
+    eventId: "",
     trackName: "",
     eventDate: "",
     status: "",
@@ -83,6 +85,7 @@ export default function CatalogHealth() {
           .map((it: any, idx: number) => ({
             id: String(it.id || it._id || `temp_${idx}`),
             sr: String(it.sr || idx + 1),
+            eventId: String(it.eventId || ''),
             trackName: String(it.trackName || it.trackTitle || ''),
             eventDate: String(it.eventDate || ''),
             status: String(it.status || it.testingStatus || 'Pending'),
@@ -134,6 +137,7 @@ export default function CatalogHealth() {
     setEditingItem(null)
     setEditForm({
       sr: 0,
+      eventId: "",
       trackName: "",
       eventDate: "",
       status: "",
@@ -412,7 +416,7 @@ export default function CatalogHealth() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                    <TableHead className="w-16">Sr.</TableHead>
+                    <TableHead className="w-24">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Name</TableHead>
                       <TableHead className="w-36">Event Date</TableHead>
                       <TableHead className="w-32">Status</TableHead>
@@ -425,7 +429,7 @@ export default function CatalogHealth() {
                   <TableBody>
                     {currentData.map((track) => (
                       <TableRow key={track.id || track.sr}>
-                        <TableCell className="font-medium">{track.sr}</TableCell>
+                        <TableCell className="font-medium">{track.eventId || '-'}</TableCell>
                         <TableCell className="font-medium">{track.trackName}</TableCell>
                         <TableCell className="text-muted-foreground">{track.eventDate}</TableCell>
                         <TableCell>{getStatusBadge(track.status)}</TableCell>
@@ -543,15 +547,15 @@ export default function CatalogHealth() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="eventId" className="text-right">
-                  Sr.
+                  Event ID
                 </Label>
                 <Input
                   id="eventId"
-                  type="number"
-                  value={editForm.sr}
-                  onChange={(e) => setEditForm({ ...editForm, sr: parseInt(e.target.value) || 0 })}
+                  type="text"
+                  value={editForm.eventId || ''}
+                  onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })}
                   className="col-span-3"
-                  disabled
+                  placeholder="e.g., EVT-001 or LAB-2024-A"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
