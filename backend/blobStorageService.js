@@ -54,18 +54,24 @@ export async function readDataFromBlob() {
 /**
  * Write data to Azure Blob Storage
  * @param {Object} data - Data to write to blob
+ * @param {Object} options - Write options
+ * @param {boolean} options.updateTimestamp - Whether to update the lastUpdated timestamp (default: true)
  * @returns {Promise<void>}
  */
-export async function writeDataToBlob(data) {
+export async function writeDataToBlob(data, options = {}) {
   try {
+    const { updateTimestamp = true } = options;
     console.log('📤 Writing data to blob storage...');
+    
+    // Update or preserve timestamp based on options
+    const timestamp = updateTimestamp ? new Date().toISOString() : (data._metadata?.lastUpdated || new Date().toISOString());
     
     // Add metadata timestamp
     const dataWithTimestamp = {
       ...data,
       _metadata: {
         ...data._metadata,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: timestamp,
         lastModifiedBy: 'system'
       }
     };
@@ -80,7 +86,7 @@ export async function writeDataToBlob(data) {
       }
     });
     
-    console.log('✅ Data written successfully to blob storage at:', dataWithTimestamp._metadata.lastUpdated);
+    console.log(`✅ Data written successfully to blob storage. Timestamp: ${timestamp} ${updateTimestamp ? '(updated)' : '(preserved)'}`);
   } catch (error) {
     console.error('❌ Error writing data to blob:', error.message);
     throw error; // Propagate error so caller knows write failed

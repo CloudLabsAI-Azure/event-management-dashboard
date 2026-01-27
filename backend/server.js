@@ -47,22 +47,25 @@ async function readData() {
   }
 }
 
-async function writeData(data) {
+async function writeData(data, options = {}) {
   if (STORAGE_MODE === 'blob') {
-    await writeDataToBlob(data);
+    await writeDataToBlob(data, options);
   } else {
     // Local file system fallback
     try {
+      const { updateTimestamp = true } = options;
+      const timestamp = updateTimestamp ? new Date().toISOString() : (data._metadata?.lastUpdated || new Date().toISOString());
+      
       const dataWithTimestamp = {
         ...data,
         _metadata: {
           ...data._metadata,
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: timestamp,
           lastModifiedBy: 'system'
         }
       };
       fs.writeFileSync(DATA_PATH, JSON.stringify(dataWithTimestamp, null, 2), 'utf8');
-      console.log('Data written successfully at:', dataWithTimestamp._metadata.lastUpdated);
+      console.log(`Data written successfully. Timestamp: ${timestamp} ${updateTimestamp ? '(updated)' : '(preserved)'}`);
     } catch (err) {
       console.error('writeData error', err);
       throw err;
@@ -270,8 +273,8 @@ async function ensureDataSchema() {
     changed = true;
   }
   if (changed) {
-    console.log('📝 Schema changes detected, updating data...');
-    await writeData(data);
+    console.log('📝 Schema changes detected, updating data (preserving timestamp)...');
+    await writeData(data, { updateTimestamp: false });
   } else {
     console.log('✅ Data schema is up to date, no changes needed');
   }
