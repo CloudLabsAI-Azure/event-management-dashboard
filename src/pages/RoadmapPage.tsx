@@ -26,6 +26,7 @@ interface RoadmapItem {
   eventId?: string;
   programType?: string;
   approvalDate?: string;
+  notes?: string;
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -52,13 +53,18 @@ export default function RoadmapPage() {
     eta: "",
     eventId: "",
     programType: "",
-    approvalDate: ""
+    approvalDate: "",
+    notes: ""
   })
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
+  
+  // Notes popup state
+  const [selectedItem, setSelectedItem] = useState<RoadmapItem | null>(null);
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true
@@ -77,7 +83,8 @@ export default function RoadmapPage() {
           eta: r.eta || 'NA',
           eventId: r.eventId || '',
           programType: r.programType || '',
-          approvalDate: r.approvalDate || ''
+          approvalDate: r.approvalDate || '',
+          notes: r.notes || ''
         }))
         setRoadmapData(mapped)
       } catch (err) {
@@ -241,7 +248,7 @@ export default function RoadmapPage() {
           {/* Add Roadmap button for admins */}
           {role === 'admin' && (
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '', eventId: '', programType: '', approvalDate: '' }); setIsEditDialogOpen(true); }}>
+              <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '', eventId: '', programType: '', approvalDate: '', notes: '' }); setIsEditDialogOpen(true); }}>
                 <Plus className="h-4 w-4" />
                 Add Roadmap
               </Button>
@@ -291,7 +298,14 @@ export default function RoadmapPage() {
                   </TableHeader>
                   <TableBody>
                     {roadmapData.map((track) => (
-                      <TableRow key={track.id || track.sr}>
+                      <TableRow 
+                        key={track.id || track.sr}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          setSelectedItem(track);
+                          setIsNotesDialogOpen(true);
+                        }}
+                      >
                         <TableCell className="font-mono text-sm">{track.eventId || '-'}</TableCell>
                         <TableCell className="font-medium">{track.trackTitle}</TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
@@ -413,8 +427,77 @@ export default function RoadmapPage() {
                 <Label htmlFor="approvalDate" className="text-right">Approval Month</Label>
                 <Input id="approvalDate" type="month" value={editForm.approvalDate && editForm.approvalDate.length >= 7 ? editForm.approvalDate.substring(0, 7) : editForm.approvalDate || ''} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="notes" className="text-right">Notes</Label>
+                <textarea
+                  id="notes"
+                  value={editForm.notes || ''}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="col-span-3 min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Add notes about development status, blockers, or other important information..."
+                />
+              </div>
             </div>
           </EntityEditDialog>
+        </Dialog>
+
+        {/* Notes Popup Dialog */}
+        <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>{selectedItem?.trackTitle || 'Track Details'}</DialogTitle>
+              <DialogDescription>
+                Development notes and current status
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Event ID:</Label>
+                  <span className="text-sm font-mono">{selectedItem?.eventId || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Phase:</Label>
+                  {selectedItem && getPhaseBadge(selectedItem.phase)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">ETA:</Label>
+                  <span className="text-sm">{selectedItem?.eta || 'NA'}</span>
+                </div>
+                {selectedItem?.programType && (
+                  <div className="flex items-center gap-2">
+                    <Label className="font-semibold">Sponsor:</Label>
+                    <Badge variant="outline" className={
+                      selectedItem.programType === "Program Sponsored" 
+                        ? "bg-green-500/10 text-green-500 border-green-500" 
+                        : selectedItem.programType === "Spektra Sponsored"
+                        ? "bg-purple-500/10 text-purple-500 border-purple-500"
+                        : "bg-blue-500/10 text-blue-500 border-blue-500"
+                    }>
+                      {selectedItem.programType}
+                    </Badge>
+                  </div>
+                )}
+                {selectedItem?.approvalDate && (
+                  <div className="flex items-center gap-2">
+                    <Label className="font-semibold">Approval Month:</Label>
+                    <span className="text-sm">{selectedItem.approvalDate.length === 7 ? selectedItem.approvalDate : selectedItem.approvalDate.substring(0, 7)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold">Notes:</Label>
+                <div className="rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[100px]">
+                  {selectedItem?.notes || 'No notes available for this track.'}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       </div>
     </DashboardLayout>
