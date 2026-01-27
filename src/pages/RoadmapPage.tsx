@@ -322,7 +322,7 @@ export default function RoadmapPage() {
                           {track.approvalDate ? (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4 text-green-500" />
-                              <span className="text-sm">Approved on: {track.approvalDate}</span>
+                              <span className="text-sm">Approved: {track.approvalDate.length === 7 ? track.approvalDate : track.approvalDate.substring(0, 7)}</span>
                             </div>
                           ) : (
                             <span className="text-gray-500">-</span>
@@ -409,7 +409,7 @@ export default function RoadmapPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="approvalDate" className="text-right">Approval Month</Label>
-                <Input id="approvalDate" type="month" value={editForm.approvalDate} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
+                <Input id="approvalDate" type="month" value={editForm.approvalDate?.substring(0, 7) || ''} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
               </div>
             </div>
           </EntityEditDialog>

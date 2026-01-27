@@ -25,6 +25,7 @@ interface LocalizedTrack {
   languages: Record<string, string> // key: language name (lowercase id), value: status
   originalOrder?: number
   lastUpdated?: string
+  lastTestDate?: string
 }
 
 const getAvailabilityBadge = (status: string) => {
@@ -44,7 +45,7 @@ export default function LocalizedTracksPage() {
   const [localizedTracksData, setLocalizedTracksData] = useState<LocalizedTrack[]>([])
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [editFormData, setEditFormData] = useState<LocalizedTrack>({ trackTitle: "", languages: { spanish: '', portuguese: '' }, lastUpdated: '' })
+  const [editFormData, setEditFormData] = useState<LocalizedTrack>({ trackTitle: "", languages: { spanish: '', portuguese: '' }, lastUpdated: '', lastTestDate: '' })
   // Only Spanish & Portuguese are supported.
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -65,7 +66,8 @@ export default function LocalizedTracksPage() {
             spanish: typeof i.spanish === 'string' ? i.spanish : 'Not Available',
             portuguese: typeof i.portuguese === 'string' ? i.portuguese : 'Not Available'
           },
-          lastUpdated: i.lastUpdated || i.updatedAt || new Date().toISOString().split('T')[0]
+          lastUpdated: i.lastUpdated || i.updatedAt || new Date().toISOString().split('T')[0],
+          lastTestDate: i.lastTestDate || ''
         }))
         setLocalizedTracksData(mapped)
       } catch (err) {
@@ -146,7 +148,7 @@ export default function LocalizedTracksPage() {
   const handleCancelEdit = () => {
     setIsEditDialogOpen(false)
     setEditingIndex(null)
-    setEditFormData({ trackTitle: "", languages: { spanish: '', portuguese: '' } })
+    setEditFormData({ trackTitle: "", languages: { spanish: '', portuguese: '' }, lastTestDate: '' })
   }
 
   const handleDelete = (index: number) => {
@@ -174,7 +176,7 @@ export default function LocalizedTracksPage() {
           <div></div>
           <div className="flex items-center gap-2">
             {role === 'admin' && (
-              <Button size="sm" className="flex items-center gap-2" onClick={() => { setEditingIndex(null); setEditFormData({ trackTitle: '', languages: { spanish: '', portuguese: '' } }); setIsEditDialogOpen(true) }}>
+              <Button size="sm" className="flex items-center gap-2" onClick={() => { setEditingIndex(null); setEditFormData({ trackTitle: '', languages: { spanish: '', portuguese: '' }, lastTestDate: '' }); setIsEditDialogOpen(true) }}>
                 <Plus className="h-4 w-4" />
                 Add Track
               </Button>

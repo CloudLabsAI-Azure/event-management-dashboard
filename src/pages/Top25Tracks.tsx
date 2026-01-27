@@ -27,6 +27,7 @@ interface TrackItem {
   testingStatus: string;
   releaseNotes: string;
   releaseUrl?: string;
+  lastTestDate?: string;
 }
 
 const getStatusBadge = (status: string) => {
@@ -51,10 +52,11 @@ export default function Top25Tracks() {
     trackName: "",
     testingStatus: "",
     releaseNotes: "",
-    releaseUrl: ""
+    releaseUrl: "",
+    lastTestDate: ""
   })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [addForm, setAddForm] = useState<TrackItem>({ sr: tracksData.length + 1, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "" });
+  const [addForm, setAddForm] = useState<TrackItem>({ sr: tracksData.length + 1, trackName: "", testingStatus: "", releaseNotes: "", releaseUrl: "", lastTestDate: "" });
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,7 +189,8 @@ export default function Top25Tracks() {
             trackName: String(t.trackName || t.name || ''), 
             testingStatus: String(t.testingStatus || ''), 
             releaseNotes: String(t.releaseNotes || 'Release Notes'), 
-            releaseUrl: t.releaseUrl || t.release_url || '' 
+            releaseUrl: t.releaseUrl || t.release_url || '',
+            lastTestDate: t.lastTestDate || ''
           })) : [];
           setTracksData(mapped);
         }
@@ -248,7 +251,8 @@ export default function Top25Tracks() {
         trackName: String(t.trackName || t.name || ''), 
         testingStatus: String(t.testingStatus || ''), 
         releaseNotes: String(t.releaseNotes || 'Release Notes'), 
-        releaseUrl: t.releaseUrl || t.release_url || '' 
+        releaseUrl: t.releaseUrl || t.release_url || '',
+        lastTestDate: t.lastTestDate || ''
       }));
       
       setTracksData(mapped);
@@ -341,6 +345,7 @@ export default function Top25Tracks() {
                       <TableHead className="min-w-[300px]">Track Name</TableHead>
                       <TableHead className="w-32">Testing Status</TableHead>
                       <TableHead className="w-32">Release Notes</TableHead>
+                      <TableHead className="w-32">Last Test Date</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -362,6 +367,9 @@ export default function Top25Tracks() {
                               <span>{track.releaseNotes || 'Release Notes'}</span>
                             </span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.lastTestDate ? new Date(track.lastTestDate).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -503,6 +511,18 @@ export default function Top25Tracks() {
                     className="col-span-3"
                   />
                 </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addLastTestDate" className="text-right">
+                    Last Test Date
+                  </Label>
+                  <Input
+                    id="addLastTestDate"
+                    type="date"
+                    value={addForm.lastTestDate || ''}
+                    onChange={(e) => setAddForm({ ...addForm, lastTestDate: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -569,6 +589,10 @@ export default function Top25Tracks() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="releaseUrl" className="text-right">Release URL</Label>
                 <Input id="releaseUrl" value={(editForm as any).releaseUrl || ''} onChange={(e) => setEditForm({ ...editForm, releaseUrl: e.target.value })} placeholder="https://example.com/release-notes" className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastTestDate" className="text-right">Last Test Date</Label>
+                <Input id="lastTestDate" type="date" value={editForm.lastTestDate || ''} onChange={(e) => setEditForm({ ...editForm, lastTestDate: e.target.value })} className="col-span-3" />
               </div>
             </div>
             <DialogFooter>

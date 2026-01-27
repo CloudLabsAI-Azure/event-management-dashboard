@@ -37,8 +37,8 @@ const reportItems = [
   { title: "Top 25 Tracks", url: "/dashboard/top25-tracks", icon: FileText },
   { title: "Roadmap", url: "/dashboard/roadmap", icon: MapPin },
   { title: "Localized Tracks", url: "/dashboard/localized-tracks", icon: Globe },
+  { title: "Train the Trainer", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Announcements", url: "/dashboard/announcements", icon: Megaphone },
-  { title: "TTT", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Participant Feedback", url: "/dashboard/participant-feedback", icon: MessageSquare },
 ]
 
