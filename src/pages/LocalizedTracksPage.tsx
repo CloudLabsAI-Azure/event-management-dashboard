@@ -98,7 +98,14 @@ export default function LocalizedTracksPage() {
       ;(async () => {
         try {
           // Only persist spanish & portuguese
-          const payload = { trackTitle: editFormData.trackTitle, spanish: editFormData.languages.spanish || 'Not Available', portuguese: editFormData.languages.portuguese || 'Not Available', type: 'localizedTrack' }
+          const payload = { 
+            trackTitle: editFormData.trackTitle, 
+            spanish: editFormData.languages.spanish || 'Not Available', 
+            portuguese: editFormData.languages.portuguese || 'Not Available', 
+            lastUpdated: editFormData.lastUpdated || new Date().toISOString().split('T')[0],
+            lastTestDate: editFormData.lastTestDate || '',
+            type: 'localizedTrack' 
+          }
           if (editFormData.sr && editFormData.sr > 0) {
             await catalogService.update(editFormData.sr, payload)
           } else {
@@ -125,12 +132,21 @@ export default function LocalizedTracksPage() {
       setSaving(true)
       ;(async () => {
         try {
-          const payload = { trackTitle: editFormData.trackTitle, spanish: editFormData.languages.spanish || 'Not Available', portuguese: editFormData.languages.portuguese || 'Not Available', type: 'localizedTrack' }
+          const payload = { 
+            trackTitle: editFormData.trackTitle, 
+            spanish: editFormData.languages.spanish || 'Not Available', 
+            portuguese: editFormData.languages.portuguese || 'Not Available', 
+            lastUpdated: editFormData.lastUpdated || new Date().toISOString().split('T')[0],
+            lastTestDate: editFormData.lastTestDate || '',
+            type: 'localizedTrack' 
+          }
           const item = await catalogService.create(payload)
           const newEntry = {
             sr: Number(item.sr || item.id || localizedTracksData.length + 1),
             trackTitle: item.trackTitle || item.title || editFormData.trackTitle,
-            languages: { ...editFormData.languages }
+            languages: { ...editFormData.languages },
+            lastUpdated: item.lastUpdated || editFormData.lastUpdated,
+            lastTestDate: item.lastTestDate || editFormData.lastTestDate
           }
           const updated = [...localizedTracksData, newEntry].map((x, i) => ({ ...x, sr: i + 1 }))
           setLocalizedTracksData(updated)

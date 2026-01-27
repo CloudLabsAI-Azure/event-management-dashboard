@@ -293,7 +293,7 @@ export default function RoadmapPage() {
                       <TableHead className="min-w-[250px]">Track Title</TableHead>
                       <TableHead className="w-40">Phase</TableHead>
                       <TableHead className="w-40">Sponsored by</TableHead>
-                      <TableHead className="w-40">ETA</TableHead>
+                      <TableHead className="w-40">Target Completion</TableHead>
                       <TableHead className="w-40">Approval Month</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
@@ -315,10 +315,10 @@ export default function RoadmapPage() {
                           {track.programType ? (
                             <Badge variant="outline" className={
                               track.programType === "Program Sponsored" 
-                                ? "bg-green-500/10 text-green-500 border-green-500" 
+                                ? "bg-green-500/10 text-green-500 border-green-500 whitespace-nowrap" 
                                 : track.programType === "Spektra Sponsored"
-                                ? "bg-purple-500/10 text-purple-500 border-purple-500"
-                                : "bg-blue-500/10 text-blue-500 border-blue-500"
+                                ? "bg-purple-500/10 text-purple-500 border-purple-500 whitespace-nowrap"
+                                : "bg-blue-500/10 text-blue-500 border-blue-500 whitespace-nowrap"
                             }>
                               {track.programType}
                             </Badge>
@@ -429,7 +429,7 @@ export default function RoadmapPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="eta" className="text-right">ETA</Label>
+                <Label htmlFor="eta" className="text-right">Target Completion</Label>
                 <Input id="eta" value={editForm.eta} onChange={(e) => setEditForm({ ...editForm, eta: e.target.value })} className="col-span-3" placeholder="e.g., 31st August 2025 or NA" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -470,7 +470,7 @@ export default function RoadmapPage() {
                   {selectedItem && getPhaseBadge(selectedItem.phase)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="font-semibold">ETA:</Label>
+                  <Label className="font-semibold">Target Completion:</Label>
                   <span className="text-sm">{selectedItem?.eta || 'NA'}</span>
                 </div>
                 {selectedItem?.programType && (
