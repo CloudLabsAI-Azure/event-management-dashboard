@@ -422,7 +422,7 @@ export default function CatalogHealth() {
                     <TableHead className="w-24">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Name</TableHead>
                       <TableHead className="w-36">Event Date</TableHead>
-                      <TableHead className="w-32">Status</TableHead>
+                      <TableHead className="w-32">Testing Status</TableHead>
                       <TableHead className="w-36">Last Test Date</TableHead>
                       <TableHead className="w-32">Notes/ETA</TableHead>
                       <TableHead className="w-36">Release Notes</TableHead>

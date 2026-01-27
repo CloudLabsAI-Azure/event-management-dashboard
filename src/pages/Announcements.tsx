@@ -517,7 +517,16 @@ export default function Announcements() {
                   ) : (
                     pdfCatalogs.map((pdf) => (
                       <TableRow key={pdf.id || pdf.sr}>
-                        <TableCell className="font-medium">{pdf.title}</TableCell>
+                        <TableCell className="font-medium">
+                          <a 
+                            href={pdf.pdfUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline cursor-pointer"
+                          >
+                            {pdf.title}
+                          </a>
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{pdf.description}</TableCell>
                         <TableCell>{new Date(pdf.uploadDate).toLocaleDateString()}</TableCell>
                         <TableCell>
