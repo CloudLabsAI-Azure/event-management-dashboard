@@ -8,6 +8,7 @@ import csv from 'csv-parser';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import https from 'https';
 import { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists } from './blobStorageService.js';
 
 const app = express();
@@ -787,22 +788,48 @@ app.get('/api/me', requireAuth, (req, res) => {
 // GitHub Release Notes - Fetch available lab folders
 app.get('/api/github-release-notes', async (req, res) => {
   try {
-    const githubApiUrl = 'https://api.github.com/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents';
+    const githubApiUrl = 'api.github.com';
+    const path = '/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents';
     
-    // Fetch with minimal caching (5 minutes)
-    const response = await fetch(githubApiUrl, {
+    const options = {
+      hostname: githubApiUrl,
+      path: path,
+      method: 'GET',
       headers: {
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'MS-Innovation-Dashboard'
       }
+    };
+
+    const githubRequest = new Promise((resolve, reject) => {
+      const req = https.request(options, (response) => {
+        let data = '';
+        
+        response.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        response.on('end', () => {
+          if (response.statusCode !== 200) {
+            reject(new Error(`GitHub API returned ${response.statusCode}: ${data}`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error('Failed to parse GitHub response'));
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        reject(error);
+      });
+      
+      req.end();
     });
-    
-    if (!response.ok) {
-      console.error('GitHub API error:', response.status, response.statusText);
-      return res.status(response.status).json({ error: 'Failed to fetch from GitHub' });
-    }
-    
-    const data = await response.json();
+
+    const data = await githubRequest;
     
     // Filter only directories and format for frontend
     const folders = data
@@ -814,10 +841,11 @@ app.get('/api/github-release-notes', async (req, res) => {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
     
+    console.log(`✅ Fetched ${folders.length} labs from GitHub`);
     res.json({ folders, count: folders.length });
   } catch (err) {
-    console.error('Error fetching GitHub release notes:', err);
-    res.status(500).json({ error: 'Failed to fetch release notes from GitHub' });
+    console.error('❌ Error fetching GitHub release notes:', err.message);
+    res.status(500).json({ error: 'Failed to fetch release notes from GitHub', details: err.message });
   }
 });
 
