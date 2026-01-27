@@ -32,6 +32,15 @@ interface TrackChange {
   notes?: string
 }
 
+interface GeneralAnnouncement {
+  id?: string
+  sr: number
+  title: string
+  message: string
+  announcementDate: string
+  priority?: 'low' | 'medium' | 'high'
+}
+
 export default function Announcements() {
   const { userRole: role } = useAuth()
   const { toast } = useToast()
@@ -61,6 +70,19 @@ export default function Announcements() {
     notes: ""
   })
   const [savingTrack, setSavingTrack] = useState(false)
+
+  // General Announcements State
+  const [generalAnnouncements, setGeneralAnnouncements] = useState<GeneralAnnouncement[]>([])
+  const [isAnnouncementDialogOpen, setIsAnnouncementDialogOpen] = useState(false)
+  const [editingAnnouncement, setEditingAnnouncement] = useState<GeneralAnnouncement | null>(null)
+  const [announcementForm, setAnnouncementForm] = useState<GeneralAnnouncement>({
+    sr: 0,
+    title: "",
+    message: "",
+    announcementDate: new Date().toISOString().split('T')[0],
+    priority: 'medium'
+  })
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false)
 
   // Load data
   useEffect(() => {
@@ -97,6 +119,20 @@ export default function Announcements() {
           notes: i.notes || ''
         }))
       setTrackChanges(changes)
+
+      // Filter general announcements
+      const announcements = items
+        .filter((i: any) => i.type === 'generalAnnouncement')
+        .map((i: any) => ({
+          id: String(i.id || i._id || ''),
+          sr: Number(i.sr || 0),
+          title: i.title || '',
+          message: i.message || '',
+          announcementDate: i.announcementDate || new Date().toISOString().split('T')[0],
+          priority: i.priority || 'medium'
+        }))
+        .sort((a: any, b: any) => new Date(b.announcementDate).getTime() - new Date(a.announcementDate).getTime())
+      setGeneralAnnouncements(announcements)
     } catch (err) {
       console.error('Error loading announcements:', err)
       toast({
@@ -181,7 +217,7 @@ export default function Announcements() {
       }
       await loadData()
       toast({
-        title: 'Deleted',
+        title: 'Retired',
         description: 'PDF catalog removed'
       })
     } catch (err) {
@@ -258,13 +294,99 @@ export default function Announcements() {
       }
       await loadData()
       toast({
-        title: 'Deleted',
+        title: 'Retired',
         description: 'Track change removed'
       })
     } catch (err) {
       toast({
         title: 'Error',
         description: 'Failed to delete track change',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  // General Announcement handlers
+  const handleAddAnnouncement = () => {
+    setEditingAnnouncement(null)
+    setAnnouncementForm({
+      sr: 0,
+      title: "",
+      message: "",
+      announcementDate: new Date().toISOString().split('T')[0],
+      priority: 'medium'
+    })
+    setIsAnnouncementDialogOpen(true)
+  }
+
+  const handleEditAnnouncement = (announcement: GeneralAnnouncement) => {
+    setEditingAnnouncement(announcement)
+    setAnnouncementForm({ ...announcement })
+    setIsAnnouncementDialogOpen(true)
+  }
+
+  const handleSaveAnnouncement = async () => {
+    if (!announcementForm.title || announcementForm.title.trim().length < 3) {
+      toast({
+        title: 'Validation Error',
+        description: 'Title is required (min 3 characters)',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!announcementForm.message || announcementForm.message.trim().length < 5) {
+      toast({
+        title: 'Validation Error',
+        description: 'Message is required (min 5 characters)',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setSavingAnnouncement(true)
+    try {
+      const payload = { ...announcementForm, type: 'generalAnnouncement' }
+      
+      if (editingAnnouncement && editingAnnouncement.sr) {
+        await api.put(`/api/catalog/${editingAnnouncement.sr}`, payload)
+      } else {
+        await api.post('/api/catalog', payload)
+      }
+
+      await loadData()
+      setIsAnnouncementDialogOpen(false)
+      toast({
+        title: 'Success',
+        description: `Announcement ${editingAnnouncement ? 'updated' : 'added'} successfully`
+      })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save announcement',
+        variant: 'destructive'
+      })
+    } finally {
+      setSavingAnnouncement(false)
+    }
+  }
+
+  const handleDeleteAnnouncement = async (announcement: GeneralAnnouncement) => {
+    if (!window.confirm(`Delete announcement "${announcement.title}"?`)) return
+
+    try {
+      if (announcement.sr) {
+        await api.delete(`/api/catalog/${announcement.sr}`)
+      }
+      await loadData()
+      toast({
+        title: 'Retired',
+        description: 'Announcement removed'
+      })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete announcement',
         variant: 'destructive'
       })
     }
@@ -285,6 +407,91 @@ export default function Announcements() {
             Catalog updates, PDF resources, and track changes
           </p>
         </div>
+
+        {/* General Announcements Section */}
+        <Card className="glass-card border-primary/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                  General Announcements
+                </CardTitle>
+                <CardDescription>
+                  Important updates and notifications
+                </CardDescription>
+              </div>
+              {role === 'admin' && (
+                <Button size="sm" onClick={handleAddAnnouncement}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Announcement
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[300px] w-full rounded-md border">
+              <div className="p-4 space-y-3">
+                {generalAnnouncements.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground">No announcements yet</p>
+                ) : (
+                  generalAnnouncements.map((announcement) => (
+                    <div 
+                      key={announcement.id || announcement.sr} 
+                      className={`p-4 border rounded-lg hover:bg-accent/50 ${
+                        announcement.priority === 'high' 
+                          ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20' 
+                          : announcement.priority === 'medium'
+                          ? 'border-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold">{announcement.title}</h4>
+                            {announcement.priority === 'high' && (
+                              <Badge variant="destructive" className="text-xs">High Priority</Badge>
+                            )}
+                            {announcement.priority === 'medium' && (
+                              <Badge variant="default" className="text-xs bg-yellow-500">Medium</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">
+                            {announcement.message}
+                          </p>
+                          <div className="text-xs text-muted-foreground mt-2">
+                            {new Date(announcement.announcementDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                        {role === 'admin' && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditAnnouncement(announcement)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteAnnouncement(announcement)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
         {/* PDF Catalogs Section */}
         <Card className="glass-card">
@@ -447,13 +654,13 @@ export default function Announcements() {
             </CardContent>
           </Card>
 
-          {/* Tracks Removed */}
+          {/* Tracks Retired */}
           <Card className="glass-card">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-red-600">🗑️ Tracks Removed</CardTitle>
-                  <CardDescription>Recently removed tracks</CardDescription>
+                  <CardTitle className="text-red-600">🗑️ Tracks Retired</CardTitle>
+                  <CardDescription>Recently retired tracks</CardDescription>
                 </div>
                 {role === 'admin' && (
                   <Button 
@@ -471,7 +678,7 @@ export default function Announcements() {
                     }}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Removal
+                    Add Retirement
                   </Button>
                 )}
               </div>
@@ -480,14 +687,14 @@ export default function Announcements() {
               <ScrollArea className="h-[300px] w-full rounded-md border">
                 <div className="p-4 space-y-3">
                   {removedTracks.length === 0 ? (
-                    <p className="text-center py-8 text-muted-foreground">No tracks removed yet</p>
+                    <p className="text-center py-8 text-muted-foreground">No tracks retired yet</p>
                   ) : (
                     removedTracks.map((track) => (
                       <div key={track.id || track.sr} className="flex items-start justify-between p-3 border rounded-lg hover:bg-accent/50">
                         <div className="flex-1">
                           <div className="font-medium line-through text-muted-foreground">{track.trackName}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            Removed on: {new Date(track.changeDate).toLocaleDateString()}
+                            Retired on: {new Date(track.changeDate).toLocaleDateString()}
                           </div>
                           {track.notes && (
                             <div className="text-sm text-muted-foreground mt-1 italic">{track.notes}</div>
@@ -623,6 +830,61 @@ export default function Announcements() {
                 onChange={(e) => setTrackForm({ ...trackForm, notes: e.target.value })}
                 className="col-span-3"
                 placeholder="Optional notes"
+              />
+            </div>
+          </div>
+        </EntityEditDialog>
+
+        {/* General Announcement Dialog */}
+        <EntityEditDialog
+          open={isAnnouncementDialogOpen}
+          onOpenChange={setIsAnnouncementDialogOpen}
+          title={editingAnnouncement ? 'Edit Announcement' : 'Add General Announcement'}
+          saving={savingAnnouncement}
+          onSave={handleSaveAnnouncement}
+        >
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="announcement-title" className="text-right">Title</Label>
+              <Input
+                id="announcement-title"
+                value={announcementForm.title}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                className="col-span-3"
+                placeholder="e.g., System Maintenance"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="announcement-message" className="text-right">Message</Label>
+              <textarea
+                id="announcement-message"
+                value={announcementForm.message}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, message: e.target.value })}
+                className="col-span-3 min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Enter announcement message..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="announcement-priority" className="text-right">Priority</Label>
+              <select
+                id="announcement-priority"
+                value={announcementForm.priority}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, priority: e.target.value as 'low' | 'medium' | 'high' })}
+                className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="announcement-date" className="text-right">Date</Label>
+              <Input
+                id="announcement-date"
+                type="date"
+                value={announcementForm.announcementDate}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, announcementDate: e.target.value })}
+                className="col-span-3"
               />
             </div>
           </div>
