@@ -198,8 +198,9 @@ export async function uploadImageToBlob(imageBuffer, fileName, contentType = 'im
       }
     });
     
-    // Return the public URL (without SAS token for public access, or with for private)
-    const publicUrl = `${baseUrl}/${blobPath}`;
+    // Return the public URL - containerClient adds containerName prefix, so actual path is:
+    // mseventscatalogcontainer/mseventscatalogcontainer/uploads/filename.png
+    const publicUrl = `${baseUrl}/${containerName}/${blobPath}`;
     console.log(`✅ Image uploaded: ${publicUrl}`);
     
     return publicUrl;
@@ -265,5 +266,6 @@ export async function imageExistsInBlob(fileName) {
  * @returns {string} Public URL
  */
 export function getImageBlobUrl(fileName) {
-  return `${baseUrl}/${UPLOADS_FOLDER}/${fileName}`;
+  // Path includes containerName prefix to match actual blob location
+  return `${baseUrl}/${containerName}/${UPLOADS_FOLDER}/${fileName}`;
 }
