@@ -20,7 +20,7 @@ import bcrypt from 'bcryptjs';
 import https from 'https';
 
 // Dynamic import for modules that need env vars
-const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, addSasTokensToReviews } = await import('./blobStorageService.js');
+const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage } = await import('./azureDevOpsService.js');
 
 const app = express();
@@ -88,14 +88,51 @@ async function writeData(data, options = {}) {
 app.get('/api/data', async (req, res) => {
   try {
     const data = await readData();
-    // Add SAS tokens to blob image URLs for authenticated access
+    // Convert blob URLs to proxy URLs for secure frontend access (hides SAS token)
     if (data.reviews && process.env.STORAGE_MODE === 'blob') {
-      data.reviews = addSasTokensToReviews(data.reviews);
+      data.reviews = convertToProxyUrls(data.reviews);
     }
     res.json(data);
   } catch (error) {
     console.error('Error fetching data:', error);
     res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+// Proxy endpoint to serve blob images without exposing SAS token
+app.get('/api/blob-image/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename required' });
+    }
+    
+    // Security: Only allow image files
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+    const ext = path.extname(filename).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({ error: 'Invalid file type' });
+    }
+    
+    const result = await streamImageFromBlob(filename);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Set appropriate headers
+    res.setHeader('Content-Type', result.contentType);
+    if (result.contentLength) {
+      res.setHeader('Content-Length', result.contentLength);
+    }
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+    
+    // Stream the image to the response
+    result.stream.pipe(res);
+  } catch (error) {
+    console.error('Error proxying blob image:', error);
+    res.status(500).json({ error: 'Failed to fetch image' });
   }
 });
 

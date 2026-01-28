@@ -290,7 +290,7 @@ export function getBlobSasToken() {
 }
 
 /**
- * Append SAS token to a blob URL for authenticated access
+ * Append SAS token to a blob URL for authenticated access (internal use only)
  * @param {string} blobUrl - The blob URL
  * @returns {string} URL with SAS token appended
  */
@@ -304,19 +304,64 @@ export function appendSasTokenToUrl(blobUrl) {
 }
 
 /**
- * Process reviews array to add SAS tokens to blob image URLs
+ * Convert blob URLs to proxy URLs for secure frontend access
+ * Proxy URLs go through the backend, keeping SAS token hidden
  * @param {Array} reviews - Array of review objects
- * @returns {Array} Reviews with SAS tokens added to blob paths
+ * @returns {Array} Reviews with proxy URLs for blob images
  */
-export function addSasTokensToReviews(reviews) {
+export function convertToProxyUrls(reviews) {
   if (!Array.isArray(reviews)) return reviews;
   return reviews.map(review => {
     if (review.path && review.path.includes('experienceazure.blob.core.windows.net')) {
+      // Extract filename from blob URL
+      // URL format: https://.../mseventscatalogcontainer/mseventscatalogcontainer/uploads/filename.png
+      const urlWithoutQuery = review.path.split('?')[0];
+      const parts = urlWithoutQuery.split('/');
+      const fileName = parts[parts.length - 1];
       return {
         ...review,
-        path: appendSasTokenToUrl(review.path)
+        path: `/api/blob-image/${fileName}`,
+        _originalBlobPath: review.path // Keep original for reference (not exposed to frontend)
       };
     }
     return review;
   });
+}
+
+/**
+ * Stream an image from blob storage
+ * @param {string} fileName - Name of the file in uploads folder
+ * @returns {Promise<{stream: ReadableStream, contentType: string, contentLength: number}>}
+ */
+export async function streamImageFromBlob(fileName) {
+  try {
+    const blobPath = `${UPLOADS_FOLDER}/${fileName}`;
+    const imageBlobClient = containerClient.getBlobClient(blobPath);
+    
+    const exists = await imageBlobClient.exists();
+    if (!exists) {
+      return null;
+    }
+    
+    const downloadResponse = await imageBlobClient.download();
+    const properties = await imageBlobClient.getProperties();
+    
+    return {
+      stream: downloadResponse.readableStreamBody,
+      contentType: properties.contentType || 'image/png',
+      contentLength: properties.contentLength
+    };
+  } catch (error) {
+    console.error('❌ Error streaming image from blob:', error.message);
+    throw error;
+  }
+}
+
+// Keep old function for backward compatibility but mark as deprecated
+/**
+ * @deprecated Use convertToProxyUrls instead - this exposes SAS token to frontend
+ */
+export function addSasTokensToReviews(reviews) {
+  console.warn('⚠️ addSasTokensToReviews is deprecated - use convertToProxyUrls for security');
+  return convertToProxyUrls(reviews);
 }
