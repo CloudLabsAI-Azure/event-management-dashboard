@@ -280,3 +280,43 @@ export function getImageBlobUrl(fileName) {
   // Path includes containerName prefix to match actual blob location
   return `${baseUrl}/${containerName}/${UPLOADS_FOLDER}/${fileName}`;
 }
+
+/**
+ * Get the SAS token for blob access
+ * @returns {string} SAS token (without leading ?)
+ */
+export function getBlobSasToken() {
+  return sasToken;
+}
+
+/**
+ * Append SAS token to a blob URL for authenticated access
+ * @param {string} blobUrl - The blob URL
+ * @returns {string} URL with SAS token appended
+ */
+export function appendSasTokenToUrl(blobUrl) {
+  if (!blobUrl || !sasToken) return blobUrl;
+  // Only append to blob URLs from our storage account
+  if (!blobUrl.includes('experienceazure.blob.core.windows.net')) return blobUrl;
+  // Don't double-add SAS token
+  if (blobUrl.includes('?')) return blobUrl;
+  return `${blobUrl}?${sasToken}`;
+}
+
+/**
+ * Process reviews array to add SAS tokens to blob image URLs
+ * @param {Array} reviews - Array of review objects
+ * @returns {Array} Reviews with SAS tokens added to blob paths
+ */
+export function addSasTokensToReviews(reviews) {
+  if (!Array.isArray(reviews)) return reviews;
+  return reviews.map(review => {
+    if (review.path && review.path.includes('experienceazure.blob.core.windows.net')) {
+      return {
+        ...review,
+        path: appendSasTokenToUrl(review.path)
+      };
+    }
+    return review;
+  });
+}

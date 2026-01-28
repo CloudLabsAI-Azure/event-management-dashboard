@@ -1,20 +1,27 @@
 // Simple Express server with Azure Blob Storage
 import dotenv from 'dotenv';
-dotenv.config();
+import { fileURLToPath } from 'url';
+import path from 'path';
 
+// Load .env from the backend directory FIRST
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Standard imports that don't depend on env vars
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
 import cron from 'node-cron';
 import cors from 'cors';
 import multer from 'multer';
 import csv from 'csv-parser';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import https from 'https';
-import { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl } from './blobStorageService.js';
-import { processEventSummaryLogs, downloadImage } from './azureDevOpsService.js';
+
+// Dynamic import for modules that need env vars
+const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, addSasTokensToReviews } = await import('./blobStorageService.js');
+const { processEventSummaryLogs, downloadImage } = await import('./azureDevOpsService.js');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -29,8 +36,6 @@ const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const upload = multer({ dest: UPLOAD_DIR });
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const DATA_PATH = path.join(__dirname, 'data.json');
 
 // Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
@@ -83,6 +88,10 @@ async function writeData(data, options = {}) {
 app.get('/api/data', async (req, res) => {
   try {
     const data = await readData();
+    // Add SAS tokens to blob image URLs for authenticated access
+    if (data.reviews && process.env.STORAGE_MODE === 'blob') {
+      data.reviews = addSasTokensToReviews(data.reviews);
+    }
     res.json(data);
   } catch (error) {
     console.error('Error fetching data:', error);
@@ -127,52 +136,69 @@ app.get('/api/last-updated', async (req, res) => {
   }
 });
 
-// Reviews screenshots upload (images or PDFs). Multiple files accepted.
-app.post('/api/upload-review', requireAdmin, upload.array('files', 10), async (req, res) => {
+// Reviews screenshots upload (images or PDFs). Multiple files accepted under one event name.
+app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (req, res) => {
   try {
     const files = Array.isArray(req.files) ? req.files : []
     const eventName = req.body.eventName || ''
     const data = await readData()
     data.reviews = Array.isArray(data.reviews) ? data.reviews : []
     
+    // Generate a group ID to link all images uploaded together
+    const groupId = `grp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    const uploadTimestamp = Date.now();
+    
     const saved = [];
-    for (const f of files) {
-      let imagePath, blobUrl = null, storedIn = 'local';
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      let imagePath, storedIn = 'local';
+      
+      // Generate unique filename with original extension
+      const ext = path.extname(f.originalname) || '.png';
+      const uniqueName = `upload_${uploadTimestamp}_${i}${ext}`;
       
       if (process.env.STORAGE_MODE === 'blob') {
         try {
           // Read file buffer and upload to blob
           const fileBuffer = fs.readFileSync(f.path);
-          blobUrl = await uploadImageToBlob(fileBuffer, path.basename(f.path), f.mimetype);
+          const blobUrl = await uploadImageToBlob(fileBuffer, uniqueName, f.mimetype);
           imagePath = blobUrl;
           storedIn = 'blob';
           // Delete local temp file after blob upload
           fs.unlinkSync(f.path);
-          console.log(`Uploaded to blob: ${f.originalname}`);
+          console.log(`Uploaded to blob: ${f.originalname} -> ${uniqueName}`);
         } catch (blobErr) {
           console.error(`Blob upload failed, keeping local:`, blobErr.message);
-          imagePath = `/uploads/${path.basename(f.path)}`;
+          // Rename temp file to unique name
+          const localPath = path.join(UPLOAD_DIR, uniqueName);
+          fs.renameSync(f.path, localPath);
+          imagePath = `/uploads/${uniqueName}`;
         }
       } else {
-        imagePath = `/uploads/${path.basename(f.path)}`;
+        // Rename temp file to unique name for local storage
+        const localPath = path.join(UPLOAD_DIR, uniqueName);
+        fs.renameSync(f.path, localPath);
+        imagePath = `/uploads/${uniqueName}`;
       }
       
       saved.push({
-        id: `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+        id: `r_${uploadTimestamp}_${i}_${Math.random().toString(36).slice(2,6)}`,
         originalName: f.originalname,
         eventName: eventName.trim() || f.originalname,
         mime: f.mimetype,
         size: f.size,
         path: imagePath,
-        blobUrl: blobUrl,
         storedIn: storedIn,
-        uploadedAt: Date.now(),
+        uploadedAt: uploadTimestamp,
+        groupId: groupId,  // Links multiple images uploaded together
+        imageIndex: i,     // Order within the group
+        totalInGroup: files.length
       });
     }
     
     data.reviews.push(...saved)
     await writeData(data)
-    return res.json({ success: true, items: saved })
+    return res.json({ success: true, items: saved, groupId })
   } catch (err) {
     console.error('upload-review error', err)
     return res.status(500).json({ success: false, error: 'upload failed' })
