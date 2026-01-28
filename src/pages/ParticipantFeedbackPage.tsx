@@ -39,8 +39,18 @@ export default function ParticipantFeedbackPage() {
   // Helper to get full image URL
   const getImageUrl = (path: string) => {
     if (!path) return ''
-    // If path already has http/https, return as-is
-    if (path.startsWith('http')) return path
+    // If path already has http/https
+    if (path.startsWith('http')) {
+      // Fix for blob URLs with double container name bug
+      // Old bug stored: /mseventscatalogcontainer/uploads/ but actual path is /mseventscatalogcontainer/mseventscatalogcontainer/uploads/
+      if (path.includes('experienceazure.blob.core.windows.net/mseventscatalogcontainer/uploads/')) {
+        return path.replace(
+          'experienceazure.blob.core.windows.net/mseventscatalogcontainer/uploads/',
+          'experienceazure.blob.core.windows.net/mseventscatalogcontainer/mseventscatalogcontainer/uploads/'
+        )
+      }
+      return path
+    }
     // Otherwise prepend API base URL
     const base = getApiBase()
     return base ? `${base}${path}` : path

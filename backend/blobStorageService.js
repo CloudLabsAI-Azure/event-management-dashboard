@@ -1,4 +1,4 @@
-import { BlobServiceClient } from '@azure/storage-blob';
+import { ContainerClient } from '@azure/storage-blob';
 
 // Get SAS URL from environment variable
 const BLOB_CONTAINER_URL = process.env.AZURE_BLOB_SAS_URL || '';
@@ -21,10 +21,8 @@ function parseContainerUrl(url) {
 
 const { baseUrl, sasToken } = parseContainerUrl(BLOB_CONTAINER_URL);
 
-// Create BlobServiceClient with SAS token
-const blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
-const containerName = baseUrl.split('/').pop();
-const containerClient = blobServiceClient.getContainerClient(containerName);
+// Create ContainerClient directly with the full SAS URL (correct approach for Container SAS)
+const containerClient = new ContainerClient(BLOB_CONTAINER_URL);
 const blobClient = containerClient.getBlobClient(BLOB_NAME);
 const blockBlobClient = blobClient.getBlockBlobClient();
 
