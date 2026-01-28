@@ -218,9 +218,20 @@ export async function uploadImageToBlob(imageBuffer, fileName, contentType = 'im
 export async function deleteImageFromBlob(blobUrl) {
   try {
     // Extract blob path from URL or use as-is if it's already a path
+    // URL format: https://...blob.../mseventscatalogcontainer/mseventscatalogcontainer/uploads/filename.png
+    // We need the path relative to containerClient which is: uploads/filename.png
     let blobPath = blobUrl;
+    
     if (blobUrl.includes(baseUrl)) {
+      // Remove baseUrl and containerName prefix, plus any SAS token
+      // baseUrl = https://...blob.../mseventscatalogcontainer
+      // Full path in URL: mseventscatalogcontainer/uploads/filename.png
+      // We need: uploads/filename.png (containerClient adds the containerName)
       blobPath = blobUrl.replace(`${baseUrl}/`, '').split('?')[0];
+      // Remove the containerName prefix if present (containerClient will add it)
+      if (blobPath.startsWith(`${containerName}/`)) {
+        blobPath = blobPath.substring(containerName.length + 1);
+      }
     } else if (blobUrl.startsWith('/')) {
       blobPath = blobUrl.substring(1); // Remove leading slash
     }

@@ -143,7 +143,7 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 10), async (r
         try {
           // Read file buffer and upload to blob
           const fileBuffer = fs.readFileSync(f.path);
-          blobUrl = await uploadImageToBlob(path.basename(f.path), fileBuffer, f.mimetype);
+          blobUrl = await uploadImageToBlob(fileBuffer, path.basename(f.path), f.mimetype);
           imagePath = blobUrl;
           storedIn = 'blob';
           // Delete local temp file after blob upload
@@ -1191,7 +1191,7 @@ app.listen(PORT, () => {
             let imagePath, blobUrl = null, storedIn = 'local';
             if (process.env.STORAGE_MODE === 'blob') {
               try {
-                blobUrl = await uploadImageToBlob(fileName, imageData, `image/${ext}`);
+                blobUrl = await uploadImageToBlob(imageData, fileName, `image/${ext}`);
                 imagePath = blobUrl;
                 storedIn = 'blob';
                 console.log(`[Scheduled] Uploaded to blob: ${fileName}`);
