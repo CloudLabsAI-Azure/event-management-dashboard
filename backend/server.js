@@ -1,7 +1,11 @@
 // Simple Express server with Azure Blob Storage
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import cron from 'node-cron';
 import cors from 'cors';
 import multer from 'multer';
 import csv from 'csv-parser';
@@ -9,7 +13,8 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import https from 'https';
-import { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists } from './blobStorageService.js';
+import { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl } from './blobStorageService.js';
+import { processEventSummaryLogs, downloadImage } from './azureDevOpsService.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -129,15 +134,42 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 10), async (r
     const eventName = req.body.eventName || ''
     const data = await readData()
     data.reviews = Array.isArray(data.reviews) ? data.reviews : []
-    const saved = files.map(f => ({
-      id: `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
-      originalName: f.originalname,
-      eventName: eventName.trim() || f.originalname, // Use event name or fallback to filename
-      mime: f.mimetype,
-      size: f.size,
-      path: `/uploads/${path.basename(f.path)}`,
-      uploadedAt: Date.now(),
-    }))
+    
+    const saved = [];
+    for (const f of files) {
+      let imagePath, blobUrl = null, storedIn = 'local';
+      
+      if (process.env.STORAGE_MODE === 'blob') {
+        try {
+          // Read file buffer and upload to blob
+          const fileBuffer = fs.readFileSync(f.path);
+          blobUrl = await uploadImageToBlob(path.basename(f.path), fileBuffer, f.mimetype);
+          imagePath = blobUrl;
+          storedIn = 'blob';
+          // Delete local temp file after blob upload
+          fs.unlinkSync(f.path);
+          console.log(`Uploaded to blob: ${f.originalname}`);
+        } catch (blobErr) {
+          console.error(`Blob upload failed, keeping local:`, blobErr.message);
+          imagePath = `/uploads/${path.basename(f.path)}`;
+        }
+      } else {
+        imagePath = `/uploads/${path.basename(f.path)}`;
+      }
+      
+      saved.push({
+        id: `r_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+        originalName: f.originalname,
+        eventName: eventName.trim() || f.originalname,
+        mime: f.mimetype,
+        size: f.size,
+        path: imagePath,
+        blobUrl: blobUrl,
+        storedIn: storedIn,
+        uploadedAt: Date.now(),
+      });
+    }
+    
     data.reviews.push(...saved)
     await writeData(data)
     return res.json({ success: true, items: saved })
@@ -171,11 +203,18 @@ app.delete('/api/reviews/:id', requireAdmin, async (req, res) => {
     const deletedReview = data.reviews.splice(reviewIndex, 1)[0]
     await writeData(data)
     
-    // Optionally delete the file from filesystem
+    // Delete the file from blob storage or filesystem
     try {
-      const filePath = path.join(process.cwd(), 'uploads', path.basename(deletedReview.path))
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath)
+      if (deletedReview.storedIn === 'blob') {
+        // Delete from Azure Blob Storage
+        await deleteImageFromBlob(deletedReview.originalName);
+        console.log(`Deleted from blob: ${deletedReview.originalName}`);
+      } else {
+        // Delete from local filesystem
+        const filePath = path.join(process.cwd(), 'uploads', path.basename(deletedReview.path))
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath)
+        }
       }
     } catch (fileErr) {
       console.warn('Could not delete file:', fileErr.message)
@@ -753,6 +792,279 @@ app.get('/api/github-release-notes', async (req, res) => {
   }
 });
 
+// Fix eventName format for existing DevOps items (migration endpoint)
+app.post('/api/devops/fix-titles', requireAdmin, async (req, res) => {
+  try {
+    const data = await readData();
+    data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
+    
+    let fixed = 0;
+    for (const review of data.reviews) {
+      if (review.source === 'devops' && review.workItemId) {
+        // Format event date
+        let formattedDate = '';
+        if (review.eventDate) {
+          try {
+            const d = new Date(review.eventDate);
+            formattedDate = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+          } catch {
+            formattedDate = String(review.eventDate).split('T')[0] || '';
+          }
+        }
+        
+        // Build new eventName in correct format: WI-{id} | {date} | {title}
+        const eventNameParts = [`WI-${review.workItemId}`];
+        if (formattedDate) eventNameParts.push(formattedDate);
+        if (review.workItemTitle) eventNameParts.push(review.workItemTitle);
+        
+        const newEventName = eventNameParts.join(' | ');
+        
+        // Only update if different
+        if (review.eventName !== newEventName) {
+          review.eventName = newEventName;
+          fixed++;
+        }
+      }
+    }
+    
+    if (fixed > 0) {
+      await writeData(data);
+    }
+    
+    res.json({ success: true, fixed, message: `Fixed ${fixed} DevOps items` });
+  } catch (err) {
+    console.error('❌ Error fixing DevOps titles:', err.message);
+    res.status(500).json({ error: 'Failed to fix titles', details: err.message });
+  }
+});
+
+// Azure DevOps - Get sync status
+app.get('/api/devops/sync-status', requireAuth, async (req, res) => {
+  try {
+    const data = await readData();
+    const syncInfo = data._devopsSync || {};
+    res.json({
+      lastSync: syncInfo.lastSync || null,
+      lastResult: syncInfo.lastResult || null,
+      nextScheduledSync: syncInfo.nextScheduledSync || null
+    });
+  } catch (err) {
+    console.error('Error getting sync status:', err.message);
+    res.status(500).json({ error: 'Failed to get sync status' });
+  }
+});
+
+// Azure DevOps - Import feedback images from Event Summary Log work items
+// Follows DEVOPS_INTEGRATION_PLAN.md specifications
+app.post('/api/devops/import-screenshots', requireAdmin, async (req, res) => {
+  try {
+    const org = process.env.AZURE_DEVOPS_ORG;
+    const project = process.env.AZURE_DEVOPS_PROJECT;
+    const pat = process.env.AZURE_DEVOPS_PAT;
+    const feedbackField = process.env.AZURE_DEVOPS_FEEDBACK_FIELD || 'Custom.Feedback';
+    const eventDateField = process.env.AZURE_DEVOPS_EVENTDATE_FIELD || 'Custom.EventDate';
+    const eventIdField = process.env.AZURE_DEVOPS_EVENTID_FIELD || 'Custom.EventID';
+    
+    if (!org || !project || !pat) {
+      return res.status(400).json({ 
+        error: 'DevOps configuration missing. Set AZURE_DEVOPS_ORG, AZURE_DEVOPS_PROJECT, and AZURE_DEVOPS_PAT environment variables' 
+      });
+    }
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`🔄 DEVOPS FEEDBACK IMPORT - ${new Date().toISOString()}`);
+    console.log(`${'='.repeat(60)}`);
+    
+    // Get existing data to check last sync time
+    const data = await readData();
+    data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
+    data._devopsSync = data._devopsSync || {};
+    
+    const lastSyncDate = data._devopsSync.lastSync || null;
+    console.log(`📅 Last sync: ${lastSyncDate || 'Never (full sync)'}`);    
+    
+    // Get locally tracked processed work item IDs
+    data._devopsSync.processedWorkItemIds = data._devopsSync.processedWorkItemIds || [];
+    const processedIds = data._devopsSync.processedWorkItemIds;
+    console.log(`📋 Already processed locally: ${processedIds.length} work items`);
+    
+    // Process Event Summary Log work items
+    const result = await processEventSummaryLogs(
+      org, 
+      project, 
+      pat,
+      feedbackField,
+      eventDateField,
+      eventIdField,
+      lastSyncDate,
+      50, // limit
+      processedIds // pass locally tracked IDs
+    );
+    
+    if (result.items.length === 0) {
+      // Update sync time and processed IDs even if no items
+      data._devopsSync.lastSync = result.syncTime;
+      data._devopsSync.lastResult = { imported: 0, processed: result.processed, skipped: result.skipped };
+      // Add newly processed work item IDs to local tracking
+      if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+        data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
+      }
+      await writeData(data);
+      
+      return res.json({ 
+        success: true, 
+        imported: 0,
+        processed: result.processed,
+        skipped: result.skipped,
+        errors: result.errors,
+        message: 'No images found in Event Summary Log feedback fields' 
+      });
+    }
+    
+    // Download and save each image
+    const existingPaths = new Set(data.reviews.map(r => r.path));
+    const savedImages = [];
+    let duplicates = 0;
+    let downloadErrors = 0;
+    
+    for (const item of result.items) {
+      try {
+        // Create unique filename
+        const ext = item.imageUrl.match(/\.(png|jpg|jpeg|gif|webp|bmp)$/i)?.[1] || 'png';
+        const fileName = `devops_${item.workItemId}_${item.imageIndex}_${Date.now()}.${ext}`;
+        
+        // Skip if already imported (check by work item ID and index)
+        const existingKey = `devops_${item.workItemId}_${item.imageIndex}`;
+        const isDuplicate = data.reviews.some(r => 
+          r.source === 'devops' && 
+          r.workItemId === item.workItemId && 
+          r.imageIndex === item.imageIndex
+        );
+        
+        if (isDuplicate) {
+          console.log(`⏭️ Skipping duplicate: WI-${item.workItemId} image ${item.imageIndex}`);
+          duplicates++;
+          continue;
+        }
+        
+        // Download image
+        console.log(`📥 Downloading: ${item.imageUrl.substring(0, 80)}...`);
+        const imageData = await downloadImage(item.imageUrl, pat);
+        
+        if (!imageData || imageData.length === 0) {
+          console.log(`⚠️ Empty image data for WI-${item.workItemId}`);
+          downloadErrors++;
+          continue;
+        }
+        
+        // Save to blob storage or local based on STORAGE_MODE
+        let uploadPath;
+        const mimeType = `image/${ext}`;
+        
+        if (STORAGE_MODE === 'blob') {
+          // Upload to Azure Blob Storage
+          const blobUrl = await uploadImageToBlob(imageData, fileName, mimeType);
+          uploadPath = blobUrl;
+          console.log(`☁️ Uploaded to blob: ${fileName}`);
+        } else {
+          // Save to local uploads folder
+          const filePath = path.join(UPLOAD_DIR, fileName);
+          fs.writeFileSync(filePath, imageData);
+          uploadPath = `/uploads/${fileName}`;
+        }
+        
+        // Format event date for display (extract date portion if ISO string)
+        let formattedDate = '';
+        if (item.eventDate) {
+          try {
+            const d = new Date(item.eventDate);
+            formattedDate = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+          } catch {
+            formattedDate = String(item.eventDate).split('T')[0] || item.eventDate;
+          }
+        }
+        
+        // Create review item with EventID, Event Date, and Title combined
+        // Format: "{eventId} | {date} | {title}"
+        const eventNameParts = [];
+        if (item.eventId) eventNameParts.push(item.eventId);
+        if (formattedDate) eventNameParts.push(formattedDate);
+        if (item.workItemTitle) eventNameParts.push(item.workItemTitle);
+        
+        const reviewItem = {
+          id: `devops_${item.workItemId}_${Date.now()}_${savedImages.length}`,
+          originalName: fileName,
+          eventName: eventNameParts.join(' | '),
+          eventId: item.eventId,
+          eventDate: item.eventDate,
+          workItemTitle: item.workItemTitle,
+          mime: mimeType,
+          size: imageData.length,
+          path: uploadPath,
+          uploadedAt: Date.now(),
+          source: 'devops',
+          workItemId: item.workItemId,
+          imageIndex: item.imageIndex,
+          storageType: STORAGE_MODE
+        };
+        
+        savedImages.push(reviewItem);
+        console.log(`✅ Saved: ${fileName} (${(imageData.length / 1024).toFixed(1)} KB)`);
+        
+      } catch (err) {
+        console.error(`❌ Failed to download image from WI-${item.workItemId}:`, err.message);
+        downloadErrors++;
+      }
+    }
+    
+    // Save reviews and update sync metadata
+    if (savedImages.length > 0) {
+      data.reviews.push(...savedImages);
+    }
+    
+    // Add newly processed work item IDs to local tracking
+    if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+      data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
+    }
+    
+    data._devopsSync.lastSync = result.syncTime;
+    data._devopsSync.lastResult = {
+      imported: savedImages.length,
+      duplicates,
+      downloadErrors,
+      processed: result.processed,
+      skipped: result.skipped,
+      workItemErrors: result.errors.length
+    };
+    
+    await writeData(data);
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`✅ IMPORT COMPLETE`);
+    console.log(`   Images imported: ${savedImages.length}`);
+    console.log(`   Work items processed: ${result.processed}`);
+    console.log(`   Work items skipped (no images): ${result.skipped}`);
+    console.log(`   Duplicates skipped: ${duplicates}`);
+    console.log(`   Download errors: ${downloadErrors}`);
+    console.log(`${'='.repeat(60)}\n`);
+    
+    res.json({ 
+      success: true, 
+      imported: savedImages.length,
+      processed: result.processed,
+      skipped: result.skipped,
+      duplicates,
+      downloadErrors,
+      errors: result.errors,
+      syncTime: result.syncTime
+    });
+    
+  } catch (err) {
+    console.error('❌ DevOps import error:', err);
+    res.status(500).json({ error: 'Failed to import from DevOps', details: err.message });
+  }
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -839,6 +1151,114 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
+  
+  // Schedule daily DevOps sync at 6:00 AM
+  const syncSchedule = process.env.DEVOPS_SYNC_SCHEDULE || '0 6 * * *'; // Default: 6 AM daily
+  if (process.env.AZURE_DEVOPS_ORG && process.env.AZURE_DEVOPS_PROJECT && process.env.AZURE_DEVOPS_PAT) {
+    cron.schedule(syncSchedule, async () => {
+      console.log('\n🕐 Running scheduled DevOps feedback sync...');
+      try {
+        const org = process.env.AZURE_DEVOPS_ORG;
+        const project = process.env.AZURE_DEVOPS_PROJECT;
+        const pat = process.env.AZURE_DEVOPS_PAT;
+        const feedbackField = process.env.AZURE_DEVOPS_FEEDBACK_FIELD || 'Custom.Feedback';
+        const eventDateField = process.env.AZURE_DEVOPS_EVENTDATE_FIELD || 'Custom.EventDate';
+        const eventIdField = process.env.AZURE_DEVOPS_EVENTID_FIELD || 'Custom.EventID';
+        
+        const data = await readData();
+        data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
+        data._devopsSync = data._devopsSync || {};
+        data._devopsSync.processedWorkItemIds = data._devopsSync.processedWorkItemIds || [];
+        
+        const lastSyncDate = data._devopsSync.lastSync || null;
+        const processedIds = data._devopsSync.processedWorkItemIds;
+        const result = await processEventSummaryLogs(org, project, pat, feedbackField, eventDateField, eventIdField, lastSyncDate, 50, processedIds);
+        
+        // Download and save images
+        for (const item of result.items) {
+          try {
+            const isDuplicate = data.reviews.some(r => 
+              r.source === 'devops' && r.workItemId === item.workItemId && r.imageIndex === item.imageIndex
+            );
+            if (isDuplicate) continue;
+            
+            const ext = item.imageUrl.match(/\.(png|jpg|jpeg|gif|webp|bmp)$/i)?.[1] || 'png';
+            const fileName = `devops_${item.workItemId}_${item.imageIndex}_${Date.now()}.${ext}`;
+            const imageData = await downloadImage(item.imageUrl, pat);
+            if (!imageData || imageData.length === 0) continue;
+            
+            // Store in blob or local based on STORAGE_MODE
+            let imagePath, blobUrl = null, storedIn = 'local';
+            if (process.env.STORAGE_MODE === 'blob') {
+              try {
+                blobUrl = await uploadImageToBlob(fileName, imageData, `image/${ext}`);
+                imagePath = blobUrl;
+                storedIn = 'blob';
+                console.log(`[Scheduled] Uploaded to blob: ${fileName}`);
+              } catch (blobErr) {
+                console.error(`[Scheduled] Blob upload failed, falling back to local:`, blobErr.message);
+                const localPath = path.join(UPLOAD_DIR, fileName);
+                fs.writeFileSync(localPath, imageData);
+                imagePath = `/uploads/${fileName}`;
+              }
+            } else {
+              const localPath = path.join(UPLOAD_DIR, fileName);
+              fs.writeFileSync(localPath, imageData);
+              imagePath = `/uploads/${fileName}`;
+            }
+            
+            let formattedDate = '';
+            if (item.eventDate) {
+              try {
+                const d = new Date(item.eventDate);
+                formattedDate = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+              } catch { formattedDate = ''; }
+            }
+            
+            const eventNameParts = [];
+            if (item.eventId) eventNameParts.push(item.eventId);
+            if (formattedDate) eventNameParts.push(formattedDate);
+            if (item.workItemTitle) eventNameParts.push(item.workItemTitle);
+            
+            data.reviews.push({
+              id: `devops_${item.workItemId}_${Date.now()}_${data.reviews.length}`,
+              originalName: fileName,
+              eventName: eventNameParts.join(' | '),
+              eventId: item.eventId,
+              eventDate: item.eventDate,
+              workItemTitle: item.workItemTitle,
+              mime: `image/${ext}`,
+              size: imageData.length,
+              path: imagePath,
+              blobUrl: blobUrl,
+              storedIn: storedIn,
+              uploadedAt: Date.now(),
+              source: 'devops',
+              workItemId: item.workItemId,
+              imageIndex: item.imageIndex
+            });
+          } catch (err) {
+            console.error(`Scheduled sync: Failed to download image from WI-${item.workItemId}:`, err.message);
+          }
+        }
+        
+        data._devopsSync.lastSync = result.syncTime;
+        data._devopsSync.lastResult = { imported: result.items.length, processed: result.processed, skipped: result.skipped };
+        // Track processed work item IDs locally
+        if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+          data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
+        }
+        await writeData(data);
+        
+        console.log(`✅ Scheduled sync complete: ${result.items.length} images imported`);
+      } catch (err) {
+        console.error('❌ Scheduled DevOps sync failed:', err.message);
+      }
+    });
+    console.log(`📅 DevOps sync scheduled: ${syncSchedule}`);
+  } else {
+    console.log('⚠️ DevOps sync not scheduled (missing configuration)');
+  }
 });
 
 // If a client build exists (Vite -> dist), serve it as static files in production

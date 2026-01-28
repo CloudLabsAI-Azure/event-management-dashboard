@@ -1,11 +1,18 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 
-// Hardcoded SAS URL for the blob container
-const BLOB_CONTAINER_URL = 'https://experienceazure.blob.core.windows.net/mseventscatalogcontainer?sp=racwdli&st=2026-01-27T08:05:41Z&se=2026-11-01T16:20:41Z&sv=2024-11-04&sr=c&sig=SvFobXWmaERPhMc3Hl2mxRmHDovRo3YiJVDsQEbuekQ%3D';
+// Get SAS URL from environment variable
+const BLOB_CONTAINER_URL = process.env.AZURE_BLOB_SAS_URL || '';
 const BLOB_NAME = 'data.json';
+const UPLOADS_FOLDER = 'uploads'; // Virtual folder for image uploads
+
+// Check if blob storage is configured
+if (!BLOB_CONTAINER_URL) {
+  console.warn('⚠️  AZURE_BLOB_SAS_URL not configured. Blob storage operations will fail.');
+}
 
 // Parse container URL to get base URL and SAS token
 function parseContainerUrl(url) {
+  if (!url) return { baseUrl: '', sasToken: '' };
   const urlParts = url.split('?');
   const baseUrl = urlParts[0];
   const sasToken = urlParts[1] || '';
@@ -168,4 +175,94 @@ async function streamToBuffer(readableStream) {
     });
     readableStream.on('error', reject);
   });
+}
+
+/**
+ * Upload an image to Azure Blob Storage
+ * @param {Buffer} imageBuffer - Image data buffer
+ * @param {string} fileName - Name for the blob (e.g., 'devops_12345_0_1234567890.png')
+ * @param {string} contentType - MIME type (e.g., 'image/png')
+ * @returns {Promise<string>} Public URL of the uploaded blob
+ */
+export async function uploadImageToBlob(imageBuffer, fileName, contentType = 'image/png') {
+  try {
+    const blobPath = `${UPLOADS_FOLDER}/${fileName}`;
+    const imageBlobClient = containerClient.getBlockBlobClient(blobPath);
+    
+    console.log(`📤 Uploading image to blob: ${blobPath}`);
+    
+    await imageBlobClient.upload(imageBuffer, imageBuffer.length, {
+      blobHTTPHeaders: {
+        blobContentType: contentType
+      }
+    });
+    
+    // Return the public URL (without SAS token for public access, or with for private)
+    const publicUrl = `${baseUrl}/${blobPath}`;
+    console.log(`✅ Image uploaded: ${publicUrl}`);
+    
+    return publicUrl;
+  } catch (error) {
+    console.error('❌ Error uploading image to blob:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Delete an image from Azure Blob Storage
+ * @param {string} blobUrl - Full URL or path of the blob to delete
+ * @returns {Promise<boolean>} True if deleted, false if not found
+ */
+export async function deleteImageFromBlob(blobUrl) {
+  try {
+    // Extract blob path from URL or use as-is if it's already a path
+    let blobPath = blobUrl;
+    if (blobUrl.includes(baseUrl)) {
+      blobPath = blobUrl.replace(`${baseUrl}/`, '').split('?')[0];
+    } else if (blobUrl.startsWith('/')) {
+      blobPath = blobUrl.substring(1); // Remove leading slash
+    }
+    
+    const imageBlobClient = containerClient.getBlobClient(blobPath);
+    
+    console.log(`🗑️ Deleting image from blob: ${blobPath}`);
+    
+    const exists = await imageBlobClient.exists();
+    if (!exists) {
+      console.log(`⚠️ Image blob does not exist: ${blobPath}`);
+      return false;
+    }
+    
+    await imageBlobClient.delete();
+    console.log(`✅ Image deleted: ${blobPath}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error deleting image from blob:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Check if an image exists in blob storage
+ * @param {string} fileName - Name of the file (without uploads/ prefix)
+ * @returns {Promise<boolean>}
+ */
+export async function imageExistsInBlob(fileName) {
+  try {
+    const blobPath = `${UPLOADS_FOLDER}/${fileName}`;
+    const imageBlobClient = containerClient.getBlobClient(blobPath);
+    return await imageBlobClient.exists();
+  } catch (error) {
+    console.error('❌ Error checking image existence:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Get the public URL for an image in blob storage
+ * @param {string} fileName - Name of the file
+ * @returns {string} Public URL
+ */
+export function getImageBlobUrl(fileName) {
+  return `${baseUrl}/${UPLOADS_FOLDER}/${fileName}`;
 }

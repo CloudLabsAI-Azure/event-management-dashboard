@@ -70,7 +70,7 @@ const App = () => (
                 <Route path="/" element={<RootRedirect />} />
                 
                 {/* Login route */}
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={<Navigate to="/" replace />} />
                 
                 {/* Protected dashboard routes */}
                 <Route path="/dashboard" element={<ProtectedRoute />}>
