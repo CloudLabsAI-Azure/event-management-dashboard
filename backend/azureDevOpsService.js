@@ -47,8 +47,18 @@ export async function getEventSummaryLogs(organization, project, pat, lastSyncDa
   `;
   
   // If lastSyncDate provided, only get items changed since then
+  // Format date for WIQL - must be in format like '2026-01-28' or '2026-01-28T18:42:44Z' (no milliseconds)
   if (lastSyncDate) {
-    wiql += `  AND [System.ChangedDate] >= '${lastSyncDate}'`;
+    let formattedDate = lastSyncDate;
+    try {
+      const d = new Date(lastSyncDate);
+      // Format as YYYY-MM-DD for WIQL date comparison (most reliable)
+      formattedDate = d.toISOString().split('T')[0];
+    } catch (e) {
+      // Use as-is if parsing fails
+      console.warn('Could not parse lastSyncDate, using as-is:', lastSyncDate);
+    }
+    wiql += `  AND [System.ChangedDate] >= '${formattedDate}'`;
   }
   
   wiql += `
