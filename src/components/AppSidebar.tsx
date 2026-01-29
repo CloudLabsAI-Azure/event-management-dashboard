@@ -13,6 +13,7 @@ import {
   Shield,
   Megaphone,
   GraduationCap,
+  History,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "./AuthProvider"
@@ -44,6 +45,7 @@ const reportItems = [
 
 const settingsItems = [
   { title: "Users", url: "/dashboard/users", icon: Users, adminOnly: true },
+  { title: "Audit Log", url: "/dashboard/audit-log", icon: History, adminOnly: true },
 ]
 
 export function AppSidebar() {

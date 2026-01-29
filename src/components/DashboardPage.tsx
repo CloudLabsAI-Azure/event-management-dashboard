@@ -14,7 +14,6 @@ export function DashboardPage() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    // Dev bypass disabled for production - see DEV-BYPASS-CHANGES.md to re-enable
     if (!isLoading && (!isAuthenticated || !isAuthorized)) {
       navigate('/', { replace: true });
     }

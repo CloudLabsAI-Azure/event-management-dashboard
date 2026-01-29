@@ -190,5 +190,6 @@ git clean -f src/pages/LocalDevBypass.tsx
 
 ---
 
-**Status:** ✅ Active  
-**To Disable:** Delete this file and follow revert instructions above
+**Status:** ✅ Active (Re-enabled January 30, 2026)  
+**Data Source:** Azure Blob Storage (production data)  
+**To Disable:** Follow revert instructions above

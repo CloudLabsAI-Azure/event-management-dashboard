@@ -999,25 +999,17 @@
   ],
   "catalog": [
     {
-      "sr": 129,
-      "trackName": "tesstcataloghealth",
-      "eventDate": "tesstcataloghealth",
-      "status": "Completed",
-      "notesETA": "dome",
-      "type": "catalog",
-      "id": "3407981c9d136155"
-    },
-    {
-      "sr": 130,
+      "sr": 1,
       "trackTitle": "GitHub Copilot Innovation Workshop",
       "spanish": "Available",
-      "portuguese": "Available",
+      "portuguese": "In Progress",
       "type": "localizedTrack",
       "id": "a1b2c3d4e5f60001",
-      "lastUpdated": "2025-01-15"
+      "lastUpdated": "2025-01-15",
+      "lastTestDate": ""
     },
     {
-      "sr": 131,
+      "sr": 2,
       "trackTitle": "Build Intelligent Apps with Microsoft's Copilot Stack & Azure OpenAI",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1026,7 +1018,7 @@
       "lastUpdated": "2025-01-10"
     },
     {
-      "sr": 132,
+      "sr": 3,
       "trackTitle": "Get Started with OpenAI and Build Natural Language Solution",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1035,7 +1027,7 @@
       "lastUpdated": "2025-01-08"
     },
     {
-      "sr": 133,
+      "sr": 4,
       "trackTitle": "Cloud Native Applications",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1044,7 +1036,7 @@
       "lastUpdated": "2025-01-12"
     },
     {
-      "sr": 134,
+      "sr": 5,
       "trackTitle": "Use Azure OpenAI Like A Pro to Build Powerful AI Applications",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1053,7 +1045,7 @@
       "lastUpdated": "2025-01-05"
     },
     {
-      "sr": 135,
+      "sr": 6,
       "trackTitle": "Intelligent App Development with Microsoft Copilot Stack",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1062,7 +1054,7 @@
       "lastUpdated": "2025-01-18"
     },
     {
-      "sr": 136,
+      "sr": 7,
       "trackTitle": "GitHub Copilot – Hackathon",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1071,7 +1063,7 @@
       "lastUpdated": "2025-01-20"
     },
     {
-      "sr": 137,
+      "sr": 8,
       "trackTitle": "Introduction To Building AI Apps",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1080,7 +1072,7 @@
       "lastUpdated": "2025-01-14"
     },
     {
-      "sr": 138,
+      "sr": 9,
       "trackTitle": "Activate GenAI with Azure",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1089,7 +1081,7 @@
       "lastUpdated": "2025-01-11"
     },
     {
-      "sr": 139,
+      "sr": 10,
       "trackTitle": "Low-Code for Pro-Dev in a Day",
       "spanish": "Available",
       "portuguese": "Available",
@@ -1098,15 +1090,7 @@
       "lastUpdated": "2025-01-09"
     },
     {
-      "sr": 140,
-      "trackTitle": "devroad25",
-      "phase": "Release-ready",
-      "eta": "NA",
-      "type": "roadmapItem",
-      "id": "5f7af9fc50456f65"
-    },
-    {
-      "sr": 141,
+      "sr": 11,
       "trackTitle": "Q3-1 Databricks",
       "phase": "Development",
       "eta": "NA",
@@ -1117,7 +1101,7 @@
       "approvalDate": "2025-02-01"
     },
     {
-      "sr": 142,
+      "sr": 12,
       "trackTitle": "Q3-2 MSO with Unified Platform Agent Hackathon",
       "phase": "Development",
       "eta": "NA",
@@ -1128,7 +1112,7 @@
       "approvalDate": "2025-02-15"
     },
     {
-      "sr": 143,
+      "sr": 13,
       "trackTitle": "Q3-3 AI Assisted Development (VibeCoding)",
       "phase": "Development",
       "eta": "NA",
@@ -1139,7 +1123,7 @@
       "approvalDate": "2025-03-01"
     },
     {
-      "sr": 144,
+      "sr": 14,
       "trackTitle": "Q3-5 Defender for Cloud - AI Workload Protection",
       "phase": "Development",
       "eta": "NA",
@@ -1150,7 +1134,7 @@
       "approvalDate": "2025-03-10"
     },
     {
-      "sr": 145,
+      "sr": 15,
       "trackTitle": "Q2-3-Copilot Studio",
       "phase": "Testing",
       "eta": "NA",
@@ -1161,7 +1145,7 @@
       "approvalDate": "2025-01-20"
     },
     {
-      "sr": 146,
+      "sr": 16,
       "trackName": "Skills Navigator - Fabric - Analyst In a Day",
       "eventDate": "2026-01-26",
       "status": "Completed",
@@ -1170,7 +1154,7 @@
       "id": "521a52b4c1716a4c"
     },
     {
-      "sr": 147,
+      "sr": 17,
       "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
       "eventDate": "2026-01-26",
       "status": "Completed",
@@ -1179,7 +1163,7 @@
       "id": "1c44adf5fbeb8cc1"
     },
     {
-      "sr": 148,
+      "sr": 18,
       "trackName": "Accelerator: AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
       "eventDate": "2026-01-26",
       "status": "Completed",
@@ -1188,7 +1172,7 @@
       "id": "cd653d08928ba9d4"
     },
     {
-      "sr": 149,
+      "sr": 19,
       "trackName": "Webinar: Integre o Azure OpenAI em seu Aplicativo",
       "eventDate": "2026-01-26",
       "status": "Completed",
@@ -1197,7 +1181,7 @@
       "id": "5554778f42685687"
     },
     {
-      "sr": 150,
+      "sr": 20,
       "trackName": "Skills Navigator - Fabric - Analyst In a Day",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1206,7 +1190,7 @@
       "id": "d7152f4f4cd93a54"
     },
     {
-      "sr": 151,
+      "sr": 21,
       "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1215,7 +1199,7 @@
       "id": "8ad9f6fc16cf2d22"
     },
     {
-      "sr": 152,
+      "sr": 22,
       "trackName": "GitHub Copilot Innovation Workshop",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1224,7 +1208,7 @@
       "id": "93b1d9f94db4b82d"
     },
     {
-      "sr": 153,
+      "sr": 23,
       "trackName": "GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across the SDLC",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1233,7 +1217,7 @@
       "id": "c9b6cb71455caf01"
     },
     {
-      "sr": 154,
+      "sr": 24,
       "trackName": "Journée de la sécurité Microsoft pour les universités du Québec : Innover pour un avenir numérique plus sûr",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1242,7 +1226,7 @@
       "id": "d3953bac42e28843"
     },
     {
-      "sr": 155,
+      "sr": 25,
       "trackName": "Microsoft Defender for Cloud - Security Posture Management",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1251,7 +1235,7 @@
       "id": "3452baef5f70c17d"
     },
     {
-      "sr": 156,
+      "sr": 26,
       "trackName": "Azure Landing Zone",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1260,7 +1244,7 @@
       "id": "f1c4e78603ed7f22"
     },
     {
-      "sr": 157,
+      "sr": 27,
       "trackName": "Accelerator: Hands-on with Microsoft Foundry and Agent Frameworks",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1269,7 +1253,7 @@
       "id": "fe901f1d30648977"
     },
     {
-      "sr": 158,
+      "sr": 28,
       "trackName": "GitHub Copilot Innovation Workshop",
       "eventDate": "2026-01-27",
       "status": "Completed",
@@ -1278,7 +1262,7 @@
       "id": "a1c8b231bfe63a56"
     },
     {
-      "sr": 159,
+      "sr": 29,
       "trackName": "Explorer l'IA: opportunités et impact pour les universités québécoises",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1287,7 +1271,7 @@
       "id": "c4f3c57f12da87a1"
     },
     {
-      "sr": 160,
+      "sr": 30,
       "trackName": "Skills Navigator | Fabric - Analyst In a Day",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1296,7 +1280,7 @@
       "id": "73baa95669015427"
     },
     {
-      "sr": 161,
+      "sr": 31,
       "trackName": "Skills Navigator | Fabric - Analyst In a Day",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1305,7 +1289,7 @@
       "id": "2105970e0e0e6098"
     },
     {
-      "sr": 162,
+      "sr": 32,
       "trackName": "Seguridad 360° para la Era de la IA: Protege tus Plataformas, Apps y Agentes",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1314,7 +1298,7 @@
       "id": "6be6442f101b8d15"
     },
     {
-      "sr": 163,
+      "sr": 33,
       "trackName": "Microsoft Azure AI Agent Open Hack | In-Person in Boston, MA",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1323,7 +1307,7 @@
       "id": "503f1453322fe17b"
     },
     {
-      "sr": 164,
+      "sr": 34,
       "trackName": "AI-Assisted Development with GitHub Copilot",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1332,7 +1316,7 @@
       "id": "d288a0b52f0c5949"
     },
     {
-      "sr": 165,
+      "sr": 35,
       "trackName": "Data Security Immersion Workshop - On the Brink",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1341,7 +1325,7 @@
       "id": "b2d115d7a801250e"
     },
     {
-      "sr": 166,
+      "sr": 36,
       "trackName": "Accelerator: Build Agentic AI with Semantic Kernel and Graph RAG on PostgreSQL",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1350,7 +1334,7 @@
       "id": "9da37fa5d90dee87"
     },
     {
-      "sr": 167,
+      "sr": 37,
       "trackName": "Train-the-Trainer: Mastering GitHub Copilot Across the SDLC",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1359,7 +1343,7 @@
       "id": "c4856417b5c32a46"
     },
     {
-      "sr": 168,
+      "sr": 38,
       "trackName": "GitHub Copilot Innovation Workshop",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1368,7 +1352,7 @@
       "id": "467dcfa7958e4d9a"
     },
     {
-      "sr": 169,
+      "sr": 39,
       "trackName": "AI-Assisted Development with GitHub Copilot",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1377,7 +1361,7 @@
       "id": "8b3ce3b91f5f200a"
     },
     {
-      "sr": 170,
+      "sr": 40,
       "trackName": "Unlock the Power of Chat-GPT Gov Edition on Azure",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1386,7 +1370,7 @@
       "id": "131894d8442b8d46"
     },
     {
-      "sr": 171,
+      "sr": 41,
       "trackName": "NIQ - Mastering GitHub Copilot Across the SDLC",
       "eventDate": "2026-01-28",
       "status": "Completed",
@@ -1395,7 +1379,7 @@
       "id": "7342623bdaf72d74"
     },
     {
-      "sr": 172,
+      "sr": 42,
       "trackName": "Cloud Security: Microsoft Azure Infrastructure and Application Security",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1404,7 +1388,7 @@
       "id": "2dbfc4dd381cb156"
     },
     {
-      "sr": 173,
+      "sr": 43,
       "trackName": "AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1413,7 +1397,7 @@
       "id": "7b9b20acf833240b"
     },
     {
-      "sr": 174,
+      "sr": 44,
       "trackName": "AI in HiEd Discovery Days - Ottawa",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1422,7 +1406,7 @@
       "id": "c5cc41cb944a036d"
     },
     {
-      "sr": 175,
+      "sr": 45,
       "trackName": "GitHub Copilot Innovation Workshop - Mastering GitHub Copilot Across the SDLC",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1431,7 +1415,7 @@
       "id": "3585648d379087f3"
     },
     {
-      "sr": 176,
+      "sr": 46,
       "trackName": "Microsoft Azure AI Agents: Hands-on Lab",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1440,7 +1424,7 @@
       "id": "6774220c14f2abd1"
     },
     {
-      "sr": 177,
+      "sr": 47,
       "trackName": "AI Agents using Microsoft Agent Framework",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1449,7 +1433,7 @@
       "id": "3020cbf45824c91a"
     },
     {
-      "sr": 178,
+      "sr": 48,
       "trackName": "Événement hebdomadaire : Découverte de Microsoft 365 Copilot Chat",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1458,7 +1442,7 @@
       "id": "2b785b0151f84612"
     },
     {
-      "sr": 179,
+      "sr": 49,
       "trackName": "Accelerator: SQL Datawarehouse With Synapse",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1467,7 +1451,7 @@
       "id": "db0435b435598391"
     },
     {
-      "sr": 180,
+      "sr": 50,
       "trackName": "Accelerator: Microsoft Azure AI Agents: Hands-on Lab",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1476,7 +1460,7 @@
       "id": "35cdc8607156ca40"
     },
     {
-      "sr": 181,
+      "sr": 51,
       "trackName": "AI Developer - Microsoft Foundry and Semantic Kernel Fundamentals",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1485,7 +1469,7 @@
       "id": "69cf41a81570075c"
     },
     {
-      "sr": 182,
+      "sr": 52,
       "trackName": "Introducción a Data Warehouses e Ingesta de Datos con Dataflows Gen2",
       "eventDate": "2026-01-29",
       "status": "Completed",
@@ -1494,7 +1478,7 @@
       "id": "1be20544b6ef4a77"
     },
     {
-      "sr": 183,
+      "sr": 53,
       "trackName": "TTT | Accessibility w/GitHub Copilot",
       "eventDate": "2026-01-30",
       "status": "Completed",
@@ -1503,7 +1487,7 @@
       "id": "17136c381cc8e74c"
     },
     {
-      "sr": 184,
+      "sr": 54,
       "trackName": "Accelerator: Work With Data Lake And Data Factory Pipelines In Microsoft Fabric",
       "eventDate": "2026-01-30",
       "status": "Completed",
@@ -2098,7 +2082,7 @@
     }
   ],
   "_metadata": {
-    "lastUpdated": "2026-01-29T17:44:54.821Z",
+    "lastUpdated": "2026-01-29T19:30:33.115Z",
     "lastModifiedBy": "system"
   },
   "_devopsSync": {

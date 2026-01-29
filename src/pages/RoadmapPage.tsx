@@ -296,45 +296,6 @@ export default function RoadmapPage() {
             <CardDescription>
               Current status and timeline for all development tracks and releases
             </CardDescription>
-            <div className="flex gap-4 items-center mt-4">
-              <div className="flex items-center gap-2">
-                <Label>Phase:</Label>
-                <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Phases" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Phases</SelectItem>
-                    <SelectItem value="Under assessment">Under assessment</SelectItem>
-                    <SelectItem value="Development">Development</SelectItem>
-                    <SelectItem value="Testing">Testing</SelectItem>
-                    <SelectItem value="Release-ready">Release-ready</SelectItem>
-                    <SelectItem value="Released">Released</SelectItem>
-                    <SelectItem value="Backlog">Backlog</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label>Sponsored by:</Label>
-                <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="All Sponsors" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sponsors</SelectItem>
-                    {uniqueSponsors.map(sponsor => (
-                      <SelectItem key={sponsor} value={sponsor}>{sponsor}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {(phaseFilter !== "all" || sponsorFilter !== "all") && (
-                <Button variant="outline" size="sm" onClick={() => { setPhaseFilter("all"); setSponsorFilter("all"); }}>
-                  Clear Filters
-                </Button>
-              )}
-            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] w-full rounded-md border">
@@ -343,8 +304,42 @@ export default function RoadmapPage() {
                     <TableRow>
                       <TableHead className="w-32">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Title</TableHead>
-                      <TableHead className="w-40">Phase</TableHead>
-                      <TableHead className="w-40">Sponsored by</TableHead>
+                      <TableHead className="w-48">
+                        <div className="flex flex-col gap-1">
+                          <span>Phase</span>
+                          <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                            <SelectTrigger className="h-7 text-xs font-normal">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Phases</SelectItem>
+                              <SelectItem value="Under assessment">Under assessment</SelectItem>
+                              <SelectItem value="Development">Development</SelectItem>
+                              <SelectItem value="Testing">Testing</SelectItem>
+                              <SelectItem value="Release-ready">Release-ready</SelectItem>
+                              <SelectItem value="Released">Released</SelectItem>
+                              <SelectItem value="Backlog">Backlog</SelectItem>
+                              <SelectItem value="Completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-48">
+                        <div className="flex flex-col gap-1">
+                          <span>Sponsored by</span>
+                          <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+                            <SelectTrigger className="h-7 text-xs font-normal">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Sponsors</SelectItem>
+                              {uniqueSponsors.map(sponsor => (
+                                <SelectItem key={sponsor} value={sponsor!}>{sponsor}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableHead>
                       <TableHead className="w-40">Target Completion</TableHead>
                       <TableHead className="w-40">Approval Month</TableHead>
                       <TableHead className="w-32">Actions</TableHead>

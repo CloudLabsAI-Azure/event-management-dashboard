@@ -110,29 +110,13 @@ export function DashboardContent() {
         const tr = await api.get('/api/tracks').then(r => Array.isArray(r.data) ? r.data : [])
         setTracks(tr)
         
-        // Calculate Top 25 Tracks Health percentage
+        // Calculate Top 25 Tracks Health percentage based on last test dates within 30 days
         const top25Tracks = tr.slice(0, 25) // Get first 25 tracks
-        const getStatusWeight = (status: string) => {
-          const s = String(status || '').toLowerCase()
-          if (s === 'completed') return 1.0      // 100% weight
-          if (s === 'in-progress') return 0.5    // 50% weight
-          if (s === 'pending') return 0.2        // 20% weight
-          return 0                               // 0% weight for unknown/empty
-        }
-        
-        const totalHealthScore = top25Tracks.reduce((acc: number, track: any) => {
-          return acc + getStatusWeight(track.testingStatus)
-        }, 0)
-        
-        const tracksHealthPercentage = top25Tracks.length > 0 
-          ? Math.round((totalHealthScore / top25Tracks.length) * 100) 
-          : 0
-        
-        // Calculate Top 25 health details for transparency
         const now = new Date()
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         let testedCount = 0
         let oldestTestedDate: Date | null = null
+        let newestTestedDate: Date | null = null
         
         top25Tracks.forEach((track: any) => {
           const lastTestedStr = track.lastTested || track.lastTestedDate || track.testedDate
@@ -147,9 +131,18 @@ export function DashboardContent() {
               if (!oldestTestedDate || lastTested < oldestTestedDate) {
                 oldestTestedDate = lastTested
               }
+              // Track newest tested date
+              if (!newestTestedDate || lastTested > newestTestedDate) {
+                newestTestedDate = lastTested
+              }
             }
           }
         })
+        
+        // Health percentage = tracks tested in last 30 days / total tracks * 100
+        const tracksHealthPercentage = top25Tracks.length > 0 
+          ? Math.round((testedCount / top25Tracks.length) * 100) 
+          : 0
         
         setTop25HealthDetails({
           testedCount,
@@ -441,39 +434,26 @@ export function DashboardContent() {
                             <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50">
                               <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
-                            <h4 className="font-semibold text-slate-900 dark:text-white">Health Score Definition</h4>
+                            <h4 className="font-semibold text-slate-900 dark:text-white">Health Score</h4>
                           </div>
                           
                           {/* Description */}
                           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                            Health measures testing coverage of the Top 25 priority tracks within the last 30 days.
+                            Percentage of Top 25 tracks tested within the last 30 days.
                           </p>
-                          
-                          {/* Score weights */}
-                          <div className="space-y-1.5">
-                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Score Weights</p>
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/30">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                <span className="text-xs text-emerald-700 dark:text-emerald-300">Completed 100%</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 dark:bg-yellow-900/30">
-                                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                <span className="text-xs text-yellow-700 dark:text-yellow-300">In-Progress 50%</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-50 dark:bg-orange-900/30">
-                                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                <span className="text-xs text-orange-700 dark:text-orange-300">Pending 20%</span>
-                              </div>
-                            </div>
-                          </div>
                           
                           {/* Stats */}
                           <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Tested (30 days)</span>
-                              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                {top25HealthDetails.testedCount}/{top25HealthDetails.totalCount} tracks
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Tested (last 30 days)</span>
+                              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                {top25HealthDetails.testedCount} tracks
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Not tested (30+ days)</span>
+                              <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                                {top25HealthDetails.totalCount - top25HealthDetails.testedCount} tracks
                               </span>
                             </div>
                             {top25HealthDetails.oldestTestedDate && (

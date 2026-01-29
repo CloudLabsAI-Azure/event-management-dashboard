@@ -20,7 +20,7 @@ import Announcements from "./pages/Announcements";
 import TTT from "./pages/TTT";
 // Removed AuthTest page (deprecated)
 import NotFound from "./pages/NotFound";
-// import LocalDevBypass from "./pages/LocalDevBypass"; // Disabled for production
+import AuditLogPage from "./pages/AuditLog";
 
 const queryClient = new QueryClient();
 
@@ -70,9 +70,6 @@ const App = () => (
                 {/* Root handles both login and B2C callbacks */}
                 <Route path="/" element={<RootRedirect />} />
                 
-                {/* Dev bypass route disabled for production */}
-                {/* <Route path="/dev-bypass" element={<LocalDevBypass />} /> */}
-                
                 {/* Login route */}
                 <Route path="/login" element={<LoginPage />} />
                 
@@ -87,6 +84,7 @@ const App = () => (
                   <Route path="participant-feedback" element={<ParticipantFeedbackPage />} />
                   <Route path="announcements" element={<Announcements />} />
                   <Route path="ttt" element={<TTT />} />
+                  <Route path="audit-log" element={<AuditLogPage />} />
                   {/* Access denied dedicated route (component added separately) */}
                   <Route path="access-denied" element={<div className="p-6 text-sm">Access denied</div>} />
                 </Route>

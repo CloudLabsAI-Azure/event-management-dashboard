@@ -22,6 +22,7 @@ import https from 'https';
 // Dynamic import for modules that need env vars
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage } = await import('./azureDevOpsService.js');
+const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -392,8 +393,6 @@ async function requireAuth(req, res, next) {
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
-  // Dev bypass disabled for production - see DEV-BYPASS-CHANGES.md to re-enable
-  
   const data = await readData();
   if (!Array.isArray(data.tokens)) return res.status(401).json({ error: 'Invalid token' });
   // cleanup expired tokens
@@ -412,8 +411,6 @@ async function requireAdmin(req, res, next) {
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
-  
-  // Dev bypass disabled for production - see DEV-BYPASS-CHANGES.md to re-enable
   
   const data = await readData();
   const entry = Array.isArray(data.tokens) && data.tokens.find((t) => t && t.token === token);
@@ -620,12 +617,23 @@ app.post('/api/users', requireAdmin, async (req, res) => {
   users.push(newUser);
   data.users = users;
   await writeData(data);
+  
+  // Audit log
+  await logAudit({
+    user: req.user,
+    action: 'CREATE',
+    resource: 'users',
+    resourceId: newUser.id,
+    newData: { id: newUser.id, email: newUser.email, role: newUser.role }
+  });
+  
   return res.json({ success: true, user: { id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role } });
 });
 
 app.put('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const data = await readData();
+  const oldUser = (data.users || []).find(u => String(u.id) === id);
   const body = { ...req.body };
   // Ignore any password fields under SSO model
   delete body.password;
@@ -634,6 +642,19 @@ app.put('/api/users/:id', requireAdmin, async (req, res) => {
   data.users = (data.users || []).map((u) => (String(u.id) === id ? { ...u, ...body } : u));
   await writeData(data);
   const updated = (data.users || []).find(u => String(u.id) === id);
+  
+  // Audit log
+  if (oldUser && updated) {
+    await logAudit({
+      user: req.user,
+      action: 'UPDATE',
+      resource: 'users',
+      resourceId: id,
+      oldData: { id: oldUser.id, email: oldUser.email, role: oldUser.role },
+      newData: { id: updated.id, email: updated.email, role: updated.role }
+    });
+  }
+  
   res.json({ success: true, user: updated ? { id: updated.id, username: updated.username, email: updated.email, role: updated.role } : null });
 });
 
@@ -651,8 +672,21 @@ app.post('/api/logout', requireAuth, async (req, res) => {
 app.delete('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
   const data = await readData();
+  const deletedUser = (data.users || []).find(u => String(u.id) === id);
   data.users = (data.users || []).filter((u) => String(u.id) !== id);
   await writeData(data);
+  
+  // Audit log
+  if (deletedUser) {
+    await logAudit({
+      user: req.user,
+      action: 'DELETE',
+      resource: 'users',
+      resourceId: id,
+      oldData: { id: deletedUser.id, email: deletedUser.email, role: deletedUser.role }
+    });
+  }
+  
   res.json({ success: true });
 });
 
@@ -790,8 +824,20 @@ app.get('/api/metrics', async (req, res) => {
 });
 
 app.put('/api/metrics', requireAdmin, async (req, res) => {
+  const oldMetrics = await getMetrics() || {};
   const payload = req.body || {};
   await setMetrics(payload);
+  
+  // Audit log
+  await logAudit({
+    user: req.user,
+    action: 'UPDATE',
+    resource: 'metrics',
+    resourceId: 'dashboard',
+    oldData: oldMetrics,
+    newData: payload
+  });
+  
   res.json({ success: true, metrics: payload });
 });
 
@@ -1132,6 +1178,39 @@ app.post('/api/devops/import-screenshots', requireAdmin, async (req, res) => {
   }
 });
 
+// Audit Log API endpoints
+app.get('/api/audit/entries', requireAdmin, async (req, res) => {
+  try {
+    const filters = {
+      resource: req.query.resource || null,
+      resourceId: req.query.resourceId || null,
+      action: req.query.action || null,
+      userId: req.query.userId || null,
+      startDate: req.query.startDate || null,
+      endDate: req.query.endDate || null,
+      limit: parseInt(req.query.limit) || 100,
+      offset: parseInt(req.query.offset) || 0
+    };
+    
+    const result = await getAuditEntries(filters);
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching audit entries:', err);
+    res.status(500).json({ error: 'Failed to fetch audit entries' });
+  }
+});
+
+app.get('/api/audit/history/:resource/:resourceId', requireAdmin, async (req, res) => {
+  try {
+    const { resource, resourceId } = req.params;
+    const entries = await getResourceHistory(resource, resourceId);
+    res.json({ entries });
+  } catch (err) {
+    console.error('Error fetching resource history:', err);
+    res.status(500).json({ error: 'Failed to fetch resource history' });
+  }
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -1165,6 +1244,16 @@ app.post('/api/:resource', requireAdmin, async (req, res) => {
   const newItem = { ...item, id, sr: Number(item.sr || nextSr) };
   list.push(newItem);
   await setResource(resource, list);
+  
+  // Audit log
+  await logAudit({
+    user: req.user,
+    action: 'CREATE',
+    resource,
+    resourceId: newItem.id || newItem.sr,
+    newData: newItem
+  });
+  
   res.json({ success: true, item: newItem });
 });
 
@@ -1173,6 +1262,15 @@ app.put('/api/:resource/:id', requireAdmin, async (req, res) => {
   const id = req.params.id;
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   const list = await getResource(resource) || [];
+  
+  // Find old item for audit
+  let oldItem = null;
+  if (resource === 'users') {
+    oldItem = list.find(it => String(it && it.id) === id);
+  } else {
+    oldItem = list.find(it => String(it && it.sr) === id);
+  }
+  
   const updated = list.map((it) => {
     if (resource === 'users') {
       if (String(it && it.id) === id) return { ...it, ...req.body };
@@ -1182,6 +1280,27 @@ app.put('/api/:resource/:id', requireAdmin, async (req, res) => {
     return it;
   });
   await setResource(resource, updated);
+  
+  // Find new item for audit
+  let newItem = null;
+  if (resource === 'users') {
+    newItem = updated.find(it => String(it && it.id) === id);
+  } else {
+    newItem = updated.find(it => String(it && it.sr) === id);
+  }
+  
+  // Audit log
+  if (oldItem) {
+    await logAudit({
+      user: req.user,
+      action: 'UPDATE',
+      resource,
+      resourceId: id,
+      oldData: oldItem,
+      newData: newItem
+    });
+  }
+  
   res.json({ success: true });
 });
 
@@ -1192,16 +1311,25 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   const list = await getResource(resource) || [];
   console.log(`Before delete: ${list.length} items`);
+  
+  // Find deleted item for audit
+  let deletedItem = null;
+  
   const filtered = list.filter((it) => {
     if (resource === 'users') {
       // Users use id field
-      return String(it && it.id) !== id;
+      if (String(it && it.id) === id) {
+        deletedItem = it;
+        return false;
+      }
+      return true;
     }
     // For catalog/tracks/events, match either id OR sr
     const matchesId = String(it && it.id) === id;
     const matchesSr = String(it && it.sr) === id;
     const shouldKeep = !matchesId && !matchesSr;
     if (!shouldKeep) {
+      deletedItem = it;
       console.log(`Deleting item: sr=${it.sr}, id=${it.id}, name=${it.trackName || it.name}`);
     }
     return shouldKeep;
@@ -1212,6 +1340,18 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
   });
   console.log(`After delete: ${filtered.length} items`);
   await setResource(resource, filtered);
+  
+  // Audit log
+  if (deletedItem) {
+    await logAudit({
+      user: req.user,
+      action: 'DELETE',
+      resource,
+      resourceId: id,
+      oldData: deletedItem
+    });
+  }
+  
   res.json({ success: true });
 });
 
