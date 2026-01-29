@@ -119,7 +119,7 @@ export function DashboardContent() {
         let newestTestedDate: Date | null = null
         
         top25Tracks.forEach((track: any) => {
-          const lastTestedStr = track.lastTested || track.lastTestedDate || track.testedDate
+          const lastTestedStr = track.lastTestDate || track.lastTested || track.lastTestedDate
           if (lastTestedStr) {
             const lastTested = new Date(lastTestedStr)
             if (!isNaN(lastTested.getTime())) {
