@@ -20,6 +20,7 @@ import Announcements from "./pages/Announcements";
 import TTT from "./pages/TTT";
 // Removed AuthTest page (deprecated)
 import NotFound from "./pages/NotFound";
+// import LocalDevBypass from "./pages/LocalDevBypass"; // Disabled for production
 
 const queryClient = new QueryClient();
 
@@ -69,8 +70,11 @@ const App = () => (
                 {/* Root handles both login and B2C callbacks */}
                 <Route path="/" element={<RootRedirect />} />
                 
+                {/* Dev bypass route disabled for production */}
+                {/* <Route path="/dev-bypass" element={<LocalDevBypass />} /> */}
+                
                 {/* Login route */}
-                <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route path="/login" element={<LoginPage />} />
                 
                 {/* Protected dashboard routes */}
                 <Route path="/dashboard" element={<ProtectedRoute />}>

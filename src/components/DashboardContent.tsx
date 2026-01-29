@@ -24,6 +24,7 @@ import {
   Trash2,
   FileText,
   BookOpen,
+  Info,
 } from "lucide-react"
 import api from '@/lib/api'
 import metricsService from '@/lib/services/metricsService'
@@ -36,6 +37,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Dialog,
   DialogContent,
@@ -79,7 +81,7 @@ export function DashboardContent() {
   const { toast } = useToast()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [trendingApi, setTrendingApi] = useState<CarouselApi | null>(null)
-  const [trendingTopics, setTrendingTopics] = useState<{ topic: string; description: string }[]>([])
+  const [trendingTopics, setTrendingTopics] = useState<{ topic: string; description: string; deliveryCount?: number }[]>([])
   const [isTrendingDialogOpen, setIsTrendingDialogOpen] = useState(false)
   const [newTrendingTitle, setNewTrendingTitle] = useState("")
   const [newTrendingDesc, setNewTrendingDesc] = useState("")
@@ -88,6 +90,11 @@ export function DashboardContent() {
     completedPracticeLabs: 0,
     tracksHealthPercentage: 0,
     lastUpdated: null as number | null,
+  })
+  const [top25HealthDetails, setTop25HealthDetails] = useState({
+    testedCount: 0,
+    totalCount: 25,
+    oldestTestedDate: null as string | null,
   })
   const [roadmapStats, setRoadmapStats] = useState({
     development: 0,
@@ -120,6 +127,35 @@ export function DashboardContent() {
         const tracksHealthPercentage = top25Tracks.length > 0 
           ? Math.round((totalHealthScore / top25Tracks.length) * 100) 
           : 0
+        
+        // Calculate Top 25 health details for transparency
+        const now = new Date()
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        let testedCount = 0
+        let oldestTestedDate: Date | null = null
+        
+        top25Tracks.forEach((track: any) => {
+          const lastTestedStr = track.lastTested || track.lastTestedDate || track.testedDate
+          if (lastTestedStr) {
+            const lastTested = new Date(lastTestedStr)
+            if (!isNaN(lastTested.getTime())) {
+              // Count as tested if tested in last 30 days
+              if (lastTested >= thirtyDaysAgo) {
+                testedCount++
+              }
+              // Track oldest tested date
+              if (!oldestTestedDate || lastTested < oldestTestedDate) {
+                oldestTestedDate = lastTested
+              }
+            }
+          }
+        })
+        
+        setTop25HealthDetails({
+          testedCount,
+          totalCount: top25Tracks.length,
+          oldestTestedDate: oldestTestedDate ? oldestTestedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+        })
         
         // derive catalog health from catalog resource
         const catalog = await api.get('/api/catalog').then(r => Array.isArray(r.data) ? r.data : [])
@@ -390,13 +426,82 @@ export function DashboardContent() {
                   <FileText className="h-6 w-6" />
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">Top 25 Tracks</p>
+                  <div className="flex items-center gap-1.5 justify-end mb-1">
+                    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Top 25 Tracks</p>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <button className="text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" align="start" className="w-80 p-0">
+                        <div className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white">Health Score Definition</h4>
+                          </div>
+                          
+                          {/* Description */}
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            Health measures testing coverage of the Top 25 priority tracks within the last 30 days.
+                          </p>
+                          
+                          {/* Score weights */}
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Score Weights</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/30">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                <span className="text-xs text-emerald-700 dark:text-emerald-300">Completed 100%</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-yellow-50 dark:bg-yellow-900/30">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                <span className="text-xs text-yellow-700 dark:text-yellow-300">In-Progress 50%</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-50 dark:bg-orange-900/30">
+                                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                <span className="text-xs text-orange-700 dark:text-orange-300">Pending 20%</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Stats */}
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">Tested (30 days)</span>
+                              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                {top25HealthDetails.testedCount}/{top25HealthDetails.totalCount} tracks
+                              </span>
+                            </div>
+                            {top25HealthDetails.oldestTestedDate && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Oldest test date</span>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                  {top25HealthDetails.oldestTestedDate}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <p className="text-3xl font-bold text-slate-900 dark:text-white">
                     <InlineMetric metricKey="dashboard.tracksHealthPercentage" value={liveMetrics.tracksHealthPercentage} readOnly />%
                   </p>
                 </div>
               </div>
-              <p className="text-slate-700 dark:text-slate-300 font-medium">Health Status</p>
+              <div className="flex items-center justify-between">
+                <p className="text-slate-700 dark:text-slate-300 font-medium">Health Status</p>
+                {top25HealthDetails.testedCount > 0 && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {top25HealthDetails.testedCount}/{top25HealthDetails.totalCount} tested
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -460,9 +565,64 @@ export function DashboardContent() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200/70 dark:from-emerald-900/40 dark:to-emerald-800/40 text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                     <TrendingUp className="h-5 w-5" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">Trending Topics</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">Hot tech topics for labs</p>
+                  <div className="flex items-center gap-1.5">
+                    <div>
+                      <h3 className="text-lg font-semibold">Trending Topics</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">Hot tech topics for labs</p>
+                    </div>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <button className="text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors p-0.5 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/30">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="start" className="w-72 p-0">
+                        <div className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                            <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white">How Trends Work</h4>
+                          </div>
+                          
+                          {/* Methodology */}
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">1</span>
+                              </div>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Analyzes labs delivered in the <span className="font-medium text-emerald-600 dark:text-emerald-400">last 15 days</span>
+                              </p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">2</span>
+                              </div>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Identifies topics from event categories and track themes
+                              </p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">3</span>
+                              </div>
+                              <p className="text-sm text-slate-600 dark:text-slate-300">
+                                Ranks by <span className="font-medium">delivery frequency</span>
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Note */}
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                              💡 Topics update automatically based on lab activity data
+                            </p>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
                 {(userRole === 'admin') && (
@@ -478,6 +638,11 @@ export function DashboardContent() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-semibold text-slate-900 dark:text-white group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors truncate">{item.topic}</span>
+                      {item.deliveryCount && (
+                        <span className="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">
+                          {item.deliveryCount} labs
+                        </span>
+                      )}
                           </div>
                     <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{item.description}</p>
                         </div>

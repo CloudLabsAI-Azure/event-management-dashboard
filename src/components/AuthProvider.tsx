@@ -135,6 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Dev bypass disabled for production
+    // To re-enable, see DEV-BYPASS-CHANGES.md
+
     if (inProgress !== 'none') {
       setPhase('msal');
       return; // still processing MSAL

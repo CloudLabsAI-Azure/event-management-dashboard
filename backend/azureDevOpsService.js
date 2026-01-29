@@ -193,6 +193,7 @@ export function extractImagesFromHtml(html) {
   if (!html) return [];
   
   const images = [];
+  const seenUrls = new Set(); // Track URLs to prevent duplicates
   
   // Match <img> tags and extract src
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*(?:alt=["']([^"']*)["'])?[^>]*>/gi;
@@ -203,24 +204,31 @@ export function extractImagesFromHtml(html) {
     const alt = match[2] || '';
     
     // Skip data URLs (inline base64 images) - we'd need different handling
-    if (!url.startsWith('data:')) {
+    // Also skip if we've already seen this URL
+    if (!url.startsWith('data:') && !seenUrls.has(url)) {
+      seenUrls.add(url);
       images.push({ url, alt });
     }
   }
   
-  // Also look for Azure DevOps attachment references
+  // Also look for Azure DevOps attachment references that weren't in img tags
   // Format: /_apis/wit/attachments/GUID
   const attachmentRegex = /\/_apis\/wit\/attachments\/([a-f0-9-]+)/gi;
   while ((match = attachmentRegex.exec(html)) !== null) {
+    const attachmentUrl = match[0];
     const attachmentId = match[1];
-    images.push({ 
-      url: match[0], 
-      alt: `attachment-${attachmentId}`,
-      isAttachment: true 
-    });
+    // Only add if not already captured from img tags
+    if (!seenUrls.has(attachmentUrl)) {
+      seenUrls.add(attachmentUrl);
+      images.push({ 
+        url: attachmentUrl, 
+        alt: `attachment-${attachmentId}`,
+        isAttachment: true 
+      });
+    }
   }
   
-  console.log(`🖼️ Extracted ${images.length} images from HTML`);
+  console.log(`🖼️ Extracted ${images.length} unique images from HTML`);
   return images;
 }
 

@@ -392,6 +392,8 @@ async function requireAuth(req, res, next) {
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
+  // Dev bypass disabled for production - see DEV-BYPASS-CHANGES.md to re-enable
+  
   const data = await readData();
   if (!Array.isArray(data.tokens)) return res.status(401).json({ error: 'Invalid token' });
   // cleanup expired tokens
@@ -410,6 +412,8 @@ async function requireAdmin(req, res, next) {
   const parts = String(auth).split(' ');
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
+  
+  // Dev bypass disabled for production - see DEV-BYPASS-CHANGES.md to re-enable
   
   const data = await readData();
   const entry = Array.isArray(data.tokens) && data.tokens.find((t) => t && t.token === token);
