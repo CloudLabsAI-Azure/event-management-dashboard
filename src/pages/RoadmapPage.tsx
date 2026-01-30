@@ -34,16 +34,12 @@ const getPhaseBadge = (phase: string) => {
     return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Under assessment</Badge>
   } else if (phase === "Development") {
     return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
-  } else if (phase === "Testing") {
-    return <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">Testing</Badge>
   } else if (phase === "Release-ready") {
     return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-ready</Badge>
   } else if (phase === "Released") {
     return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Released</Badge>
   } else if (phase === "Backlog") {
     return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600 text-white">Backlog</Badge>
-  } else if (phase === "Completed") {
-    return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">Completed</Badge>
   }
   return <Badge variant="outline">{phase}</Badge>
 }
@@ -78,10 +74,8 @@ export default function RoadmapPage() {
 
   // Filtered data based on phase and sponsor filters
   const filteredRoadmapData = roadmapData.filter(item => {
-    const itemPhase = (item.phase || '').trim();
-    const itemSponsor = (item.programType || '').trim();
-    const matchesPhase = phaseFilter === "all" || itemPhase === phaseFilter;
-    const matchesSponsor = sponsorFilter === "all" || itemSponsor === sponsorFilter;
+    const matchesPhase = phaseFilter === "all" || item.phase === phaseFilter;
+    const matchesSponsor = sponsorFilter === "all" || item.programType === sponsorFilter;
     return matchesPhase && matchesSponsor;
   });
 
@@ -100,11 +94,11 @@ export default function RoadmapPage() {
         const mapped = roadmapItems.map((r: any, idx: number) => ({ 
           id: String(r.id || r._id || `temp_${idx}`),
           sr: Number(r.sr || idx + 1), 
-          trackTitle: (r.trackTitle || r.title || '').trim(), 
-          phase: (r.phase || '').trim(), 
+          trackTitle: r.trackTitle || r.title || '', 
+          phase: r.phase || '', 
           eta: r.eta || 'NA',
-          eventId: (r.eventId || '').trim(),
-          programType: (r.programType || '').trim(),
+          eventId: r.eventId || '',
+          programType: r.programType || '',
           approvalDate: r.approvalDate || '',
           notes: r.notes || ''
         }))
@@ -313,41 +307,37 @@ export default function RoadmapPage() {
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
                           <span>Phase</span>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-                              <SelectTrigger className="h-7 text-xs font-normal">
-                                <SelectValue placeholder="All" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Phases</SelectItem>
-                                <SelectItem value="Under assessment">Under assessment</SelectItem>
-                                <SelectItem value="Development">Development</SelectItem>
-                                <SelectItem value="Testing">Testing</SelectItem>
-                                <SelectItem value="Release-ready">Release-ready</SelectItem>
-                                <SelectItem value="Released">Released</SelectItem>
-                                <SelectItem value="Backlog">Backlog</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                            <SelectTrigger className="h-7 text-xs font-normal">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Phases</SelectItem>
+                              <SelectItem value="Under assessment">Under assessment</SelectItem>
+                              <SelectItem value="Development">Development</SelectItem>
+                              <SelectItem value="Testing">Testing</SelectItem>
+                              <SelectItem value="Release-ready">Release-ready</SelectItem>
+                              <SelectItem value="Released">Released</SelectItem>
+                              <SelectItem value="Backlog">Backlog</SelectItem>
+                              <SelectItem value="Completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableHead>
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
                           <span>Sponsored by</span>
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
-                              <SelectTrigger className="h-7 text-xs font-normal">
-                                <SelectValue placeholder="All" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Sponsors</SelectItem>
-                                <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
-                                <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
-                                <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+                            <SelectTrigger className="h-7 text-xs font-normal">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Sponsors</SelectItem>
+                              {uniqueSponsors.map(sponsor => (
+                                <SelectItem key={sponsor} value={sponsor!}>{sponsor}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableHead>
                       <TableHead className="w-40">Target Completion</TableHead>
@@ -356,9 +346,9 @@ export default function RoadmapPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRoadmapData.map((track, index) => (
+                    {filteredRoadmapData.map((track) => (
                       <TableRow 
-                        key={`${track.id || track.sr}-${index}`}
+                        key={track.id || track.sr}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => {
                           setSelectedItem(track);
