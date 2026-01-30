@@ -78,8 +78,10 @@ export default function RoadmapPage() {
 
   // Filtered data based on phase and sponsor filters
   const filteredRoadmapData = roadmapData.filter(item => {
-    const matchesPhase = phaseFilter === "all" || item.phase === phaseFilter;
-    const matchesSponsor = sponsorFilter === "all" || item.programType === sponsorFilter;
+    const itemPhase = (item.phase || '').trim();
+    const itemSponsor = (item.programType || '').trim();
+    const matchesPhase = phaseFilter === "all" || itemPhase === phaseFilter;
+    const matchesSponsor = sponsorFilter === "all" || itemSponsor === sponsorFilter;
     return matchesPhase && matchesSponsor;
   });
 
@@ -98,11 +100,11 @@ export default function RoadmapPage() {
         const mapped = roadmapItems.map((r: any, idx: number) => ({ 
           id: String(r.id || r._id || `temp_${idx}`),
           sr: Number(r.sr || idx + 1), 
-          trackTitle: r.trackTitle || r.title || '', 
-          phase: r.phase || '', 
+          trackTitle: (r.trackTitle || r.title || '').trim(), 
+          phase: (r.phase || '').trim(), 
           eta: r.eta || 'NA',
-          eventId: r.eventId || '',
-          programType: r.programType || '',
+          eventId: (r.eventId || '').trim(),
+          programType: (r.programType || '').trim(),
           approvalDate: r.approvalDate || '',
           notes: r.notes || ''
         }))
@@ -311,37 +313,41 @@ export default function RoadmapPage() {
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
                           <span>Phase</span>
-                          <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-                            <SelectTrigger className="h-7 text-xs font-normal">
-                              <SelectValue placeholder="All" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Phases</SelectItem>
-                              <SelectItem value="Under assessment">Under assessment</SelectItem>
-                              <SelectItem value="Development">Development</SelectItem>
-                              <SelectItem value="Testing">Testing</SelectItem>
-                              <SelectItem value="Release-ready">Release-ready</SelectItem>
-                              <SelectItem value="Released">Released</SelectItem>
-                              <SelectItem value="Backlog">Backlog</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                              <SelectTrigger className="h-7 text-xs font-normal">
+                                <SelectValue placeholder="All" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Phases</SelectItem>
+                                <SelectItem value="Under assessment">Under assessment</SelectItem>
+                                <SelectItem value="Development">Development</SelectItem>
+                                <SelectItem value="Testing">Testing</SelectItem>
+                                <SelectItem value="Release-ready">Release-ready</SelectItem>
+                                <SelectItem value="Released">Released</SelectItem>
+                                <SelectItem value="Backlog">Backlog</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </TableHead>
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
                           <span>Sponsored by</span>
-                          <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
-                            <SelectTrigger className="h-7 text-xs font-normal">
-                              <SelectValue placeholder="All" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Sponsors</SelectItem>
-                              <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
-                              <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
-                              <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Select value={sponsorFilter} onValueChange={setSponsorFilter}>
+                              <SelectTrigger className="h-7 text-xs font-normal">
+                                <SelectValue placeholder="All" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Sponsors</SelectItem>
+                                <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                                <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
+                                <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </TableHead>
                       <TableHead className="w-40">Target Completion</TableHead>
