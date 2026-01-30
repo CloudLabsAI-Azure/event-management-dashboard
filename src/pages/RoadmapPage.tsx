@@ -34,12 +34,16 @@ const getPhaseBadge = (phase: string) => {
     return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Under assessment</Badge>
   } else if (phase === "Development") {
     return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
+  } else if (phase === "Testing") {
+    return <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">Testing</Badge>
   } else if (phase === "Release-ready") {
     return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-ready</Badge>
   } else if (phase === "Released") {
     return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Released</Badge>
   } else if (phase === "Backlog") {
     return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600 text-white">Backlog</Badge>
+  } else if (phase === "Completed") {
+    return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">Completed</Badge>
   }
   return <Badge variant="outline">{phase}</Badge>
 }
@@ -333,9 +337,9 @@ export default function RoadmapPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">All Sponsors</SelectItem>
-                              {uniqueSponsors.map(sponsor => (
-                                <SelectItem key={sponsor} value={sponsor!}>{sponsor}</SelectItem>
-                              ))}
+                              <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                              <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
+                              <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
