@@ -400,8 +400,8 @@ async function requireAuth(req, res, next) {
   await writeData(data);
   const entry = data.tokens.find((t) => t && t.token === token);
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
-  // attach user metadata for downstream handlers
-  req.user = { id: entry.userId, role: entry.role };
+  // attach user metadata for downstream handlers (including email for audit logging)
+  req.user = { id: entry.userId, email: entry.email || 'unknown@user', role: entry.role };
   next();
 }
 
@@ -417,7 +417,7 @@ async function requireAdmin(req, res, next) {
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
   if (entry.expiresAt && Number(entry.expiresAt) <= Date.now()) return res.status(401).json({ error: 'Token expired' });
   if (entry.role !== 'admin') return res.status(403).json({ error: 'Admin role required' });
-  req.user = { id: entry.userId, role: entry.role };
+  req.user = { id: entry.userId, email: entry.email || 'unknown@user', role: entry.role };
   next();
 }
 
@@ -470,7 +470,7 @@ app.post('/api/login', async (req, res) => {
     const token = crypto.randomBytes(24).toString('hex');
   const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
   data.tokens = data.tokens || [];
-  data.tokens.push({ token, userId: user.id, role: user.role || 'user', expiresAt });
+  data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
     await writeData(data);
     return res.json({ success: true, token, role: user.role || 'user' });
   } catch (err) {
@@ -507,7 +507,8 @@ app.post('/api/validate-b2c-user', async (req, res) => {
       if (!Array.isArray(data.tokens)) data.tokens = [];
       data.tokens.push({ 
         token, 
-        userId: user.id, 
+        userId: user.id,
+        email: user.email,
         role: user.role || 'user', 
         expiresAt,
         source: 'b2c' // Mark as B2C authenticated
@@ -576,7 +577,7 @@ app.post('/api/reset-password', async (req, res) => {
     const token = crypto.randomBytes(24).toString('hex');
     const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7;
     data.tokens = data.tokens || [];
-    data.tokens.push({ token, userId: user.id, role: user.role || 'user', expiresAt });
+    data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
     await writeData(data);
     return res.json({ success: true, token, role: user.role || 'user' });
   } catch (err) {
