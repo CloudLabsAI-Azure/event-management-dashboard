@@ -75,6 +75,9 @@ export function DashboardContent() {
   const { userRole } = useAuth()
   const [tracks, setTracks] = useState<any[]>([])
   const [catalogHealth, setCatalogHealth] = useState<{ title: string; percent: number }[]>([])
+  const [catalogStats, setCatalogStats] = useState<{ total: number; completed: number; inProgress: number; pending: number }>({
+    total: 0, completed: 0, inProgress: 0, pending: 0
+  })
   const [localizedProgress, setLocalizedProgress] = useState<{ title: string; languages: { name: string; percent: number; status: string }[] }[]>([])
   // removed search/filter controls
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
@@ -98,8 +101,12 @@ export function DashboardContent() {
   })
   const [roadmapStats, setRoadmapStats] = useState({
     development: 0,
-    releaseReady: 0,
-    backlog: 0,
+    released: 0,
+    underAssessment: 0,
+  })
+  const [localizedCounts, setLocalizedCounts] = useState<{ total: number; byLanguage: { name: string; count: number }[] }>({
+    total: 0,
+    byLanguage: []
   })
 
   
@@ -152,9 +159,21 @@ export function DashboardContent() {
         
         // derive catalog health from catalog resource
         const catalog = await api.get('/api/catalog').then(r => Array.isArray(r.data) ? r.data : [])
-        const catalogItems = catalog.filter((i: any) => 
+        const allCatalogItems = catalog.filter((i: any) => 
           i && i.type === 'catalog' && (i.trackName || i.trackTitle)
         )
+        
+        // Filter out items with event dates older than today (same as catalog page)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const catalogItems = allCatalogItems.filter((i: any) => {
+          if (!i.eventDate) return true
+          const eventDate = new Date(i.eventDate)
+          if (isNaN(eventDate.getTime())) return true
+          eventDate.setHours(0, 0, 0, 0)
+          return eventDate >= today
+        })
+        
         const localized = catalog.filter((i: any) => i && i.type === 'localizedTrack')
         const toPercent = (status: string) => {
           const s = String(status || '').toLowerCase()
@@ -163,6 +182,16 @@ export function DashboardContent() {
           if (s === 'pending' || s === 'not available' || s === 'not-available') return 20
           return 0
         }
+        
+        // Calculate catalog stats
+        let completed = 0, inProgress = 0, pending = 0
+        catalogItems.forEach((i: any) => {
+          const status = String(i.status || i.testingStatus || 'Pending').toLowerCase()
+          if (status === 'completed') completed++
+          else if (status === 'in-progress' || status === 'in progress') inProgress++
+          else pending++
+        })
+        setCatalogStats({ total: catalogItems.length, completed, inProgress, pending })
         
         // Process catalog items (from Catalog Health page)
         const catalogEntries: { title: string; percent: number }[] = []
@@ -176,6 +205,7 @@ export function DashboardContent() {
         
         // Process localized tracks
         const localizedEntries: { title: string; languages: { name: string; percent: number; status: string }[] }[] = []
+        const langCounts: Record<string, number> = {}
         localized.forEach((i: any) => {
           const title = i.trackTitle || i.trackName || i.title || 'Track'
           const langs: { name: string; percent: number; status: string }[] = []
@@ -183,12 +213,21 @@ export function DashboardContent() {
             const normalized = (value === undefined || value === null || String(value).trim() === '') ? 'Not Available' : String(value)
             const p = toPercent(normalized)
             langs.push({ name, percent: p, status: normalized })
+            // Count available/in-progress tracks by language
+            if (normalized.toLowerCase() !== 'not available' && normalized.toLowerCase() !== 'not-available') {
+              langCounts[name] = (langCounts[name] || 0) + 1
+            }
           }
           mapLang('Spanish', i.spanish)
           mapLang('Portuguese', i.portuguese)
           localizedEntries.push({ title, languages: langs })
         })
         setLocalizedProgress(localizedEntries.slice(0, 5))
+        
+        // Set localized counts
+        const byLanguage = Object.entries(langCounts).map(([name, count]) => ({ name, count }))
+        const totalLocalizedTracks = localized.length
+        setLocalizedCounts({ total: totalLocalizedTracks, byLanguage })
 
         const activeParticipants = Array.isArray(tr) ? tr.reduce((acc: number, t: any) => acc + Number(t.participants || 0), 0) : 0
         const completedPracticeLabs = 1247 // Default completed practice labs count
@@ -231,13 +270,13 @@ export function DashboardContent() {
           const roadmapItems = roadmapData.filter((item: any) => item.type === 'roadmapItem')
           
           const development = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'development').length
-          const releaseReady = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'release-ready').length
-          const backlog = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'backlog').length
+          const released = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'released').length
+          const underAssessment = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'under assessment').length
           
-          setRoadmapStats({ development, releaseReady, backlog })
+          setRoadmapStats({ development, released, underAssessment })
         } catch {
           // Default values if fetch fails
-          setRoadmapStats({ development: 3, releaseReady: 1, backlog: 3 })
+          setRoadmapStats({ development: 3, released: 1, underAssessment: 3 })
         }
         
         // Initialize trending topics (localStorage-backed)
@@ -497,13 +536,38 @@ export function DashboardContent() {
                   <Users className="h-6 w-6" />
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">Active</p>
+                  <div className="flex items-center gap-1.5 justify-end mb-1">
+                    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Attended</p>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <button className="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors p-0.5 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" align="start" className="w-72 p-0">
+                        <div className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                            <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50">
+                              <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white">Attended Users</h4>
+                          </div>
+                          
+                          {/* Description */}
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            Total number of users who attended events this month.
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <p className="text-3xl font-bold text-slate-900 dark:text-white">
                     <InlineMetric metricKey="dashboard.activeParticipants" value={liveMetrics.activeParticipants} />
                   </p>
                 </div>
               </div>
-              <p className="text-slate-700 dark:text-slate-300 font-medium">Attendees</p>
+              <p className="text-slate-700 dark:text-slate-300 font-medium">Attended Users</p>
             </div>
           </div>
         </div>
@@ -519,7 +583,32 @@ export function DashboardContent() {
                   <BookOpen className="h-6 w-6" />
                 </div>
                 <div className="text-right">
-                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-1">Completed</p>
+                  <div className="flex items-center gap-1.5 justify-end mb-1">
+                    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Completed</p>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <button className="text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" align="start" className="w-72 p-0">
+                        <div className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                              <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white">Practice Labs</h4>
+                          </div>
+                          
+                          {/* Description */}
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            Total number of practice labs completed.
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <p className="text-3xl font-bold text-slate-900 dark:text-white">
                     <InlineMetric metricKey="dashboard.completedPracticeLabs" value={Number(liveMetrics.completedPracticeLabs)} />
                   </p>
@@ -649,7 +738,9 @@ export function DashboardContent() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">Catalog Health</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">Overall health metrics of your event catalog</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">
+                    Total {catalogStats.total} tracks (Completed {catalogStats.completed}, In Progress {catalogStats.inProgress}, Pending {catalogStats.pending})
+                  </p>
                 </div>
               </CardTitle>
             </CardHeader>
@@ -682,7 +773,19 @@ export function DashboardContent() {
                 <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-100 to-cyan-200/70 dark:from-cyan-900/40 dark:to-cyan-800/40 text-cyan-700 dark:text-cyan-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                   <Globe className="h-5 w-5" />
                 </div>
-                <span>Localized Tracks</span>
+                <div className="flex flex-col">
+                  <span>Localized Tracks</span>
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
+                    Total {localizedCounts.total}
+                    {localizedCounts.byLanguage.length > 0 && (
+                      <> ({localizedCounts.byLanguage.map((l, i) => (
+                        <span key={l.name}>
+                          {l.name} {l.count}{i < localizedCounts.byLanguage.length - 1 ? ', ' : ''}
+                        </span>
+                      ))})</>                    
+                    )}
+                  </span>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 py-6">
@@ -711,7 +814,7 @@ export function DashboardContent() {
           </Card>
 
         {/* Lab Development Roadmap */}
-  <Card onClick={() => navigate('/dashboard/roadmap')} className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-800 dark:to-slate-700/50 border border-violet-200/40 dark:border-violet-800/25 shadow-lg hover:shadow-xl hover:shadow-violet-500/8 transition-all duration-500 ease-out hover:-translate-y-1 hover:scale-[1.01] cursor-pointer animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+  <Card className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-800 dark:to-slate-700/50 border border-violet-200/40 dark:border-violet-800/25 shadow-lg hover:shadow-xl hover:shadow-violet-500/8 transition-all duration-500 ease-out animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
           <div className="absolute inset-0 bg-gradient-to-br from-violet-500/3 via-transparent to-slate-500/3 dark:from-violet-400/5 dark:to-slate-400/5"></div>
           <div className="absolute inset-0 bg-gradient-to-br from-violet-50/50 to-slate-50/50 dark:from-violet-950/20 dark:to-slate-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
           <CardHeader className="relative z-10 border-b border-violet-200/40 dark:border-violet-800/25 pb-4">
@@ -727,31 +830,40 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent className="space-y-3 relative z-10 py-6">
             <div className="grid gap-3">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase">
+              <div 
+                onClick={() => navigate('/dashboard/roadmap?phase=Released')}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase cursor-pointer"
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">Onboarded</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Labs fully integrated</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">Released</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Labs fully released to RMP</p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-lg font-semibold">
-                  {roadmapStats.releaseReady}
+                  {roadmapStats.released}
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase">
+              <div 
+                onClick={() => navigate('/dashboard/roadmap?phase=Development')}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase cursor-pointer"
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">In Progress</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Currently developing</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">In Development</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Labs currently under development</p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-lg font-semibold">
                   {roadmapStats.development}
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase">
+              <div 
+                onClick={() => navigate('/dashboard/roadmap?phase=Under%20assessment')}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase cursor-pointer"
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">Pending</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Awaiting development</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">Under Assessment</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Labs under assessment for development</p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-lg font-semibold">
-                  {roadmapStats.backlog}
+                  {roadmapStats.underAssessment}
                 </div>
               </div>
             </div>

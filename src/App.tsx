@@ -14,12 +14,15 @@ import UsersPage from "./pages/Users";
 import CatalogHealth from "./pages/CatalogHealth";
 import Top25Tracks from "./pages/Top25Tracks";
 import RoadmapPage from "./pages/RoadmapPage";
+import LabMaintenancePage from "./pages/LabMaintenancePage";
+import CustomLabRequestPage from "./pages/CustomLabRequestPage";
 import LocalizedTracksPage from "./pages/LocalizedTracksPage";
 import ParticipantFeedbackPage from "./pages/ParticipantFeedbackPage";
 import Announcements from "./pages/Announcements";
 import TTT from "./pages/TTT";
 // Removed AuthTest page (deprecated)
 import NotFound from "./pages/NotFound";
+import LocalDevBypass from "./pages/LocalDevBypass";
 import AuditLogPage from "./pages/AuditLog";
 
 const queryClient = new QueryClient();
@@ -70,6 +73,9 @@ const App = () => (
                 {/* Root handles both login and B2C callbacks */}
                 <Route path="/" element={<RootRedirect />} />
                 
+                {/* Dev bypass route for local development */}
+                <Route path="/dev-bypass" element={<LocalDevBypass />} />
+                
                 {/* Login route */}
                 <Route path="/login" element={<LoginPage />} />
                 
@@ -80,6 +86,8 @@ const App = () => (
                   <Route path="catalog-health" element={<CatalogHealth />} />
                   <Route path="top25-tracks" element={<Top25Tracks />} />
                   <Route path="roadmap" element={<RoadmapPage />} />
+                  <Route path="lab-maintenance" element={<LabMaintenancePage />} />
+                  <Route path="custom-lab-request" element={<CustomLabRequestPage />} />
                   <Route path="localized-tracks" element={<LocalizedTracksPage />} />
                   <Route path="participant-feedback" element={<ParticipantFeedbackPage />} />
                   <Route path="announcements" element={<Announcements />} />

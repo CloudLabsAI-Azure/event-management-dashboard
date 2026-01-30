@@ -14,6 +14,10 @@ import {
   Megaphone,
   GraduationCap,
   History,
+  Clock,
+  Plus,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "./AuthProvider"
@@ -27,16 +31,40 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarHeader,
   useSidebar,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
-const reportItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  children?: { title: string; url: string; icon: any }[];
+}
+
+const reportItems: MenuItem[] = [
   { title: "Overview", url: "/dashboard", icon: BarChart3 },
   { title: "Catalog Health", url: "/dashboard/catalog-health", icon: Calendar },
   { title: "Top 25 Tracks", url: "/dashboard/top25-tracks", icon: FileText },
-  { title: "Roadmap", url: "/dashboard/roadmap", icon: MapPin },
+  { 
+    title: "Roadmap", 
+    url: "/dashboard/roadmap", 
+    icon: MapPin,
+    children: [
+      { title: "Lab Development", url: "/dashboard/roadmap", icon: TrendingUp },
+      { title: "Lab Maintenance", url: "/dashboard/lab-maintenance", icon: Clock },
+      { title: "Custom Lab Request", url: "/dashboard/custom-lab-request", icon: Plus },
+    ]
+  },
   { title: "Localized Tracks", url: "/dashboard/localized-tracks", icon: Globe },
   { title: "Train the Trainer", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Announcements", url: "/dashboard/announcements", icon: Megaphone },
@@ -96,6 +124,33 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {reportItems.map((item) => (
+                item.children ? (
+                  <Collapsible key={item.title} defaultOpen={item.children.some(child => isActive(child.url))} className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip={item.title} className="transition-all duration-200 hover:bg-accent/50 hover:text-accent-foreground">
+                          <item.icon className="w-4 h-4 shrink-0" />
+                          <span className="font-medium group-data-[collapsible=icon]:hidden">{item.title}</span>
+                          <ChevronRight className="ml-auto w-4 h-4 transition-transform group-data-[state=open]/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {item.children.map((child) => (
+                            <SidebarMenuSubItem key={child.title}>
+                              <SidebarMenuSubButton asChild>
+                                <NavLink to={child.url} className={getNavCls(child.url)}>
+                                  <child.icon className="w-4 h-4 shrink-0" />
+                                  <span>{child.title}</span>
+                                </NavLink>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+                ) : (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink to={item.url} className={getNavCls(item.url)}>
@@ -107,6 +162,7 @@ export function AppSidebar() {
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                )
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

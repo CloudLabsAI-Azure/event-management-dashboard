@@ -14,6 +14,17 @@ export function DashboardPage() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
+    // Don't redirect if we have dev bypass token
+    const token = localStorage.getItem('authToken');
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+    
+    if (token === 'dev-bypass-token-local' && isLocalhost) {
+      console.log('🔓 Dev bypass detected, skipping redirect');
+      return;
+    }
+    
     if (!isLoading && (!isAuthenticated || !isAuthorized)) {
       navigate('/', { replace: true });
     }
