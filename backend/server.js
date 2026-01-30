@@ -769,9 +769,10 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), async (req, res
         console.log(`CSV Upload: Processing ${validResults.length} valid rows for ${resource}`);
         
         // Assign unique IDs and serial numbers to new items
+        // Always generate new IDs to prevent duplicates from CSV imports
         const processedResults = validResults.map((item, idx) => ({
           ...item,
-          id: item.id || crypto.randomBytes(8).toString('hex'),
+          id: crypto.randomBytes(8).toString('hex'), // Always generate new ID
           sr: startingSr + idx + 1,
           // Use type from CSV if provided, otherwise default based on resource
           type: item.type || (resource === 'catalog' ? 'catalog' : (resource === 'tracks' ? 'track' : resource))

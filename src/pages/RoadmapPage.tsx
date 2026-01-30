@@ -84,11 +84,6 @@ export default function RoadmapPage() {
     const matchesSponsor = sponsorFilter === "all" || itemSponsor === sponsorFilter;
     return matchesPhase && matchesSponsor;
   });
-  
-  // Debug logging
-  console.log('Phase filter:', phaseFilter, 'Sponsor filter:', sponsorFilter);
-  console.log('Filtered count:', filteredRoadmapData.length, 'of', roadmapData.length);
-  console.log('Filtered items:', filteredRoadmapData.map(i => ({ title: i.trackTitle, phase: i.phase, sponsor: i.programType })));
 
   // Get unique sponsors for filter dropdown
   const uniqueSponsors = Array.from(new Set(roadmapData.map(item => item.programType).filter(Boolean)));
@@ -361,9 +356,9 @@ export default function RoadmapPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredRoadmapData.map((track) => (
+                    {filteredRoadmapData.map((track, index) => (
                       <TableRow 
-                        key={track.id || track.sr}
+                        key={`${track.id || track.sr}-${index}`}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => {
                           setSelectedItem(track);
