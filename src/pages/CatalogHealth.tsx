@@ -192,13 +192,20 @@ export default function CatalogHealth() {
     return () => { mounted = false }
   }, [])
 
-  // Filter data based on status filter
-  const filteredData = catalogData.filter(item => {
-    if (statusFilter === "all") return true;
-    if (statusFilter === "upcoming") return item.status !== "Completed";
-    if (statusFilter === "completed") return item.status === "Completed";
-    return item.status === statusFilter;
-  });
+  // Filter data based on status filter and sort by eventDate
+  const filteredData = catalogData
+    .filter(item => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "upcoming") return item.status !== "Completed";
+      if (statusFilter === "completed") return item.status === "Completed";
+      return item.status === statusFilter;
+    })
+    .sort((a, b) => {
+      // Sort by eventDate ascending (earliest first)
+      const dateA = a.eventDate ? new Date(a.eventDate).getTime() : Infinity;
+      const dateB = b.eventDate ? new Date(b.eventDate).getTime() : Infinity;
+      return dateA - dateB;
+    });
 
   const itemsPerPage = 10
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
