@@ -76,12 +76,17 @@ export default function CatalogHealth() {
       try {
         const res = await api.get('/api/catalog')
         const items = Array.isArray(res.data) ? res.data : []
+        
+        const today = new Date()
+        today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
+        
         const mapped = items
           .filter((it: any) => {
             // Include items that are explicitly catalog type OR have catalog-like fields
             // Exclude other page types
             if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || it.type === 'tttSession' || 
-                it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement') return false
+                it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement' ||
+                it.type === 'labMaintenance' || it.type === 'customLabRequest') return false
             return it && (it.trackName || it.trackTitle)
           })
           .map((it: any, idx: number) => ({
@@ -95,8 +100,54 @@ export default function CatalogHealth() {
             lastTestDate: String(it.lastTestDate || ''),
             releaseNotesUrl: String(it.releaseNotesUrl || '')
           }))
+        
+        // Auto-mark past events as completed
+        const itemsToUpdate: CatalogItem[] = []
+        const updatedMapped = mapped.map((item: CatalogItem) => {
+          if (item.eventDate && item.status !== 'Completed') {
+            const eventDate = new Date(item.eventDate)
+            eventDate.setHours(0, 0, 0, 0)
+            
+            if (eventDate < today) {
+              // Mark as completed
+              const autoNote = '[Auto] Event date passed - marked as completed'
+              const updatedNotes = item.notesETA 
+                ? `${item.notesETA} | ${autoNote}` 
+                : autoNote
+              
+              const updatedItem = {
+                ...item,
+                status: 'Completed',
+                notesETA: updatedNotes
+              }
+              itemsToUpdate.push(updatedItem)
+              return updatedItem
+            }
+          }
+          return item
+        })
+        
         if (!mounted) return
-        setCatalogData(mapped)
+        
+        // Update backend for auto-completed items
+        if (itemsToUpdate.length > 0) {
+          for (const item of itemsToUpdate) {
+            try {
+              await api.put(`/api/catalog/${String(item.sr)}`, { ...item, type: 'catalog' })
+            } catch (err) {
+              console.error('Error auto-updating catalog item:', item.sr, err)
+            }
+          }
+          
+          toast({
+            title: 'Auto-Completed',
+            description: `${itemsToUpdate.length} past event(s) marked as completed`
+          })
+          
+          try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+        }
+        
+        setCatalogData(updatedMapped)
       } catch (e) { /* ignore */ }
     })()
     return () => { mounted = false }
