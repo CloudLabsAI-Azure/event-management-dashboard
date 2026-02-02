@@ -14,6 +14,7 @@ import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
+import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 
 interface CustomLabRequest {
   id?: string;
@@ -93,6 +94,21 @@ export default function CustomLabRequestPage() {
   const handleSaveCustomLab = async () => {
     if (!customLabForm.eventId || customLabForm.eventId.trim().length < 1) {
       throw new Error('Event ID is required');
+    }
+    
+    // Check for duplicate eventId
+    const { isDuplicate, existsIn } = await checkDuplicateEventId(
+      customLabForm.eventId, 
+      editingCustomLab?.sr, 
+      'customLabRequest'
+    );
+    if (isDuplicate) {
+      toast({
+        title: 'Duplicate Event ID',
+        description: `Event ID "${customLabForm.eventId}" already exists in: ${existsIn.join(', ')}`,
+        variant: 'destructive'
+      });
+      return;
     }
     
     try {

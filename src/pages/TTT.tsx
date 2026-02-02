@@ -14,6 +14,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
 import EntityEditDialog from '@/components/EntityEditDialog'
+import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 
 interface TTTSession {
   id?: string
@@ -169,6 +170,23 @@ export default function TTTPage() {
         variant: 'destructive'
       })
       return
+    }
+
+    // Check for duplicate eventId
+    if (editForm.eventId && editForm.eventId.trim() !== '') {
+      const { isDuplicate, existsIn } = await checkDuplicateEventId(
+        editForm.eventId, 
+        editingSession?.sr, 
+        'tttSession'
+      );
+      if (isDuplicate) {
+        toast({
+          title: 'Duplicate Event ID',
+          description: `Event ID "${editForm.eventId}" already exists in: ${existsIn.join(', ')}`,
+          variant: 'destructive'
+        });
+        return;
+      }
     }
 
     setSaving(true)

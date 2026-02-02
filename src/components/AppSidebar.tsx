@@ -61,7 +61,7 @@ const reportItems: MenuItem[] = [
     icon: MapPin,
     children: [
       { title: "Lab Development", url: "/dashboard/roadmap", icon: TrendingUp },
-      { title: "Lab Maintenance", url: "/dashboard/lab-maintenance", icon: Clock },
+      // { title: "Lab Maintenance", url: "/dashboard/lab-maintenance", icon: Clock }, // Hidden for now
       { title: "Custom Lab Request", url: "/dashboard/custom-lab-request", icon: Plus },
     ]
   },

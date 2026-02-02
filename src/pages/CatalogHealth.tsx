@@ -16,6 +16,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
 import { findBestMatch, type MatchResult } from '@/lib/fuzzyMatch'
 import { useToast } from '@/hooks/use-toast'
+import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 
 interface CatalogItem {
   id?: string;
@@ -259,8 +260,25 @@ export default function CatalogHealth() {
     setIsEditDialogOpen(true)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingItem) {
+      // Check for duplicate eventId
+      if (editForm.eventId && editForm.eventId.trim() !== '') {
+        const { isDuplicate, existsIn } = await checkDuplicateEventId(
+          editForm.eventId, 
+          editingItem.sr, 
+          'catalog'
+        );
+        if (isDuplicate) {
+          toast({
+            title: 'Duplicate Event ID',
+            description: `Event ID "${editForm.eventId}" already exists in: ${existsIn.join(', ')}`,
+            variant: 'destructive'
+          });
+          return;
+        }
+      }
+      
       setCatalogData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm } : track))
       ;(async () => {
         try {
