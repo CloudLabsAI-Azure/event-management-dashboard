@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
@@ -32,8 +33,10 @@ interface RoadmapItem {
   eventId?: string;
   programType?: string;
   approvalDate?: string;
+  progressDeck?: string;
   notes?: string;
   activityLog?: ActivityLogEntry[];
+  isUpgrade?: boolean;
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -112,7 +115,9 @@ export default function RoadmapPage() {
     eventId: "",
     programType: "",
     approvalDate: "",
-    notes: ""
+    progressDeck: "",
+    notes: "",
+    isUpgrade: false
   })
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -161,8 +166,10 @@ export default function RoadmapPage() {
           eventId: r.eventId || '',
           programType: r.programType || '',
           approvalDate: r.approvalDate || '',
+          progressDeck: r.progressDeck || '',
           notes: r.notes || '',
-          activityLog: Array.isArray(r.activityLog) ? r.activityLog : []
+          activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
+          isUpgrade: r.isUpgrade || false
         }))
         setRoadmapData(mapped)
       } catch (err) {
@@ -450,6 +457,7 @@ export default function RoadmapPage() {
                       </TableHead>
                       <TableHead className="w-40">Target Completion</TableHead>
                       <TableHead className="w-40">Approval Month</TableHead>
+                      <TableHead className="w-40">Progress Deck</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -464,7 +472,16 @@ export default function RoadmapPage() {
                         }}
                       >
                         <TableCell className="font-mono text-sm">{track.eventId || 'TBD'}</TableCell>
-                        <TableCell className="font-medium">{track.trackTitle}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {track.trackTitle}
+                            {track.isUpgrade && (
+                              <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500 text-xs">
+                                Lab Upgrade
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
                         <TableCell>
                           {track.programType ? (
@@ -499,6 +516,21 @@ export default function RoadmapPage() {
                                 {getMonthName(parseApprovalMonth(track.approvalDate))} ({getQuarterFromMonth(parseApprovalMonth(track.approvalDate))})
                               </span>
                             </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {track.progressDeck ? (
+                            <a 
+                              href={track.progressDeck} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-500 hover:text-blue-700 hover:underline text-sm"
+                            >
+                              View Deck
+                            </a>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
@@ -614,6 +646,10 @@ export default function RoadmapPage() {
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="progressDeck" className="text-right">Progress Deck</Label>
+                <Input id="progressDeck" value={editForm.progressDeck || ''} onChange={(e) => setEditForm({ ...editForm, progressDeck: e.target.value })} className="col-span-3" placeholder="URL to progress deck (e.g., https://...)" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">Notes</Label>
                 <textarea
                   id="notes"
@@ -622,6 +658,19 @@ export default function RoadmapPage() {
                   className="col-span-3 min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Add notes about development status, blockers, or other important information..."
                 />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Type</Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Checkbox
+                    id="isUpgrade"
+                    checked={editForm.isUpgrade || false}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, isUpgrade: checked === true })}
+                  />
+                  <Label htmlFor="isUpgrade" className="text-sm font-normal cursor-pointer">
+                    Lab Upgrade
+                  </Label>
+                </div>
               </div>
             </div>
           </EntityEditDialog>
@@ -635,8 +684,8 @@ export default function RoadmapPage() {
             setShowFullHistory(false);
           }
         }}>
-          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 {selectedItem?.trackTitle || 'Track Details'}
               </DialogTitle>
@@ -645,38 +694,59 @@ export default function RoadmapPage() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex-1 overflow-y-auto space-y-4 py-4">
-              {/* Track Info Summary */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Event ID:</Label>
-                  <span className="text-sm font-mono">{selectedItem?.eventId || 'TBD'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Phase:</Label>
-                  {selectedItem && getPhaseBadge(selectedItem.phase)}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs text-muted-foreground">Target:</Label>
-                  <span className="text-sm">{selectedItem?.eta || 'NA'}</span>
-                </div>
-                {selectedItem?.programType && (
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+              <div className="space-y-4 py-4">
+              
+              {/* Activity Log Timeline - FIRST */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Sponsor:</Label>
-                    <Badge variant="outline" className={
-                      selectedItem.programType === "Program Sponsored" 
-                        ? "bg-green-500/10 text-green-500 border-green-500 text-xs" 
-                        : selectedItem.programType === "Spektra Sponsored"
-                        ? "bg-purple-500/10 text-purple-500 border-purple-500 text-xs"
-                        : "bg-blue-500/10 text-blue-500 border-blue-500 text-xs"
-                    }>
-                      {selectedItem.programType}
-                    </Badge>
+                    <History className="h-4 w-4 text-violet-600" />
+                    <Label className="font-semibold">Activity Log</Label>
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{selectedItem.activityLog.length} updates</Badge>
+                    )}
                   </div>
-                )}
+                  {selectedItem?.activityLog && selectedItem.activityLog.length > 3 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowFullHistory(!showFullHistory)}
+                      className="text-xs"
+                    >
+                      {showFullHistory ? 'Show Less' : 'Show All History'}
+                    </Button>
+                  )}
+                </div>
+                
+                <ScrollArea className={showFullHistory ? "h-[250px]" : ""}>
+                  <div className="space-y-3 pr-4">
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 ? (
+                      (showFullHistory ? selectedItem.activityLog : selectedItem.activityLog.slice(0, 3)).map((entry, idx) => (
+                        <div key={idx} className="relative pl-6 pb-3 border-l-2 border-violet-200 dark:border-violet-800 last:border-transparent">
+                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                            <Clock className="h-2.5 w-2.5 text-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground font-medium">
+                              {formatLogDate(entry.date)}
+                            </div>
+                            <div className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">
+                              {entry.text}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic py-4 text-center">
+                        No activity updates yet. Add your first update below.
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
 
-              {/* Add New Update Section */}
+              {/* Add New Update Section - SECOND */}
               {role === 'admin' && (
                 <div className="space-y-3 p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
                   <div className="flex items-center gap-2">
@@ -700,53 +770,71 @@ export default function RoadmapPage() {
                 </div>
               )}
 
-              {/* Activity Log Timeline */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Track Info Summary - THIRD */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <Label className="text-xs text-muted-foreground font-semibold">Track Details</Label>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-2">
-                    <History className="h-4 w-4 text-violet-600" />
-                    <Label className="font-semibold">Activity Log</Label>
-                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">{selectedItem.activityLog.length} updates</Badge>
-                    )}
+                    <Label className="text-xs text-muted-foreground">Event ID:</Label>
+                    <span className="text-sm font-mono">{selectedItem?.eventId || 'TBD'}</span>
                   </div>
-                  {selectedItem?.activityLog && selectedItem.activityLog.length > 3 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => setShowFullHistory(!showFullHistory)}
-                      className="text-xs"
-                    >
-                      {showFullHistory ? 'Show Less' : 'Show All History'}
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Target:</Label>
+                    <span className="text-sm">{selectedItem?.eta || 'NA'}</span>
+                  </div>
+                  {selectedItem?.programType && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <Label className="text-xs text-muted-foreground">Sponsor:</Label>
+                      <Badge variant="outline" className={
+                        selectedItem.programType === "Program Sponsored" 
+                          ? "bg-green-500/10 text-green-500 border-green-500 text-xs" 
+                          : selectedItem.programType === "Spektra Sponsored"
+                          ? "bg-purple-500/10 text-purple-500 border-purple-500 text-xs"
+                          : "bg-blue-500/10 text-blue-500 border-blue-500 text-xs"
+                      }>
+                        {selectedItem.programType}
+                      </Badge>
+                    </div>
                   )}
                 </div>
                 
-                <ScrollArea className={showFullHistory ? "h-[250px]" : "max-h-[200px]"}>
-                  <div className="space-y-3 pr-4">
-                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 ? (
-                      (showFullHistory ? selectedItem.activityLog : selectedItem.activityLog.slice(0, 3)).map((entry, idx) => (
-                        <div key={idx} className="relative pl-6 pb-3 border-l-2 border-violet-200 dark:border-violet-800 last:border-transparent">
-                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                            <Clock className="h-2.5 w-2.5 text-white" />
-                          </div>
-                          <div className="space-y-1">
-                            <div className="text-xs text-muted-foreground font-medium">
-                              {formatLogDate(entry.date)}
-                            </div>
-                            <div className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">
-                              {entry.text}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-sm text-muted-foreground italic py-4 text-center">
-                        No activity updates yet. Add your first update above.
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
+                {/* Phase Change Option */}
+                <div className="flex items-center gap-3 pt-2 border-t">
+                  <Label className="text-xs text-muted-foreground">Phase:</Label>
+                  {role === 'admin' ? (
+                    <Select 
+                      value={selectedItem?.phase || ''} 
+                      onValueChange={async (value) => {
+                        if (!selectedItem) return;
+                        try {
+                          const updatedItem = { ...selectedItem, phase: value };
+                          await catalogService.update(selectedItem.sr, { ...updatedItem, type: 'roadmapItem' });
+                          setRoadmapData(prev => prev.map(item => item.sr === selectedItem.sr ? updatedItem : item));
+                          setSelectedItem(updatedItem);
+                          toast({ title: 'Phase Updated', description: `Phase changed to ${value}` });
+                        } catch (err) {
+                          console.error('Error updating phase:', err);
+                          toast({ title: 'Error', description: 'Failed to update phase', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-48">
+                        <SelectValue placeholder="Select phase" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Under assessment">Under assessment</SelectItem>
+                        <SelectItem value="Development">Development</SelectItem>
+                        <SelectItem value="Testing">Testing</SelectItem>
+                        <SelectItem value="Release-ready">Release-ready</SelectItem>
+                        <SelectItem value="Released">Released</SelectItem>
+                        <SelectItem value="Backlog">Backlog</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    selectedItem && getPhaseBadge(selectedItem.phase)
+                  )}
+                </div>
               </div>
 
               {/* Legacy Notes Section */}
@@ -758,9 +846,10 @@ export default function RoadmapPage() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
             
-            <DialogFooter className="border-t pt-4">
+            <DialogFooter className="flex-shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
                 Close
               </Button>
