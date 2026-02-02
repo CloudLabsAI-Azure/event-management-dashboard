@@ -457,7 +457,6 @@ export default function RoadmapPage() {
                       </TableHead>
                       <TableHead className="w-40">Target Completion</TableHead>
                       <TableHead className="w-40">Approval Month</TableHead>
-                      <TableHead className="w-40">Progress Deck</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -516,21 +515,6 @@ export default function RoadmapPage() {
                                 {getMonthName(parseApprovalMonth(track.approvalDate))} ({getQuarterFromMonth(parseApprovalMonth(track.approvalDate))})
                               </span>
                             </div>
-                          ) : (
-                            <span className="text-gray-500">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {track.progressDeck ? (
-                            <a 
-                              href={track.progressDeck} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-blue-500 hover:text-blue-700 hover:underline text-sm"
-                            >
-                              View Deck
-                            </a>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
@@ -644,10 +628,6 @@ export default function RoadmapPage() {
                     className="bg-muted cursor-not-allowed"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="progressDeck" className="text-right">Progress Deck</Label>
-                <Input id="progressDeck" value={editForm.progressDeck || ''} onChange={(e) => setEditForm({ ...editForm, progressDeck: e.target.value })} className="col-span-3" placeholder="URL to progress deck (e.g., https://...)" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">Notes</Label>
