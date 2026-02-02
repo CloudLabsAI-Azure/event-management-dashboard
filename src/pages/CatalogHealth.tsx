@@ -75,6 +75,9 @@ export default function CatalogHealth() {
   // Status filter - default to hide completed (show only upcoming)
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
   
+  // Pagination - items per page
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  
   // Auto-match state
   const [isAutoMatching, setIsAutoMatching] = useState(false);
   const [matchPreview, setMatchPreview] = useState<Array<{
@@ -213,7 +216,6 @@ export default function CatalogHealth() {
       return dateA - dateB;
     });
 
-  const itemsPerPage = 10
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -224,10 +226,10 @@ export default function CatalogHealth() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
-  // Reset to page 1 when filter changes
+  // Reset to page 1 when filter or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, itemsPerPage]);
 
   const handleEdit = (item: CatalogItem) => {
     setEditingItem(item)
@@ -634,24 +636,41 @@ export default function CatalogHealth() {
               </ScrollArea>
               
               {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {startIndex + 1} to {Math.min(endIndex, catalogData.length)} of {catalogData.length} entries
+                    Showing {filteredData.length > 0 ? startIndex + 1 : 0} to {Math.min(endIndex, filteredData.length)} of <strong>{filteredData.length}</strong> entries
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    
-                    <div className="flex items-center space-x-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Show:</span>
+                    <Select value={String(itemsPerPage)} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                      <SelectTrigger className="w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">200</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {totalPages > 1 && (
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {totalPages <= 7 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <Button
                           key={page}
                           variant={currentPage === page ? "default" : "outline"}
@@ -661,21 +680,58 @@ export default function CatalogHealth() {
                         >
                           {page}
                         </Button>
-                      ))}
-                    </div>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => goToPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                      ))
+                    ) : (
+                      <>
+                        <Button
+                          variant={currentPage === 1 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(1)}
+                          className="w-8 h-8 p-0"
+                        >
+                          1
+                        </Button>
+                        {currentPage > 3 && <span className="px-1">...</span>}
+                        {Array.from({ length: 3 }, (_, i) => {
+                          const page = Math.max(2, Math.min(currentPage - 1, totalPages - 3)) + i;
+                          if (page >= totalPages) return null;
+                          return (
+                            <Button
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => goToPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          );
+                        })}
+                        {currentPage < totalPages - 2 && <span className="px-1">...</span>}
+                        <Button
+                          variant={currentPage === totalPages ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(totalPages)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
                   </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
