@@ -61,6 +61,9 @@ export default function TTTPage() {
       const res = await api.get('/api/catalog')
       const items = Array.isArray(res.data) ? res.data : []
       
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
+      
       const sessions = items
         .filter((i: any) => i.type === 'tttSession')
         .map((i: any) => ({
@@ -72,17 +75,63 @@ export default function TTTPage() {
           status: i.status || 'Scheduled',
           notes: i.notes || ''
         }))
-        .sort((a, b) => {
-          // Scheduled sessions first, Completed last
-          if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1
-          if (a.status !== 'Scheduled' && b.status === 'Scheduled') return 1
-          if (a.status === 'Completed' && b.status !== 'Completed') return 1
-          if (a.status !== 'Completed' && b.status === 'Completed') return -1
-          // For same status, sort by session date (most recent first)
-          return new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
-        })
       
-      setTttSessions(sessions)
+      // Auto-mark past events as completed
+      const sessionsToUpdate: TTTSession[] = []
+      const updatedSessions = sessions.map((session) => {
+        if (session.sessionDate && session.status !== 'Completed') {
+          const sessionDate = new Date(session.sessionDate)
+          sessionDate.setHours(0, 0, 0, 0)
+          
+          if (sessionDate < today) {
+            // Mark as completed and track for backend update
+            const autoNote = 'Event is delivered hence marking it as completed'
+            const updatedNotes = session.notes 
+              ? `${session.notes}\n[Auto] ${autoNote}` 
+              : `[Auto] ${autoNote}`
+            
+            const updatedSession = {
+              ...session,
+              status: 'Completed',
+              notes: updatedNotes
+            }
+            sessionsToUpdate.push(updatedSession)
+            return updatedSession
+          }
+        }
+        return session
+      })
+      
+      // Update backend for auto-completed sessions
+      if (sessionsToUpdate.length > 0) {
+        for (const session of sessionsToUpdate) {
+          try {
+            await api.put(`/api/catalog/${session.sr}`, { ...session, type: 'tttSession' })
+          } catch (err) {
+            console.error('Error auto-updating session:', session.sr, err)
+          }
+        }
+        
+        if (sessionsToUpdate.length > 0) {
+          toast({
+            title: 'Auto-Completed',
+            description: `${sessionsToUpdate.length} past event(s) marked as completed`
+          })
+        }
+      }
+      
+      // Sort sessions
+      const sortedSessions = updatedSessions.sort((a, b) => {
+        // Scheduled sessions first, Completed last
+        if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1
+        if (a.status !== 'Scheduled' && b.status === 'Scheduled') return 1
+        if (a.status === 'Completed' && b.status !== 'Completed') return 1
+        if (a.status !== 'Completed' && b.status === 'Completed') return -1
+        // For same status, sort by session date (most recent first)
+        return new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+      })
+      
+      setTttSessions(sortedSessions)
     } catch (err) {
       console.error('Error loading TTT sessions:', err)
       toast({

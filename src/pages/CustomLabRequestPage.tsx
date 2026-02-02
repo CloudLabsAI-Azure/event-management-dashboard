@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Dialog } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,9 +19,11 @@ interface CustomLabRequest {
   id?: string;
   sr: number;
   eventId: string;
-  sponsorDetails: string;
+  trackTitle: string;
+  sponsor: string;
   frequency: 'One Time' | 'Recurring';
   moveToRegularCatalog: 'Yes' | 'No' | 'TBD';
+  holLabRequested: 'Yes' | 'No';
   notes?: string;
 }
 
@@ -32,14 +34,20 @@ export default function CustomLabRequestPage() {
   const [customLabForm, setCustomLabForm] = useState<CustomLabRequest>({
     sr: 0,
     eventId: "",
-    sponsorDetails: "",
+    trackTitle: "",
+    sponsor: "",
     frequency: "One Time",
     moveToRegularCatalog: "TBD",
+    holLabRequested: "No",
     notes: ""
   });
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const { userRole: role } = useAuth()
+  
+  // Notes popup state
+  const [selectedItem, setSelectedItem] = useState<CustomLabRequest | null>(null);
+  const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true
@@ -53,9 +61,11 @@ export default function CustomLabRequestPage() {
           id: String(r.id || r._id || `temp_cl_${idx}`),
           sr: Number(r.sr || idx + 1),
           eventId: (r.eventId || '').trim(),
-          sponsorDetails: (r.sponsorDetails || '').trim(),
+          trackTitle: (r.trackTitle || r.sponsorDetails || '').trim(),
+          sponsor: (r.sponsor || '').trim(),
           frequency: r.frequency || 'One Time',
           moveToRegularCatalog: r.moveToRegularCatalog || 'TBD',
+          holLabRequested: r.holLabRequested || 'No',
           notes: r.notes || ''
         }))
         setCustomLabData(mapped)
@@ -134,8 +144,8 @@ export default function CustomLabRequestPage() {
         <div className="flex justify-end">
           {role === 'admin' && (
             <Button size="sm" onClick={() => { 
-              setEditingCustomLab({ sr: 0, eventId: '', sponsorDetails: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', notes: '' }); 
-              setCustomLabForm({ sr: 0, eventId: '', sponsorDetails: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', notes: '' });
+              setEditingCustomLab({ sr: 0, eventId: '', trackTitle: '', sponsor: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' }); 
+              setCustomLabForm({ sr: 0, eventId: '', trackTitle: '', sponsor: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' });
               setIsCustomLabDialogOpen(true); 
             }}>
               <Plus className="h-4 w-4" />
@@ -159,9 +169,10 @@ export default function CustomLabRequestPage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-16">Sr#</TableHead>
                     <TableHead className="w-40">Event ID</TableHead>
-                    <TableHead className="min-w-[200px]">Sponsor Details</TableHead>
+                    <TableHead className="min-w-[200px]">Track Title</TableHead>
+                    <TableHead className="w-48">Sponsor</TableHead>
+                    <TableHead className="w-32">HOL Lab Requested</TableHead>
                     <TableHead className="w-32">Frequency</TableHead>
                     <TableHead className="w-48">Move to Regular Catalog</TableHead>
                     <TableHead className="w-32">Actions</TableHead>
@@ -169,10 +180,36 @@ export default function CustomLabRequestPage() {
                 </TableHeader>
                 <TableBody>
                   {customLabData.map((item, index) => (
-                    <TableRow key={`${item.id || item.sr}-${index}`}>
-                      <TableCell className="font-mono text-sm">{item.sr}</TableCell>
+                    <TableRow 
+                      key={`${item.id || item.sr}-${index}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setIsNotesDialogOpen(true);
+                      }}
+                    >
                       <TableCell className="font-mono">{item.eventId}</TableCell>
-                      <TableCell className="font-medium">{item.sponsorDetails}</TableCell>
+                      <TableCell className="font-medium">{item.trackTitle}</TableCell>
+                      <TableCell>
+                        {item.sponsor ? (
+                          <Badge variant="outline" className={
+                            item.sponsor === "Program Sponsored" 
+                              ? "bg-green-500/10 text-green-500 border-green-500 whitespace-nowrap" 
+                              : item.sponsor === "Spektra Sponsored"
+                              ? "bg-purple-500/10 text-purple-500 border-purple-500 whitespace-nowrap"
+                              : "bg-blue-500/10 text-blue-500 border-blue-500 whitespace-nowrap"
+                          }>
+                            {item.sponsor}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.holLabRequested === 'Yes' ? "default" : "secondary"} className={item.holLabRequested === 'Yes' ? "bg-blue-500 hover:bg-blue-600" : ""}>
+                          {item.holLabRequested}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={item.frequency === 'Recurring' ? "default" : "secondary"}>
                           {item.frequency}
@@ -194,7 +231,10 @@ export default function CustomLabRequestPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditCustomLab(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCustomLab(item);
+                              }}
                               className="h-8 w-8 p-0"
                             >
                               <Edit className="h-4 w-4" />
@@ -204,7 +244,10 @@ export default function CustomLabRequestPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteCustomLab(item)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCustomLab(item);
+                              }}
                               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -216,7 +259,7 @@ export default function CustomLabRequestPage() {
                   ))}
                   {customLabData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No custom lab requests found. Click "Add Custom Lab Request" to create one.
                       </TableCell>
                     </TableRow>
@@ -241,8 +284,29 @@ export default function CustomLabRequestPage() {
                 <Input id="cl-eventId" value={customLabForm.eventId} onChange={(e) => setCustomLabForm({ ...customLabForm, eventId: e.target.value })} className="col-span-3" placeholder="e.g., EVT-2025-001" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="cl-sponsorDetails" className="text-right">Sponsor Details</Label>
-                <Input id="cl-sponsorDetails" value={customLabForm.sponsorDetails} onChange={(e) => setCustomLabForm({ ...customLabForm, sponsorDetails: e.target.value })} className="col-span-3" placeholder="Enter sponsor details" />
+                <Label htmlFor="cl-trackTitle" className="text-right">Track Title</Label>
+                <Input id="cl-trackTitle" value={customLabForm.trackTitle} onChange={(e) => setCustomLabForm({ ...customLabForm, trackTitle: e.target.value })} className="col-span-3" placeholder="Enter track title" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cl-sponsor" className="text-right">Sponsor</Label>
+                <Select value={customLabForm.sponsor} onValueChange={(value) => setCustomLabForm({ ...customLabForm, sponsor: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select sponsor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                    <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
+                    <SelectItem value="Third Party">Third Party</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cl-holLabRequested" className="text-right">HOL Lab Requested</Label>
+                <Select value={customLabForm.holLabRequested} onValueChange={(value: 'Yes' | 'No') => setCustomLabForm({ ...customLabForm, holLabRequested: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="No">No</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="cl-frequency" className="text-right">Frequency</Label>
@@ -277,6 +341,76 @@ export default function CustomLabRequestPage() {
               </div>
             </div>
           </EntityEditDialog>
+        </Dialog>
+        
+        {/* Notes Popup Dialog */}
+        <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>{selectedItem?.trackTitle || 'Custom Lab Request Details'}</DialogTitle>
+              <DialogDescription>
+                Request details and notes
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Event ID:</Label>
+                  <span className="text-sm font-mono">{selectedItem?.eventId || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Track Title:</Label>
+                  <span className="text-sm">{selectedItem?.trackTitle || '-'}</span>
+                </div>
+                {selectedItem?.sponsor && (
+                  <div className="flex items-center gap-2">
+                    <Label className="font-semibold">Sponsor:</Label>
+                    <Badge variant="outline" className={
+                      selectedItem.sponsor === "Program Sponsored" 
+                        ? "bg-green-500/10 text-green-500 border-green-500" 
+                        : selectedItem.sponsor === "Spektra Sponsored"
+                        ? "bg-purple-500/10 text-purple-500 border-purple-500"
+                        : "bg-blue-500/10 text-blue-500 border-blue-500"
+                    }>
+                      {selectedItem.sponsor}
+                    </Badge>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">HOL Lab Requested:</Label>
+                  <Badge variant={selectedItem?.holLabRequested === 'Yes' ? "default" : "secondary"} className={selectedItem?.holLabRequested === 'Yes' ? "bg-blue-500" : ""}>
+                    {selectedItem?.holLabRequested || 'No'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Frequency:</Label>
+                  <Badge variant={selectedItem?.frequency === 'Recurring' ? "default" : "secondary"}>
+                    {selectedItem?.frequency || 'One Time'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="font-semibold">Move to Regular Catalog:</Label>
+                  <Badge variant={
+                    selectedItem?.moveToRegularCatalog === 'Yes' ? "default" : 
+                    selectedItem?.moveToRegularCatalog === 'No' ? "destructive" : "secondary"
+                  } className={selectedItem?.moveToRegularCatalog === 'Yes' ? "bg-green-500" : ""}>
+                    {selectedItem?.moveToRegularCatalog || 'TBD'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold">Notes:</Label>
+                <div className="rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[100px]">
+                  {selectedItem?.notes || 'No notes available for this request.'}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       </div>
     </DashboardLayout>

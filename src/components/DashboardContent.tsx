@@ -490,7 +490,7 @@ export function DashboardContent() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-slate-600 dark:text-slate-400">Not tested (30+ days)</span>
+                              <span className="text-sm text-slate-600 dark:text-slate-400">To be revalidated (30+ days)</span>
                               <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
                                 {top25HealthDetails.totalCount - top25HealthDetails.testedCount} tracks
                               </span>
@@ -736,11 +736,47 @@ export function DashboardContent() {
                 <div className="p-3 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200/70 dark:from-rose-900/40 dark:to-rose-800/40 text-rose-700 dark:text-rose-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                   <Heart className="h-5 w-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Catalog Health</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">
-                    Total {catalogStats.total} tracks (Completed {catalogStats.completed}, In Progress {catalogStats.inProgress}, Pending {catalogStats.pending})
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <div>
+                    <h3 className="text-lg font-semibold">Catalog Health</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">
+                      Total {catalogStats.total} tracks (Completed {catalogStats.completed}, In Progress {catalogStats.inProgress}, Pending {catalogStats.pending})
+                    </p>
+                  </div>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button className="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors p-0.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/30" onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="start" className="w-72 p-0">
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                          <div className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-900/50">
+                            <Heart className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                          </div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Catalog Health</h4>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Tracks testing status and completion across all catalog items.
+                        </p>
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Completed</span>
+                            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{catalogStats.completed} tracks</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">In Progress</span>
+                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{catalogStats.inProgress} tracks</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600 dark:text-slate-400">Pending</span>
+                            <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">{catalogStats.pending} tracks</span>
+                          </div>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardTitle>
             </CardHeader>
@@ -773,18 +809,45 @@ export function DashboardContent() {
                 <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-100 to-cyan-200/70 dark:from-cyan-900/40 dark:to-cyan-800/40 text-cyan-700 dark:text-cyan-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                   <Globe className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col">
-                  <span>Localized Tracks</span>
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
-                    Total {localizedCounts.total}
-                    {localizedCounts.byLanguage.length > 0 && (
-                      <> ({localizedCounts.byLanguage.map((l, i) => (
-                        <span key={l.name}>
-                          {l.name} {l.count}{i < localizedCounts.byLanguage.length - 1 ? ', ' : ''}
-                        </span>
-                      ))})</>                    
-                    )}
-                  </span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col">
+                    <span>Localized Tracks</span>
+                    <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
+                      Total {localizedCounts.total}
+                      {localizedCounts.byLanguage.length > 0 && (
+                        <> ({localizedCounts.byLanguage.map((l, i) => (
+                          <span key={l.name}>
+                            {l.name} {l.count}{i < localizedCounts.byLanguage.length - 1 ? ', ' : ''}
+                          </span>
+                        ))})</>                    
+                      )}
+                    </span>
+                  </div>
+                  <Tooltip delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <button className="text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors p-0.5 rounded-full hover:bg-cyan-50 dark:hover:bg-cyan-900/30" onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="start" className="w-72 p-0">
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                          <div className="p-1.5 rounded-lg bg-cyan-100 dark:bg-cyan-900/50">
+                            <Globe className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                          </div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Localized Tracks</h4>
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                          Tracks translated and localized for different languages and regions.
+                        </p>
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                            🌍 Click to view full localization details and progress
+                          </p>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </CardTitle>
             </CardHeader>
@@ -822,9 +885,53 @@ export function DashboardContent() {
               <div className="p-3 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200/70 dark:from-violet-900/40 dark:to-violet-800/40 text-violet-700 dark:text-violet-300 group-hover:scale-105 transition-transform duration-300 shadow-sm">
                 <MapPin className="h-5 w-5" />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold">Lab Development Roadmap</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">Track progress of lab development phases</p>
+              <div className="flex items-center gap-1.5">
+                <div>
+                  <h3 className="text-lg font-semibold">Lab Development Roadmap</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 font-normal">Track progress of lab development phases</p>
+                </div>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                    <button className="text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 transition-colors p-0.5 rounded-full hover:bg-violet-50 dark:hover:bg-violet-900/30">
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="start" className="w-72 p-0">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/50">
+                          <MapPin className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <h4 className="font-semibold text-slate-900 dark:text-white">Development Phases</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></div>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium">Released:</span> Labs fully available in RMP
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium">Development:</span> Labs currently being built
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0"></div>
+                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium">Assessment:</span> Labs under evaluation
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                          📋 Click any phase to see detailed roadmap
+                        </p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </CardTitle>
           </CardHeader>

@@ -8,14 +8,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, Edit, Trash2, Plus } from "lucide-react"
+import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
 import { isNonEmptyString } from '@/lib/validation'
 import api from "@/lib/api";
+
+interface ActivityLogEntry {
+  date: string;
+  text: string;
+}
 
 interface RoadmapItem {
   id?: string;
@@ -27,6 +33,7 @@ interface RoadmapItem {
   programType?: string;
   approvalDate?: string;
   notes?: string;
+  activityLog?: ActivityLogEntry[];
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -44,7 +51,56 @@ const getPhaseBadge = (phase: string) => {
   return <Badge variant="outline">{phase}</Badge>
 }
 
+// Month options for dropdown
+const monthOptions = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+// Get fiscal quarter from month number (01-12)
+// Fiscal Year: Q1=Jul-Sep, Q2=Oct-Dec, Q3=Jan-Mar, Q4=Apr-Jun
+const getQuarterFromMonth = (month: string): string => {
+  const m = parseInt(month, 10);
+  if (m >= 7 && m <= 9) return 'Q1';   // July - September
+  if (m >= 10 && m <= 12) return 'Q2'; // October - December
+  if (m >= 1 && m <= 3) return 'Q3';   // January - March
+  if (m >= 4 && m <= 6) return 'Q4';   // April - June
+  return '';
+};
+
+// Get month name from month number
+const getMonthName = (month: string): string => {
+  const option = monthOptions.find(m => m.value === month);
+  return option ? option.label : '';
+};
+
+// Parse approvalDate to get month (format: YYYY-MM or just MM)
+const parseApprovalMonth = (approvalDate: string | undefined): string => {
+  if (!approvalDate) return '';
+  if (approvalDate.length === 7) {
+    // Format: YYYY-MM
+    return approvalDate.substring(5, 7);
+  }
+  if (approvalDate.length === 2) {
+    return approvalDate;
+  }
+  return '';
+};
+
 export default function RoadmapPage() {
+  const [searchParams] = useSearchParams();
+  const initialPhaseFilter = searchParams.get('phase') || 'all';
+  
   const [roadmapData, setRoadmapData] = useState<RoadmapItem[]>([])
   const [editingItem, setEditingItem] = useState<RoadmapItem | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -64,13 +120,18 @@ export default function RoadmapPage() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   
-  // Filter state
-  const [phaseFilter, setPhaseFilter] = useState<string>("all");
+  // Filter state - initialize from URL if present
+  const [phaseFilter, setPhaseFilter] = useState<string>(initialPhaseFilter);
   const [sponsorFilter, setSponsorFilter] = useState<string>("all");
   
   // Notes popup state
   const [selectedItem, setSelectedItem] = useState<RoadmapItem | null>(null);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  
+  // Activity log state
+  const [newUpdate, setNewUpdate] = useState("");
+  const [showFullHistory, setShowFullHistory] = useState(false);
+  const [addingUpdate, setAddingUpdate] = useState(false);
 
   // Filtered data based on phase and sponsor filters
   const filteredRoadmapData = roadmapData.filter(item => {
@@ -100,7 +161,8 @@ export default function RoadmapPage() {
           eventId: r.eventId || '',
           programType: r.programType || '',
           approvalDate: r.approvalDate || '',
-          notes: r.notes || ''
+          notes: r.notes || '',
+          activityLog: Array.isArray(r.activityLog) ? r.activityLog : []
         }))
         setRoadmapData(mapped)
       } catch (err) {
@@ -127,17 +189,20 @@ export default function RoadmapPage() {
     }
     
     try {
-      const payload = { ...editForm, type: 'roadmapItem' }
+      // Auto-set eventId to TBD if empty
+      const eventIdValue = editForm.eventId?.trim() || 'TBD';
+      const payload = { ...editForm, eventId: eventIdValue, type: 'roadmapItem' }
       console.log('Saving roadmap item:', payload) // Debug log
       
       if (editingItem && editingItem.sr && editingItem.sr > 0) {
         await catalogService.update(editingItem.sr, payload)
-        setRoadmapData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm, id: editingItem.id } : track))
+        setRoadmapData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm, eventId: eventIdValue, id: editingItem.id } : track))
       } else {
         const resItem = await catalogService.create(payload)
         console.log('Create response:', resItem) // Debug log
         const newItem = { 
           ...editForm, 
+          eventId: eventIdValue,
           id: String(resItem?.id || resItem?._id || ''),
           sr: Number(resItem?.sr || Date.now()) 
         }
@@ -164,6 +229,49 @@ export default function RoadmapPage() {
   }
 
   const { userRole: role } = useAuth()
+
+  // Add activity log update
+  const handleAddUpdate = async () => {
+    if (!selectedItem || !newUpdate.trim()) return;
+    
+    setAddingUpdate(true);
+    try {
+      const newEntry: ActivityLogEntry = {
+        date: new Date().toISOString(),
+        text: newUpdate.trim()
+      };
+      
+      const updatedLog = [newEntry, ...(selectedItem.activityLog || [])];
+      const payload = { ...selectedItem, activityLog: updatedLog, type: 'roadmapItem' };
+      
+      await catalogService.update(selectedItem.sr, payload);
+      
+      // Update local state
+      const updatedItem = { ...selectedItem, activityLog: updatedLog };
+      setSelectedItem(updatedItem);
+      setRoadmapData(prev => prev.map(item => item.sr === selectedItem.sr ? updatedItem : item));
+      setNewUpdate("");
+      
+      toast({ title: 'Update Added', description: 'Activity log updated successfully' });
+    } catch (err) {
+      console.error('Error adding update:', err);
+      toast({ title: 'Error', description: 'Failed to add update', variant: 'destructive' });
+    } finally {
+      setAddingUpdate(false);
+    }
+  };
+
+  // Format date for display
+  const formatLogDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const handleDelete = (item: RoadmapItem) => {
     if (window.confirm(`Are you sure you want to delete "${item.trackTitle}"?`)) {
@@ -355,7 +463,7 @@ export default function RoadmapPage() {
                           setIsNotesDialogOpen(true);
                         }}
                       >
-                        <TableCell className="font-mono text-sm">{track.eventId || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">{track.eventId || 'TBD'}</TableCell>
                         <TableCell className="font-medium">{track.trackTitle}</TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
                         <TableCell>
@@ -387,7 +495,9 @@ export default function RoadmapPage() {
                           {track.approvalDate ? (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4 text-green-500" />
-                              <span className="text-sm">Approved: {track.approvalDate.length === 7 ? track.approvalDate : track.approvalDate.substring(0, 7)}</span>
+                              <span className="text-sm">
+                                {getMonthName(parseApprovalMonth(track.approvalDate))} ({getQuarterFromMonth(parseApprovalMonth(track.approvalDate))})
+                              </span>
                             </div>
                           ) : (
                             <span className="text-gray-500">-</span>
@@ -442,7 +552,7 @@ export default function RoadmapPage() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="eventId" className="text-right">Event ID</Label>
-                <Input id="eventId" value={editForm.eventId} onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })} className="col-span-3" placeholder="e.g., EVT-2025-001" />
+                <Input id="eventId" value={editForm.eventId} onChange={(e) => setEditForm({ ...editForm, eventId: e.target.value })} className="col-span-3" placeholder="e.g., MSXXX" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="trackTitle" className="text-right">Track Title</Label>
@@ -470,7 +580,7 @@ export default function RoadmapPage() {
                   <SelectContent>
                     <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
                     <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
-                    <SelectItem value="Third Party (Under Budget)">Third Party (Under Budget)</SelectItem>
+                    <SelectItem value="Third Party">Third Party</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -480,7 +590,28 @@ export default function RoadmapPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="approvalDate" className="text-right">Approval Month</Label>
-                <Input id="approvalDate" type="month" value={editForm.approvalDate && editForm.approvalDate.length >= 7 ? editForm.approvalDate.substring(0, 7) : editForm.approvalDate || ''} onChange={(e) => setEditForm({ ...editForm, approvalDate: e.target.value })} className="col-span-3" />
+                <div className="col-span-3 grid grid-cols-2 gap-2">
+                  <Select 
+                    value={parseApprovalMonth(editForm.approvalDate)} 
+                    onValueChange={(value) => {
+                      const year = new Date().getFullYear();
+                      setEditForm({ ...editForm, approvalDate: `${year}-${value}` });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map(m => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input 
+                    value={parseApprovalMonth(editForm.approvalDate) ? getQuarterFromMonth(parseApprovalMonth(editForm.approvalDate)) : ''} 
+                    placeholder="Quarter" 
+                    readOnly 
+                    className="bg-muted cursor-not-allowed"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="notes" className="text-right">Notes</Label>
@@ -496,58 +627,140 @@ export default function RoadmapPage() {
           </EntityEditDialog>
         </Dialog>
 
-        {/* Notes Popup Dialog */}
-        <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+        {/* Notes Popup Dialog with Activity Log */}
+        <Dialog open={isNotesDialogOpen} onOpenChange={(open) => {
+          setIsNotesDialogOpen(open);
+          if (!open) {
+            setNewUpdate("");
+            setShowFullHistory(false);
+          }
+        }}>
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>{selectedItem?.trackTitle || 'Track Details'}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedItem?.trackTitle || 'Track Details'}
+              </DialogTitle>
               <DialogDescription>
-                Development notes and current status
+                Development notes and activity log
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            
+            <div className="flex-1 overflow-y-auto space-y-4 py-4">
+              {/* Track Info Summary */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <Label className="font-semibold">Event ID:</Label>
-                  <span className="text-sm font-mono">{selectedItem?.eventId || '-'}</span>
+                  <Label className="text-xs text-muted-foreground">Event ID:</Label>
+                  <span className="text-sm font-mono">{selectedItem?.eventId || 'TBD'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="font-semibold">Phase:</Label>
+                  <Label className="text-xs text-muted-foreground">Phase:</Label>
                   {selectedItem && getPhaseBadge(selectedItem.phase)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label className="font-semibold">Target Completion:</Label>
+                  <Label className="text-xs text-muted-foreground">Target:</Label>
                   <span className="text-sm">{selectedItem?.eta || 'NA'}</span>
                 </div>
                 {selectedItem?.programType && (
                   <div className="flex items-center gap-2">
-                    <Label className="font-semibold">Sponsor:</Label>
+                    <Label className="text-xs text-muted-foreground">Sponsor:</Label>
                     <Badge variant="outline" className={
                       selectedItem.programType === "Program Sponsored" 
-                        ? "bg-green-500/10 text-green-500 border-green-500" 
+                        ? "bg-green-500/10 text-green-500 border-green-500 text-xs" 
                         : selectedItem.programType === "Spektra Sponsored"
-                        ? "bg-purple-500/10 text-purple-500 border-purple-500"
-                        : "bg-blue-500/10 text-blue-500 border-blue-500"
+                        ? "bg-purple-500/10 text-purple-500 border-purple-500 text-xs"
+                        : "bg-blue-500/10 text-blue-500 border-blue-500 text-xs"
                     }>
                       {selectedItem.programType}
                     </Badge>
                   </div>
                 )}
-                {selectedItem?.approvalDate && (
+              </div>
+
+              {/* Add New Update Section */}
+              {role === 'admin' && (
+                <div className="space-y-3 p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
                   <div className="flex items-center gap-2">
-                    <Label className="font-semibold">Approval Month:</Label>
-                    <span className="text-sm">{selectedItem.approvalDate.length === 7 ? selectedItem.approvalDate : selectedItem.approvalDate.substring(0, 7)}</span>
+                    <MessageSquarePlus className="h-4 w-4 text-blue-600" />
+                    <Label className="font-semibold text-blue-700 dark:text-blue-400">Add Update</Label>
                   </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="font-semibold">Notes:</Label>
-                <div className="rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[100px]">
-                  {selectedItem?.notes || 'No notes available for this track.'}
+                  <textarea
+                    value={newUpdate}
+                    onChange={(e) => setNewUpdate(e.target.value)}
+                    className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                    placeholder="Add a daily update, progress note, or status change..."
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={handleAddUpdate}
+                    disabled={!newUpdate.trim() || addingUpdate}
+                    className="w-full"
+                  >
+                    {addingUpdate ? 'Adding...' : 'Add Update'}
+                  </Button>
                 </div>
+              )}
+
+              {/* Activity Log Timeline */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-violet-600" />
+                    <Label className="font-semibold">Activity Log</Label>
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{selectedItem.activityLog.length} updates</Badge>
+                    )}
+                  </div>
+                  {selectedItem?.activityLog && selectedItem.activityLog.length > 3 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowFullHistory(!showFullHistory)}
+                      className="text-xs"
+                    >
+                      {showFullHistory ? 'Show Less' : 'Show All History'}
+                    </Button>
+                  )}
+                </div>
+                
+                <ScrollArea className={showFullHistory ? "h-[250px]" : "max-h-[200px]"}>
+                  <div className="space-y-3 pr-4">
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 ? (
+                      (showFullHistory ? selectedItem.activityLog : selectedItem.activityLog.slice(0, 3)).map((entry, idx) => (
+                        <div key={idx} className="relative pl-6 pb-3 border-l-2 border-violet-200 dark:border-violet-800 last:border-transparent">
+                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                            <Clock className="h-2.5 w-2.5 text-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground font-medium">
+                              {formatLogDate(entry.date)}
+                            </div>
+                            <div className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">
+                              {entry.text}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic py-4 text-center">
+                        No activity updates yet. Add your first update above.
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
+
+              {/* Legacy Notes Section */}
+              {selectedItem?.notes && (
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-xs text-muted-foreground">Legacy Notes:</Label>
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+                    {selectedItem.notes}
+                  </div>
+                </div>
+              )}
             </div>
-            <DialogFooter>
+            
+            <DialogFooter className="border-t pt-4">
               <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
                 Close
               </Button>

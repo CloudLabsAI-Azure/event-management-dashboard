@@ -178,7 +178,7 @@ export default function LabMaintenancePage() {
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
-                    <TableHead className="w-16">Sr#</TableHead>
+                    <TableHead className="w-16">PO</TableHead>
                     <TableHead className="min-w-[250px]">Track Name</TableHead>
                     <TableHead className="w-48">Sponsor</TableHead>
                     <TableHead className="w-40">Phase</TableHead>
