@@ -14,12 +14,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2 } from "lucide-react"
+import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2, Wand2 } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { FileUploadModal } from "@/components/FileUploadModal"
 import MetricsEditor from '@/components/MetricsEditor'
 import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
+import { findBestMatch, type MatchResult } from '@/lib/fuzzyMatch'
 
 interface TrackItem {
   id?: string;
@@ -63,6 +64,15 @@ export default function Top25Tracks() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
+  
+  // Auto-match state
+  const [isAutoMatching, setIsAutoMatching] = useState(false);
+  const [matchPreview, setMatchPreview] = useState<Array<{
+    trackItem: TrackItem;
+    match: MatchResult | null;
+    selected: boolean;
+  }>>([]);
+  const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
   // Removed bulk upload and metrics edit for this page per requirements
   
   const itemsPerPage = 10
@@ -319,6 +329,121 @@ export default function Top25Tracks() {
     }
   };
 
+  // Auto-match release notes
+  const handleAutoMatch = async () => {
+    setIsAutoMatching(true);
+    try {
+      // Fetch GitHub folders
+      const githubResponse = await api.get('/api/github-release-notes');
+      const githubFolders = githubResponse.data.folders || [];
+
+      // Find items without release notes URLs
+      const itemsToMatch = tracksData.filter(item => !item.releaseUrl || item.releaseUrl.trim() === '');
+
+      if (itemsToMatch.length === 0) {
+        toast({
+          title: "No items to match",
+          description: "All tracks already have release notes URLs.",
+        });
+        setIsAutoMatching(false);
+        return;
+      }
+
+      // Find matches for each item
+      const matches = itemsToMatch.map(item => {
+        const match = findBestMatch(item.trackName, githubFolders, 60);
+        return {
+          trackItem: item,
+          match,
+          selected: match !== null // Auto-select if match found
+        };
+      });
+
+      const foundMatches = matches.filter(m => m.match !== null).length;
+      
+      if (foundMatches === 0) {
+        toast({
+          title: "No matches found",
+          description: "Could not find any matching GitHub folders for your tracks.",
+          variant: "destructive"
+        });
+        setIsAutoMatching(false);
+        return;
+      }
+
+      setMatchPreview(matches);
+      setIsMatchPreviewOpen(true);
+      
+      toast({
+        title: `Found ${foundMatches} matches`,
+        description: `Review and apply the suggested release notes URLs.`,
+      });
+    } catch (error) {
+      console.error('Auto-match error:', error);
+      toast({
+        title: "Failed to auto-match",
+        description: "Could not fetch GitHub release notes. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAutoMatching(false);
+    }
+  };
+
+  // Apply selected matches
+  const handleApplyMatches = async () => {
+    const selectedMatches = matchPreview.filter(m => m.selected && m.match);
+    
+    if (selectedMatches.length === 0) {
+      toast({
+        title: "No matches selected",
+        description: "Please select at least one match to apply.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Update tracks data
+      const updatedData = tracksData.map(item => {
+        const matchEntry = selectedMatches.find(m => m.trackItem.sr === item.sr);
+        if (matchEntry && matchEntry.match) {
+          return { ...item, releaseUrl: matchEntry.match.folderUrl };
+        }
+        return item;
+      });
+
+      setTracksData(updatedData);
+
+      // Save to backend
+      for (const matchEntry of selectedMatches) {
+        if (matchEntry.match) {
+          await tracksService.update(matchEntry.trackItem.sr, {
+            ...matchEntry.trackItem,
+            releaseUrl: matchEntry.match.folderUrl
+          });
+        }
+      }
+
+      toast({
+        title: "Success!",
+        description: `Applied ${selectedMatches.length} release notes URLs.`,
+      });
+
+      setIsMatchPreviewOpen(false);
+      setMatchPreview([]);
+      
+      try { window.dispatchEvent(new CustomEvent('tracks:changed')) } catch {}
+    } catch (error) {
+      console.error('Apply matches error:', error);
+      toast({
+        title: "Failed to apply matches",
+        description: "Some updates may not have been saved. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -340,6 +465,16 @@ export default function Top25Tracks() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 {csvUploading ? "Uploading..." : "Bulk Upload (.csv)"}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="flex items-center gap-2"
+                disabled={isAutoMatching}
+                onClick={handleAutoMatch}
+              >
+                <Wand2 className="h-4 w-4" />
+                {isAutoMatching ? "Matching..." : "Auto-Match URLs"}
               </Button>
               <input 
                 ref={fileInputRef}
@@ -658,6 +793,77 @@ export default function Top25Tracks() {
               <Button onClick={handleSaveEdit}>
                 Save changes
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Auto-Match Preview Dialog */}
+        <Dialog open={isMatchPreviewOpen} onOpenChange={setIsMatchPreviewOpen}>
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Auto-Match Release Notes Preview</DialogTitle>
+              <DialogDescription>
+                Review the suggested matches below. Uncheck any you don't want to apply.
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-3">
+                {matchPreview.map((item, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={(e) => {
+                          const updated = [...matchPreview];
+                          updated[idx].selected = e.target.checked;
+                          setMatchPreview(updated);
+                        }}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <div className="font-medium text-sm">{item.trackItem.trackName}</div>
+                        {item.match ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {item.match.score}% Match
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">→</span>
+                              <span className="text-xs text-green-600">{item.match.folderName}</span>
+                            </div>
+                            <a 
+                              href={item.match.folderUrl} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="text-xs text-primary hover:underline block truncate"
+                            >
+                              {item.match.folderUrl}
+                            </a>
+                          </>
+                        ) : (
+                          <div className="text-xs text-muted-foreground">No match found</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <DialogFooter>
+              <div className="flex items-center justify-between w-full">
+                <span className="text-sm text-muted-foreground">
+                  {matchPreview.filter(m => m.selected).length} of {matchPreview.length} selected
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsMatchPreviewOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleApplyMatches}>
+                    Apply Selected
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
