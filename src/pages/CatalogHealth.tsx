@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2 } from "lucide-react"
+import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2, Loader2 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
@@ -361,7 +361,7 @@ export default function CatalogHealth() {
       // Reload data to get the new item with correct sr
       await loadCatalogData();
       setIsAddDialogOpen(false);
-      setAddForm({ sr: 0, trackName: "", eventDate: "", status: "", notesETA: "" });
+      setAddForm({ sr: 0, eventId: "", trackName: "", eventDate: "", status: "", notesETA: "", lastTestDate: "", releaseNotesUrl: "" });
       toast({ title: 'Success', description: 'Item added successfully' });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to add item', variant: 'destructive' });
@@ -922,11 +922,12 @@ export default function CatalogHealth() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={handleCancelEdit}>
+              <Button variant="outline" onClick={handleCancelEdit} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveEdit}>
-                Save changes
+              <Button onClick={handleSaveEdit} disabled={isSaving}>
+                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSaving ? 'Saving...' : 'Save changes'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -942,6 +943,19 @@ export default function CatalogHealth() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="addEventId" className="text-right">
+                  Event ID
+                </Label>
+                <Input
+                  id="addEventId"
+                  type="text"
+                  value={addForm.eventId || ''}
+                  onChange={(e) => setAddForm({ ...addForm, eventId: e.target.value })}
+                  className="col-span-3"
+                  placeholder="e.g., EVT-001 or LAB-2024-A"
+                />
+              </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="addTrackName" className="text-right">
                   Track Name
@@ -959,6 +973,7 @@ export default function CatalogHealth() {
                 </Label>
                 <Input
                   id="addEventDate"
+                  type="date"
                   value={addForm.eventDate}
                   onChange={(e) => setAddForm({ ...addForm, eventDate: e.target.value })}
                   className="col-span-3"
@@ -982,24 +997,59 @@ export default function CatalogHealth() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* <div className="grid grid-cols-4 items-center gap-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="addLastTestDate" className="text-right">
+                  Last Test Date
+                </Label>
+                <Input
+                  id="addLastTestDate"
+                  type="date"
+                  value={addForm.lastTestDate || ''}
+                  onChange={(e) => setAddForm({ ...addForm, lastTestDate: e.target.value })}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="addReleaseNotesUrl" className="text-right">
+                  Release Notes
+                </Label>
+                <div className="col-span-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="addReleaseNotesUrl"
+                      type="url"
+                      value={addForm.releaseNotesUrl || ''}
+                      onChange={(e) => setAddForm({ ...addForm, releaseNotesUrl: e.target.value })}
+                      className="flex-1"
+                      placeholder="https://..."
+                    />
+                    <GitHubReleasePicker
+                      currentUrl={addForm.releaseNotesUrl || ''}
+                      onSelect={(url) => setAddForm({ ...addForm, releaseNotesUrl: url })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="addNotesETA" className="text-right">
                   Notes/ETA
                 </Label>
                 <Input
                   id="addNotesETA"
-                  value={addForm.notesETA}
+                  value={addForm.notesETA || ''}
                   onChange={(e) => setAddForm({ ...addForm, notesETA: e.target.value })}
                   className="col-span-3"
+                  placeholder="Optional notes or ETA"
                 />
-              </div> */}
+              </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button onClick={handleAddCatalog}>
-                Add
+              <Button onClick={handleAddCatalog} disabled={isSaving}>
+                {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isSaving ? 'Adding...' : 'Add'}
               </Button>
             </DialogFooter>
           </DialogContent>

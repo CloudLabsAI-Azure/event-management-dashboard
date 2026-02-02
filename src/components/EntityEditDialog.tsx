@@ -2,6 +2,7 @@ import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { Loader2 } from 'lucide-react'
 
 type Props = {
   open: boolean
@@ -38,8 +39,11 @@ export default function EntityEditDialog({ open, onOpenChange, title, saving, on
         </DialogHeader>
         <div className="py-2">{children}</div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={handleSave} disabled={busy || saving}>{busy || saving ? 'Saving...' : saveLabel}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy || saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={busy || saving}>
+            {(busy || saving) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {busy || saving ? 'Saving...' : saveLabel}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
