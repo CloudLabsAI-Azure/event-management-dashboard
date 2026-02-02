@@ -97,6 +97,10 @@ export default function CatalogHealth() {
         const today = new Date()
         today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
         
+        // Calculate 2 weeks from today
+        const twoWeeksFromNow = new Date(today)
+        twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14)
+        
         const mapped = items
           .filter((it: any) => {
             // Include catalog items, TTT sessions, and custom lab requests
@@ -104,8 +108,26 @@ export default function CatalogHealth() {
             if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || 
                 it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement' ||
                 it.type === 'labMaintenance') return false
-            // Include if it's a TTT session, custom lab request, or has track/event info
-            return it && (it.trackName || it.trackTitle || it.type === 'tttSession' || it.type === 'customLabRequest')
+            
+            // For TTT sessions and custom lab requests, only include if within 2 weeks
+            if (it.type === 'tttSession') {
+              const sessionDate = it.sessionDate ? new Date(it.sessionDate) : null
+              if (!sessionDate) return false
+              sessionDate.setHours(0, 0, 0, 0)
+              // Include if session date is between today and 2 weeks from now
+              return sessionDate >= today && sessionDate <= twoWeeksFromNow
+            }
+            
+            if (it.type === 'customLabRequest') {
+              const eventDate = it.eventDate ? new Date(it.eventDate) : null
+              if (!eventDate) return false
+              eventDate.setHours(0, 0, 0, 0)
+              // Include if event date is between today and 2 weeks from now
+              return eventDate >= today && eventDate <= twoWeeksFromNow
+            }
+            
+            // Include regular catalog items if they have track/event info
+            return it && (it.trackName || it.trackTitle)
           })
           .map((it: any, idx: number) => {
             // Handle different item types with appropriate field mapping
