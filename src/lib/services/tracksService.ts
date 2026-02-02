@@ -1,16 +1,5 @@
 import api from '@/lib/api'
-
-// Sanitize date fields - convert empty strings to null for proper data type handling
-const sanitizeDates = (item: any) => {
-  const dateFields = ['lastTestDate', 'eventDate', 'sessionDate'];
-  const sanitized = { ...item };
-  for (const field of dateFields) {
-    if (sanitized[field] === '' || sanitized[field] === undefined) {
-      sanitized[field] = null;
-    }
-  }
-  return sanitized;
-};
+import { sanitizeDates } from '@/lib/utils/dateUtils'
 
 export default {
   list: async () => {

@@ -386,6 +386,77 @@ async function ensureDataSchema() {
 
 await ensureDataSchema();
 
+// =====================
+// Request Validation Middleware
+// =====================
+
+/**
+ * Validate catalog item request body
+ */
+function validateCatalogItem(req, res, next) {
+  const { trackName, trackTitle } = req.body || {};
+  const name = trackName || trackTitle;
+  
+  if (!name || String(name).trim() === '') {
+    return res.status(400).json({ 
+      error: 'Validation failed', 
+      message: 'Track name is required' 
+    });
+  }
+  
+  // Sanitize date fields - convert empty strings to null
+  const dateFields = ['lastTestDate', 'eventDate', 'sessionDate', 'approvalDate'];
+  dateFields.forEach(field => {
+    if (req.body[field] === '' || req.body[field] === undefined) {
+      req.body[field] = null;
+    }
+  });
+  
+  next();
+}
+
+/**
+ * Validate user request body
+ */
+function validateUser(req, res, next) {
+  const { username, role } = req.body || {};
+  
+  if (!username || String(username).trim() === '') {
+    return res.status(400).json({ 
+      error: 'Validation failed', 
+      message: 'Username is required' 
+    });
+  }
+  
+  const validRoles = ['admin', 'developer', 'viewer'];
+  if (role && !validRoles.includes(role)) {
+    return res.status(400).json({ 
+      error: 'Validation failed', 
+      message: `Invalid role. Must be one of: ${validRoles.join(', ')}` 
+    });
+  }
+  
+  next();
+}
+
+/**
+ * Generic request sanitizer - trim string fields
+ */
+function sanitizeRequest(req, res, next) {
+  if (req.body && typeof req.body === 'object') {
+    Object.keys(req.body).forEach(key => {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = req.body[key].trim();
+      }
+    });
+  }
+  next();
+}
+
+// =====================
+// Auth Middleware
+// =====================
+
 // Simple auth middleware: expects Authorization: Bearer <token>
 async function requireAuth(req, res, next) {
   const auth = req.headers['authorization'] || '';
@@ -1229,6 +1300,68 @@ app.get('/api/audit/history/:resource/:resourceId', requireAdmin, async (req, re
   }
 });
 
+// =====================
+// Duplicate Event ID Check Endpoint
+// =====================
+app.get('/api/check-duplicate-eventid', async (req, res) => {
+  try {
+    const { eventId, excludeSr, excludeResource } = req.query;
+    
+    if (!eventId || String(eventId).trim() === '' || String(eventId).trim().toUpperCase() === 'TBD') {
+      return res.json({ isDuplicate: false, existsIn: [] });
+    }
+    
+    const normalizedEventId = String(eventId).trim().toLowerCase();
+    const existsIn = [];
+    
+    const data = await readData();
+    
+    // Check catalog items
+    const catalog = data.catalog || [];
+    for (const item of catalog) {
+      const itemEventId = (item.eventId || '').trim().toLowerCase();
+      if (itemEventId && itemEventId === normalizedEventId) {
+        // Skip if this is the same item being edited
+        if (excludeSr && String(item.sr) === String(excludeSr)) {
+          continue;
+        }
+        
+        // Determine which page this item belongs to
+        if (item.type === 'tttSession') {
+          if (!existsIn.includes('TTT Sessions')) existsIn.push('TTT Sessions');
+        } else if (item.type === 'customLabRequest') {
+          if (!existsIn.includes('Custom Lab Requests')) existsIn.push('Custom Lab Requests');
+        } else if (item.type === 'roadmapItem') {
+          if (!existsIn.includes('Lab Development')) existsIn.push('Lab Development');
+        } else {
+          if (!existsIn.includes('Catalog Health')) existsIn.push('Catalog Health');
+        }
+      }
+    }
+    
+    // Check tracks
+    const tracks = data.tracks || [];
+    for (const track of tracks) {
+      const trackEventId = (track.eventId || '').trim().toLowerCase();
+      if (trackEventId && trackEventId === normalizedEventId) {
+        // Skip if this is the same item being edited
+        if (excludeSr && excludeResource === 'tracks' && String(track.sr) === String(excludeSr)) {
+          continue;
+        }
+        if (!existsIn.includes('Top 25 Tracks')) existsIn.push('Top 25 Tracks');
+      }
+    }
+    
+    res.json({
+      isDuplicate: existsIn.length > 0,
+      existsIn
+    });
+  } catch (err) {
+    console.error('Error checking duplicate event ID:', err);
+    res.status(500).json({ error: 'Failed to check duplicate event ID' });
+  }
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -1236,9 +1369,34 @@ app.get('/api/:resource', async (req, res) => {
   res.json(data);
 });
 
-app.post('/api/:resource', requireAdmin, async (req, res) => {
+app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
+  
+  // Apply resource-specific validation
+  if (resource === 'users') {
+    const { username, role } = req.body || {};
+    if (!username || String(username).trim() === '') {
+      return res.status(400).json({ error: 'Validation failed', message: 'Username is required' });
+    }
+    const validRoles = ['admin', 'developer', 'viewer'];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Validation failed', message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+    }
+  } else if (resource === 'catalog' || resource === 'tracks') {
+    const { trackName, trackTitle } = req.body || {};
+    if (!trackName && !trackTitle) {
+      return res.status(400).json({ error: 'Validation failed', message: 'Track name is required' });
+    }
+    // Sanitize date fields
+    const dateFields = ['lastTestDate', 'eventDate', 'sessionDate', 'approvalDate'];
+    dateFields.forEach(field => {
+      if (req.body[field] === '' || req.body[field] === undefined) {
+        req.body[field] = null;
+      }
+    });
+  }
+  
   const item = req.body || {};
   const list = await getResource(resource) || [];
   if (resource === 'users') {
@@ -1351,11 +1509,8 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
       console.log(`Deleting item: sr=${it.sr}, id=${it.id}, name=${it.trackName || it.name}`);
     }
     return shouldKeep;
-  }).map((t, idx) => {
-    // renumber sr for non-users
-    if (resource !== 'users') return { ...t, sr: idx + 1 };
-    return t;
   });
+  // Note: We no longer renumber sr values to maintain stable IDs for frontend sync
   console.log(`After delete: ${filtered.length} items`);
   await setResource(resource, filtered);
   

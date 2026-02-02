@@ -73,6 +73,11 @@ export default function CatalogHealth() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   
+  // Loading states for operations
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Status filter - default to hide completed (show only upcoming)
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
   
@@ -90,6 +95,7 @@ export default function CatalogHealth() {
   
   // Function to load catalog data from backend
   const loadCatalogData = async () => {
+    setIsLoading(true);
     try {
       const res = await api.get('/api/catalog')
       const items = Array.isArray(res.data) ? res.data : []
@@ -210,7 +216,11 @@ export default function CatalogHealth() {
       }
       
       setCatalogData(updatedMapped)
-    } catch (e) { /* ignore */ }
+    } catch (e) { 
+      console.error('Error loading catalog data:', e)
+    } finally {
+      setIsLoading(false);
+    }
   }
   
   // Load catalog from backend on mount
@@ -261,7 +271,8 @@ export default function CatalogHealth() {
   }
 
   const handleSaveEdit = async () => {
-    if (editingItem) {
+    if (editingItem && !isSaving) {
+      setIsSaving(true);
       // Check for duplicate eventId
       if (editForm.eventId && editForm.eventId.trim() !== '') {
         // Use the actual item type for the exclude check
@@ -277,6 +288,7 @@ export default function CatalogHealth() {
             description: `Event ID "${editForm.eventId}" already exists in: ${existsIn.join(', ')}`,
             variant: 'destructive'
           });
+          setIsSaving(false);
           return;
         }
       }
@@ -286,8 +298,12 @@ export default function CatalogHealth() {
         try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
         // Reload data to get fresh sr values
         await loadCatalogData()
+        toast({ title: 'Success', description: 'Item updated successfully' });
       } catch (e) { 
         console.error('Error saving catalog item:', e)
+        toast({ title: 'Error', description: 'Failed to save item', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
       }
       setIsEditDialogOpen(false)
       setEditingItem(null)
@@ -308,12 +324,15 @@ export default function CatalogHealth() {
   }
 
   const handleDelete = async (item: CatalogItem) => {
+    if (isDeleting) return;
     if (window.confirm(`Are you sure you want to delete "${item.trackName}"?`)) {
+      setIsDeleting(true);
       try {
         await api.delete(`/api/catalog/${String(item.sr)}`)
         try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
-        // Reload data to get fresh sr values after backend renumbering
+        // Reload data to get fresh data
         await loadCatalogData()
+        toast({ title: 'Deleted', description: 'Item deleted successfully' });
         
         // Adjust current page if necessary
         const newTotalPages = Math.ceil((catalogData.length - 1) / itemsPerPage)
@@ -322,12 +341,17 @@ export default function CatalogHealth() {
         }
       } catch (e) {
         console.error('Error deleting catalog item:', e)
+        toast({ title: 'Error', description: 'Failed to delete item', variant: 'destructive' });
+      } finally {
+        setIsDeleting(false);
       }
     }
   }
 
   // Add new catalog item
   const handleAddCatalog = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       // Don't send sr - let backend calculate the next available sr to avoid collisions
       const { sr, ...formWithoutSr } = addForm;
@@ -338,8 +362,11 @@ export default function CatalogHealth() {
       await loadCatalogData();
       setIsAddDialogOpen(false);
       setAddForm({ sr: 0, trackName: "", eventDate: "", status: "", notesETA: "" });
+      toast({ title: 'Success', description: 'Item added successfully' });
     } catch (err) {
-      alert("Failed to add catalog item");
+      toast({ title: 'Error', description: 'Failed to add item', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
