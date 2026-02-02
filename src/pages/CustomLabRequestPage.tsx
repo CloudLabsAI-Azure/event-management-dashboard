@@ -19,6 +19,7 @@ interface CustomLabRequest {
   id?: string;
   sr: number;
   eventId: string;
+  eventDate?: string;
   trackTitle: string;
   sponsor: string;
   frequency: 'One Time' | 'Recurring';
@@ -34,6 +35,7 @@ export default function CustomLabRequestPage() {
   const [customLabForm, setCustomLabForm] = useState<CustomLabRequest>({
     sr: 0,
     eventId: "",
+    eventDate: "",
     trackTitle: "",
     sponsor: "",
     frequency: "One Time",
@@ -61,6 +63,7 @@ export default function CustomLabRequestPage() {
           id: String(r.id || r._id || `temp_cl_${idx}`),
           sr: Number(r.sr || idx + 1),
           eventId: (r.eventId || '').trim(),
+          eventDate: r.eventDate || '',
           trackTitle: (r.trackTitle || r.sponsorDetails || '').trim(),
           sponsor: (r.sponsor || '').trim(),
           frequency: r.frequency || 'One Time',
@@ -170,6 +173,7 @@ export default function CustomLabRequestPage() {
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead className="w-40">Event ID</TableHead>
+                    <TableHead className="w-32">Event Date</TableHead>
                     <TableHead className="min-w-[200px]">Track Title</TableHead>
                     <TableHead className="w-48">Sponsor</TableHead>
                     <TableHead className="w-32">HOL Lab Requested</TableHead>
@@ -189,6 +193,9 @@ export default function CustomLabRequestPage() {
                       }}
                     >
                       <TableCell className="font-mono">{item.eventId}</TableCell>
+                      <TableCell className="text-sm">
+                        {item.eventDate ? new Date(item.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                      </TableCell>
                       <TableCell className="font-medium">{item.trackTitle}</TableCell>
                       <TableCell>
                         {item.sponsor ? (
@@ -259,7 +266,7 @@ export default function CustomLabRequestPage() {
                   ))}
                   {customLabData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No custom lab requests found. Click "Add Custom Lab Request" to create one.
                       </TableCell>
                     </TableRow>
@@ -282,6 +289,10 @@ export default function CustomLabRequestPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="cl-eventId" className="text-right">Event ID</Label>
                 <Input id="cl-eventId" value={customLabForm.eventId} onChange={(e) => setCustomLabForm({ ...customLabForm, eventId: e.target.value })} className="col-span-3" placeholder="e.g., EVT-2025-001" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cl-eventDate" className="text-right">Event Date</Label>
+                <Input id="cl-eventDate" type="date" value={customLabForm.eventDate || ''} onChange={(e) => setCustomLabForm({ ...customLabForm, eventDate: e.target.value })} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="cl-trackTitle" className="text-right">Track Title</Label>

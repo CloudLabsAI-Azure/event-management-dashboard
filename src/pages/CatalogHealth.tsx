@@ -27,6 +27,17 @@ interface CatalogItem {
   notesETA: string;
   lastTestDate?: string;
   releaseNotesUrl?: string;
+  itemType?: string; // Track original type: 'catalog', 'tttSession', 'customLabRequest'
+}
+
+// Get type badge for different item sources
+const getTypeBadge = (itemType?: string) => {
+  if (itemType === 'tttSession') {
+    return <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500 text-xs">TTT</Badge>
+  } else if (itemType === 'customLabRequest') {
+    return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500 text-xs">Custom</Badge>
+  }
+  return null
 }
 
 const getStatusBadge = (status: string) => {
@@ -61,6 +72,9 @@ export default function CatalogHealth() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvError, setCsvError] = useState("");
   
+  // Status filter - default to hide completed (show only upcoming)
+  const [statusFilter, setStatusFilter] = useState<string>("upcoming");
+  
   // Auto-match state
   const [isAutoMatching, setIsAutoMatching] = useState(false);
   const [matchPreview, setMatchPreview] = useState<Array<{
@@ -82,28 +96,51 @@ export default function CatalogHealth() {
         
         const mapped = items
           .filter((it: any) => {
-            // Include items that are explicitly catalog type OR have catalog-like fields
+            // Include catalog items, TTT sessions, and custom lab requests
             // Exclude other page types
-            if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || it.type === 'tttSession' || 
+            if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || 
                 it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement' ||
-                it.type === 'labMaintenance' || it.type === 'customLabRequest') return false
-            return it && (it.trackName || it.trackTitle)
+                it.type === 'labMaintenance') return false
+            // Include if it's a TTT session, custom lab request, or has track/event info
+            return it && (it.trackName || it.trackTitle || it.type === 'tttSession' || it.type === 'customLabRequest')
           })
-          .map((it: any, idx: number) => ({
-            id: String(it.id || it._id || `temp_${idx}`),
-            sr: String(it.sr || idx + 1),
-            eventId: String(it.eventId || ''),
-            trackName: String(it.trackName || it.trackTitle || ''),
-            eventDate: String(it.eventDate || ''),
-            status: String(it.status || it.testingStatus || 'Pending'),
-            notesETA: String(it.notesETA || ''),
-            lastTestDate: String(it.lastTestDate || ''),
-            releaseNotesUrl: String(it.releaseNotesUrl || '')
-          }))
+          .map((it: any, idx: number) => {
+            // Handle different item types with appropriate field mapping
+            let trackName = '';
+            let eventDate = '';
+            let status = '';
+            
+            if (it.type === 'tttSession') {
+              trackName = String(it.trackName || it.courseName || '');
+              eventDate = String(it.sessionDate || '');
+              status = String(it.status || 'Scheduled');
+            } else if (it.type === 'customLabRequest') {
+              trackName = `[Custom] ${String(it.trackTitle || it.sponsorDetails || '')}`;
+              eventDate = String(it.eventDate || '');
+              status = String(it.status || 'Pending');
+            } else {
+              trackName = String(it.trackName || it.trackTitle || '');
+              eventDate = String(it.eventDate || '');
+              status = String(it.status || it.testingStatus || 'Pending');
+            }
+            
+            return {
+              id: String(it.id || it._id || `temp_${idx}`),
+              sr: String(it.sr || idx + 1),
+              eventId: String(it.eventId || ''),
+              trackName,
+              eventDate,
+              status,
+              notesETA: String(it.notesETA || it.notes || ''),
+              lastTestDate: String(it.lastTestDate || ''),
+              releaseNotesUrl: String(it.releaseNotesUrl || ''),
+              itemType: it.type || 'catalog' // Track original type for display
+            };
+          })
         
-        // Auto-mark past events as completed
+        // Auto-mark past events as completed (only for items with eventDate)
         const itemsToUpdate: CatalogItem[] = []
-        const updatedMapped = mapped.map((item: CatalogItem) => {
+        const updatedMapped = mapped.map((item: any) => {
           if (item.eventDate && item.status !== 'Completed') {
             const eventDate = new Date(item.eventDate)
             eventDate.setHours(0, 0, 0, 0)
@@ -133,7 +170,9 @@ export default function CatalogHealth() {
         if (itemsToUpdate.length > 0) {
           for (const item of itemsToUpdate) {
             try {
-              await api.put(`/api/catalog/${String(item.sr)}`, { ...item, type: 'catalog' })
+              // Determine the correct type for the update
+              const itemType = (item as any).itemType || 'catalog'
+              await api.put(`/api/catalog/${String(item.sr)}`, { ...item, type: itemType })
             } catch (err) {
               console.error('Error auto-updating catalog item:', item.sr, err)
             }
@@ -153,17 +192,29 @@ export default function CatalogHealth() {
     return () => { mounted = false }
   }, [])
 
+  // Filter data based on status filter
+  const filteredData = catalogData.filter(item => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "upcoming") return item.status !== "Completed";
+    if (statusFilter === "completed") return item.status === "Completed";
+    return item.status === statusFilter;
+  });
 
   const itemsPerPage = 10
-  const totalPages = Math.ceil(catalogData.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage)
   
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentData = catalogData.slice(startIndex, endIndex)
+  const currentData = filteredData.slice(startIndex, endIndex)
   
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   const handleEdit = (item: CatalogItem) => {
     setEditingItem(item)
@@ -455,13 +506,35 @@ export default function CatalogHealth() {
 
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Upcoming Tracks Catalog
-            </CardTitle>
-            <CardDescription>
-              Track updates and schedules for the next 2 weeks with current status and ETAs
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Catalog Health
+                </CardTitle>
+                <CardDescription>
+                  Track updates and schedules with current status and ETAs
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Show:</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Filter status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upcoming">Upcoming Only</SelectItem>
+                    <SelectItem value="all">All Events</SelectItem>
+                    <SelectItem value="completed">Completed Only</SelectItem>
+                    <SelectItem value="Pending">Pending Only</SelectItem>
+                    <SelectItem value="In-progress">In Progress</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Badge variant="secondary" className="ml-2">
+                  {filteredData.length} / {catalogData.length}
+                </Badge>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -484,14 +557,19 @@ export default function CatalogHealth() {
                     {currentData.map((track) => (
                       <TableRow key={track.id || track.sr}>
                         <TableCell className="font-medium">{track.eventId || '-'}</TableCell>
-                        <TableCell className="font-medium">{track.trackName}</TableCell>
-                        <TableCell className="text-muted-foreground">{track.eventDate}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {track.trackName}
+                            {getTypeBadge(track.itemType)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{track.eventDate ? new Date(track.eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}</TableCell>
                         <TableCell>{getStatusBadge(track.status)}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {track.lastTestDate ? (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4 text-blue-500" />
-                              {new Date(track.lastTestDate).toLocaleDateString()}
+                              {new Date(track.lastTestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                           ) : (
                             <span className="text-gray-500">-</span>

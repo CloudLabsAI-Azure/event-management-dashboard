@@ -443,7 +443,7 @@ export default function Announcements() {
                             {announcement.message}
                           </p>
                           <div className="text-xs text-muted-foreground mt-2">
-                            {new Date(announcement.announcementDate).toLocaleDateString()}
+                            {new Date(announcement.announcementDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
                         </div>
                         {role === 'admin' && (
@@ -528,7 +528,7 @@ export default function Announcements() {
                           </a>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{pdf.description}</TableCell>
-                        <TableCell>{new Date(pdf.uploadDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(pdf.uploadDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Button
@@ -611,7 +611,7 @@ export default function Announcements() {
                         <div className="flex-1">
                           <div className="font-medium">{track.trackName}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            Added on: {new Date(track.changeDate).toLocaleDateString()}
+                            Added on: {new Date(track.changeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
                           {track.notes && (
                             <div className="text-sm text-muted-foreground mt-1 italic">{track.notes}</div>
@@ -685,7 +685,7 @@ export default function Announcements() {
                         <div className="flex-1">
                           <div className="font-medium line-through text-muted-foreground">{track.trackName}</div>
                           <div className="text-sm text-muted-foreground mt-1">
-                            Retired on: {new Date(track.changeDate).toLocaleDateString()}
+                            Retired on: {new Date(track.changeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
                           {track.notes && (
                             <div className="text-sm text-muted-foreground mt-1 italic">{track.notes}</div>

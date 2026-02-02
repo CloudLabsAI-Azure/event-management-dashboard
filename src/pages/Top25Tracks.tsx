@@ -366,7 +366,7 @@ export default function Top25Tracks() {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {track.lastTestDate ? new Date(track.lastTestDate).toLocaleDateString() : '-'}
+                          {track.lastTestDate ? new Date(track.lastTestDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
