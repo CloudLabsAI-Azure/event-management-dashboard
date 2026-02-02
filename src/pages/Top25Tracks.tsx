@@ -193,7 +193,44 @@ export default function Top25Tracks() {
             releaseUrl: t.releaseUrl || t.release_url || '',
             lastTestDate: t.lastTestDate || ''
           })) : [];
-          setTracksData(mapped);
+          
+          // Auto-mark tracks as "In-progress" if last test date is older than 30 days
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const thirtyDaysAgo = new Date(today);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          
+          const tracksToUpdate: TrackItem[] = [];
+          const updatedMapped = mapped.map((track: TrackItem) => {
+            if (track.lastTestDate && track.testingStatus !== 'In-progress') {
+              const testDate = new Date(track.lastTestDate);
+              testDate.setHours(0, 0, 0, 0);
+              
+              if (testDate < thirtyDaysAgo) {
+                const updatedTrack = { ...track, testingStatus: 'In-progress' };
+                tracksToUpdate.push(updatedTrack);
+                return updatedTrack;
+              }
+            }
+            return track;
+          });
+          
+          // Update backend for auto-updated tracks
+          if (tracksToUpdate.length > 0) {
+            for (const track of tracksToUpdate) {
+              try {
+                await tracksService.update(track.sr, track);
+              } catch (err) {
+                console.error('Error auto-updating track:', track.sr, err);
+              }
+            }
+            toast({
+              title: 'Auto-Updated',
+              description: `${tracksToUpdate.length} track(s) marked as In-progress (last tested > 30 days ago)`
+            });
+          }
+          
+          setTracksData(updatedMapped);
         }
       } catch (err) {
         console.error('Failed to load tracks', err);
