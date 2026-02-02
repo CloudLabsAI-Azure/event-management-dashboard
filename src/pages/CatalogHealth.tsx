@@ -193,11 +193,17 @@ export default function CatalogHealth() {
   }, [])
 
   // Filter data based on status filter and sort by eventDate
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   const filteredData = catalogData
     .filter(item => {
+      // Check if event date is in the past
+      const isPastEvent = item.eventDate ? new Date(item.eventDate) < today : false;
+      
       if (statusFilter === "all") return true;
-      if (statusFilter === "upcoming") return item.status !== "Completed";
-      if (statusFilter === "completed") return item.status === "Completed";
+      if (statusFilter === "upcoming") return !isPastEvent; // Hide past events, show items without date
+      if (statusFilter === "completed") return isPastEvent; // Show only past events
       return item.status === statusFilter;
     })
     .sort((a, b) => {
