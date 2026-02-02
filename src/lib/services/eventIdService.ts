@@ -23,9 +23,8 @@ export const checkDuplicateEventId = async (
     for (const item of catalogItems) {
       const itemEventId = (item.eventId || '').trim().toLowerCase();
       if (itemEventId && itemEventId === normalizedEventId) {
-        // Skip if this is the same item being edited
-        if (excludeSr && String(item.sr) === String(excludeSr) && 
-            (!excludeType || item.type === excludeType)) {
+        // Skip if this is the same item being edited (sr is unique in the catalog array)
+        if (excludeSr && String(item.sr) === String(excludeSr)) {
           continue;
         }
         

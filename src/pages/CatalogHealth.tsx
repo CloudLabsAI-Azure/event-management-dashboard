@@ -87,135 +87,135 @@ export default function CatalogHealth() {
     selected: boolean;
   }>>([]);
   const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
-  // Load catalog from backend on mount; seed if empty
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const res = await api.get('/api/catalog')
-        const items = Array.isArray(res.data) ? res.data : []
-        
-        const today = new Date()
-        today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
-        
-        // Calculate 2 weeks from today
-        const twoWeeksFromNow = new Date(today)
-        twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14)
-        
-        const mapped = items
-          .filter((it: any) => {
-            // Include catalog items, TTT sessions, and custom lab requests
-            // Exclude other page types
-            if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || 
-                it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement' ||
-                it.type === 'labMaintenance') return false
-            
-            // For TTT sessions and custom lab requests, only include if within 2 weeks
-            if (it.type === 'tttSession') {
-              const sessionDate = it.sessionDate ? new Date(it.sessionDate) : null
-              if (!sessionDate) return false
-              sessionDate.setHours(0, 0, 0, 0)
-              // Include if session date is between today and 2 weeks from now
-              return sessionDate >= today && sessionDate <= twoWeeksFromNow
-            }
-            
-            if (it.type === 'customLabRequest') {
-              const eventDate = it.eventDate ? new Date(it.eventDate) : null
-              if (!eventDate) return false
-              eventDate.setHours(0, 0, 0, 0)
-              // Include if event date is between today and 2 weeks from now
-              return eventDate >= today && eventDate <= twoWeeksFromNow
-            }
-            
-            // Include regular catalog items if they have track/event info
-            return it && (it.trackName || it.trackTitle)
-          })
-          .map((it: any, idx: number) => {
-            // Handle different item types with appropriate field mapping
-            let trackName = '';
-            let eventDate = '';
-            let status = '';
-            
-            if (it.type === 'tttSession') {
-              trackName = String(it.trackName || it.courseName || '');
-              eventDate = String(it.sessionDate || '');
-              status = String(it.status || 'Scheduled');
-            } else if (it.type === 'customLabRequest') {
-              trackName = `[Custom] ${String(it.trackTitle || it.sponsorDetails || '')}`;
-              eventDate = String(it.eventDate || '');
-              status = String(it.status || 'Pending');
-            } else {
-              trackName = String(it.trackName || it.trackTitle || '');
-              eventDate = String(it.eventDate || '');
-              status = String(it.status || it.testingStatus || 'Pending');
-            }
-            
-            return {
-              id: String(it.id || it._id || `temp_${idx}`),
-              sr: String(it.sr || idx + 1),
-              eventId: String(it.eventId || ''),
-              trackName,
-              eventDate,
-              status,
-              notesETA: String(it.notesETA || it.notes || ''),
-              lastTestDate: String(it.lastTestDate || ''),
-              releaseNotesUrl: String(it.releaseNotesUrl || ''),
-              itemType: it.type || 'catalog' // Track original type for display
-            };
-          })
-        
-        // Auto-mark past events as completed (only for items with eventDate)
-        const itemsToUpdate: CatalogItem[] = []
-        const updatedMapped = mapped.map((item: any) => {
-          if (item.eventDate && item.status !== 'Completed') {
-            const eventDate = new Date(item.eventDate)
+  
+  // Function to load catalog data from backend
+  const loadCatalogData = async () => {
+    try {
+      const res = await api.get('/api/catalog')
+      const items = Array.isArray(res.data) ? res.data : []
+      
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
+      
+      // Calculate 2 weeks from today
+      const twoWeeksFromNow = new Date(today)
+      twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14)
+      
+      const mapped = items
+        .filter((it: any) => {
+          // Include catalog items, TTT sessions, and custom lab requests
+          // Exclude other page types
+          if (it.type === 'roadmapItem' || it.type === 'localizedTrack' || 
+              it.type === 'pdfCatalog' || it.type === 'trackChange' || it.type === 'generalAnnouncement' ||
+              it.type === 'labMaintenance') return false
+          
+          // For TTT sessions and custom lab requests, only include if within 2 weeks
+          if (it.type === 'tttSession') {
+            const sessionDate = it.sessionDate ? new Date(it.sessionDate) : null
+            if (!sessionDate) return false
+            sessionDate.setHours(0, 0, 0, 0)
+            // Include if session date is between today and 2 weeks from now
+            return sessionDate >= today && sessionDate <= twoWeeksFromNow
+          }
+          
+          if (it.type === 'customLabRequest') {
+            const eventDate = it.eventDate ? new Date(it.eventDate) : null
+            if (!eventDate) return false
             eventDate.setHours(0, 0, 0, 0)
-            
-            if (eventDate < today) {
-              // Mark as completed
-              const autoNote = '[Auto] Event date passed - marked as completed'
-              const updatedNotes = item.notesETA 
-                ? `${item.notesETA} | ${autoNote}` 
-                : autoNote
-              
-              const updatedItem = {
-                ...item,
-                status: 'Completed',
-                notesETA: updatedNotes
-              }
-              itemsToUpdate.push(updatedItem)
-              return updatedItem
-            }
+            // Include if event date is between today and 2 weeks from now
+            return eventDate >= today && eventDate <= twoWeeksFromNow
           }
-          return item
+          
+          // Include regular catalog items if they have track/event info
+          return it && (it.trackName || it.trackTitle)
         })
-        
-        if (!mounted) return
-        
-        // Update backend for auto-completed items
-        if (itemsToUpdate.length > 0) {
-          for (const item of itemsToUpdate) {
-            try {
-              // Determine the correct type for the update
-              const itemType = (item as any).itemType || 'catalog'
-              await api.put(`/api/catalog/${String(item.sr)}`, { ...item, type: itemType })
-            } catch (err) {
-              console.error('Error auto-updating catalog item:', item.sr, err)
-            }
+        .map((it: any, idx: number) => {
+          // Handle different item types with appropriate field mapping
+          let trackName = '';
+          let eventDate = '';
+          let status = '';
+          
+          if (it.type === 'tttSession') {
+            trackName = String(it.trackName || it.courseName || '');
+            eventDate = String(it.sessionDate || '');
+            status = String(it.status || 'Scheduled');
+          } else if (it.type === 'customLabRequest') {
+            trackName = `[Custom] ${String(it.trackTitle || it.sponsorDetails || '')}`;
+            eventDate = String(it.eventDate || '');
+            status = String(it.status || 'Pending');
+          } else {
+            trackName = String(it.trackName || it.trackTitle || '');
+            eventDate = String(it.eventDate || '');
+            status = String(it.status || it.testingStatus || 'Pending');
           }
           
-          toast({
-            title: 'Auto-Completed',
-            description: `${itemsToUpdate.length} past event(s) marked as completed`
-          })
+          return {
+            id: String(it.id || it._id || `temp_${idx}`),
+            sr: String(it.sr || idx + 1),
+            eventId: String(it.eventId || ''),
+            trackName,
+            eventDate,
+            status,
+            notesETA: String(it.notesETA || it.notes || ''),
+            lastTestDate: String(it.lastTestDate || ''),
+            releaseNotesUrl: String(it.releaseNotesUrl || ''),
+            itemType: it.type || 'catalog' // Track original type for display
+          };
+        })
+      
+      // Auto-mark past events as completed (only for items with eventDate)
+      const itemsToUpdate: CatalogItem[] = []
+      const updatedMapped = mapped.map((item: any) => {
+        if (item.eventDate && item.status !== 'Completed') {
+          const eventDate = new Date(item.eventDate)
+          eventDate.setHours(0, 0, 0, 0)
           
-          try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+          if (eventDate < today) {
+            // Mark as completed
+            const autoNote = '[Auto] Event date passed - marked as completed'
+            const updatedNotes = item.notesETA 
+              ? `${item.notesETA} | ${autoNote}` 
+              : autoNote
+            
+            const updatedItem = {
+              ...item,
+              status: 'Completed',
+              notesETA: updatedNotes
+            }
+            itemsToUpdate.push(updatedItem)
+            return updatedItem
+          }
+        }
+        return item
+      })
+      
+      // Update backend for auto-completed items
+      if (itemsToUpdate.length > 0) {
+        for (const item of itemsToUpdate) {
+          try {
+            // Determine the correct type for the update
+            const itemType = (item as any).itemType || 'catalog'
+            await api.put(`/api/catalog/${String(item.sr)}`, { ...item, type: itemType })
+          } catch (err) {
+            console.error('Error auto-updating catalog item:', item.sr, err)
+          }
         }
         
-        setCatalogData(updatedMapped)
-      } catch (e) { /* ignore */ }
-    })()
-    return () => { mounted = false }
+        toast({
+          title: 'Auto-Completed',
+          description: `${itemsToUpdate.length} past event(s) marked as completed`
+        })
+        
+        try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+      }
+      
+      setCatalogData(updatedMapped)
+    } catch (e) { /* ignore */ }
+  }
+  
+  // Load catalog from backend on mount
+  useEffect(() => {
+    loadCatalogData()
   }, [])
 
   // Filter data based on status filter and sort by eventDate
@@ -264,10 +264,12 @@ export default function CatalogHealth() {
     if (editingItem) {
       // Check for duplicate eventId
       if (editForm.eventId && editForm.eventId.trim() !== '') {
+        // Use the actual item type for the exclude check
+        const itemType = (editingItem as any).itemType || 'catalog';
         const { isDuplicate, existsIn } = await checkDuplicateEventId(
           editForm.eventId, 
           editingItem.sr, 
-          'catalog'
+          itemType
         );
         if (isDuplicate) {
           toast({
@@ -279,13 +281,14 @@ export default function CatalogHealth() {
         }
       }
       
-      setCatalogData(prevData => prevData.map(track => track.sr === editingItem.sr ? { ...editForm } : track))
-      ;(async () => {
-        try {
-          await api.put(`/api/catalog/${String(editForm.sr)}`, { ...editForm, type: 'catalog' })
-          try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
-        } catch (e) { /* ignore */ }
-      })()
+      try {
+        await api.put(`/api/catalog/${String(editForm.sr)}`, { ...editForm, type: 'catalog' })
+        try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+        // Reload data to get fresh sr values
+        await loadCatalogData()
+      } catch (e) { 
+        console.error('Error saving catalog item:', e)
+      }
       setIsEditDialogOpen(false)
       setEditingItem(null)
     }
@@ -304,17 +307,21 @@ export default function CatalogHealth() {
     })
   }
 
-  const handleDelete = (item: CatalogItem) => {
+  const handleDelete = async (item: CatalogItem) => {
     if (window.confirm(`Are you sure you want to delete "${item.trackName}"?`)) {
-      setCatalogData(prevData => prevData.filter(track => track.sr !== item.sr))
-      ;(async () => {
-        try { await api.delete(`/api/catalog/${String(item.sr)}`); try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {} } catch (e) { }
-      })()
-      
-      // Adjust current page if necessary
-      const newTotalPages = Math.ceil((catalogData.length - 1) / itemsPerPage)
-      if (currentPage > newTotalPages && newTotalPages > 0) {
-        setCurrentPage(newTotalPages)
+      try {
+        await api.delete(`/api/catalog/${String(item.sr)}`)
+        try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+        // Reload data to get fresh sr values after backend renumbering
+        await loadCatalogData()
+        
+        // Adjust current page if necessary
+        const newTotalPages = Math.ceil((catalogData.length - 1) / itemsPerPage)
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(newTotalPages)
+        }
+      } catch (e) {
+        console.error('Error deleting catalog item:', e)
       }
     }
   }
@@ -322,12 +329,15 @@ export default function CatalogHealth() {
   // Add new catalog item
   const handleAddCatalog = async () => {
     try {
-      const newItem = { ...addForm, sr: catalogData.length + 1, type: 'catalog' };
-      setCatalogData(prev => [...prev, newItem]);
-  await api.post(`/api/catalog`, newItem);
-  try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+      // Don't send sr - let backend calculate the next available sr to avoid collisions
+      const { sr, ...formWithoutSr } = addForm;
+      const payload = { ...formWithoutSr, type: 'catalog' };
+      await api.post(`/api/catalog`, payload);
+      try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
+      // Reload data to get the new item with correct sr
+      await loadCatalogData();
       setIsAddDialogOpen(false);
-      setAddForm({ sr: catalogData.length + 2, trackName: "", eventDate: "", status: "", notesETA: "" });
+      setAddForm({ sr: 0, trackName: "", eventDate: "", status: "", notesETA: "" });
     } catch (err) {
       alert("Failed to add catalog item");
     }
