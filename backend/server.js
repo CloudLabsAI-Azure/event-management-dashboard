@@ -276,7 +276,8 @@ app.get('/api/last-updated', async (req, res) => {
 });
 
 // Reviews screenshots upload (images or PDFs). Multiple files accepted under one event name.
-app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (req, res) => {
+// SECURITY: Rate limited to prevent abuse
+app.post('/api/upload-review', apiLimiter, requireAdmin, upload.array('files', 20), async (req, res) => {
   try {
     const files = Array.isArray(req.files) ? req.files : []
     const eventName = req.body.eventName || ''
@@ -467,7 +468,7 @@ async function ensureDataSchema() {
   // SECURITY: Only in development mode, and with a strong random password
   if (data.users.length === 0 && process.env.NODE_ENV !== 'production') {
     const randomPassword = crypto.randomBytes(16).toString('hex');
-    const hashed = bcrypt.hashSync(randomPassword, 10);
+    const hashed = bcrypt.hashSync(randomPassword, 12); // Use 12 rounds for modern security best practices
     const defaultAdmin = { 
       id: 'admin', 
       username: 'admin', 
@@ -765,7 +766,7 @@ app.post('/api/reset-password', authLimiter, async (req, res) => {
     }
     if (!ok) return res.status(401).json({ success: false, error: 'Invalid temporary password' });
     // update to new password and clear mustReset
-    const hashed = bcrypt.hashSync(String(newPassword), 8);
+    const hashed = bcrypt.hashSync(String(newPassword), 12); // Use 12 rounds for modern security best practices
     data.users = users.map((u) => (String(u.id) === String(user.id) ? { ...u, password: hashed, mustReset: false } : u));
     // generate token so user can be logged in after reset
     const token = crypto.randomBytes(24).toString('hex');
@@ -897,7 +898,8 @@ app.post('/api/add-track', async (req, res) => {
 });
 
 // Generic CSV upload: ?resource=tracks|catalog|users|events (defaults to tracks)
-app.post('/api/upload-csv', requireAdmin, upload.single('file'), async (req, res) => {
+// SECURITY: Rate limited to prevent abuse
+app.post('/api/upload-csv', apiLimiter, requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
   
   // SECURITY: Validate resource parameter against whitelist
@@ -1648,13 +1650,13 @@ app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
     const id = String(item.id || `u_${Date.now()}`);
     // If caller provided password, hash it; otherwise generate temporary password and mustReset flag
     if (item.password) {
-      const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 8), mustReset: false };
+      const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 12), mustReset: false }; // Use 12 rounds for modern security best practices
       list.push(newItem);
       await setResource(resource, list);
       return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role } });
     }
     const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
-    const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 8), mustReset: true };
+    const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 12), mustReset: true }; // Use 12 rounds for modern security best practices
     list.push(newItem);
     await setResource(resource, list);
     return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword });
