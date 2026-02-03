@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2, Wand2 } from "lucide-react"
+import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2, Wand2, RefreshCw } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { FileUploadModal } from "@/components/FileUploadModal"
@@ -73,6 +73,8 @@ export default function Top25Tracks() {
     selected: boolean;
   }>>([]);
   const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
+  // GitHub sync state
+  const [isSyncingGitHub, setIsSyncingGitHub] = useState(false);
   // Removed bulk upload and metrics edit for this page per requirements
   
   const itemsPerPage = 10
@@ -107,8 +109,10 @@ export default function Top25Tracks() {
         setSaving(false)
         return
       }
-      // persist to backend
-      await tracksService.update(editingItem.sr, { ...editForm })
+      // persist to backend - transform releaseUrl to releaseNotesUrl for storage
+      const saveData = { ...editForm, releaseNotesUrl: editForm.releaseUrl };
+      delete (saveData as any).releaseUrl;
+      await tracksService.update(editingItem.sr, saveData)
       const updated = tracksData.map((t) => (t.sr === editingItem.sr ? { ...editForm } : t));
       setTracksData(updated);
       setIsEditDialogOpen(false);
@@ -135,7 +139,9 @@ export default function Top25Tracks() {
         return
       }
       setSaving(true)
-      const newTrack = { ...addForm, sr: tracksData.length + 1 };
+      // Transform releaseUrl to releaseNotesUrl for storage
+      const newTrack = { ...addForm, sr: tracksData.length + 1, releaseNotesUrl: addForm.releaseUrl };
+      delete (newTrack as any).releaseUrl;
       const created = await tracksService.create(newTrack)
       // merge avoiding duplicates by trackName (case-insensitive)
       const existingNames = new Set(tracksData.map(t => t.trackName.toLowerCase()))
@@ -200,7 +206,7 @@ export default function Top25Tracks() {
             trackName: String(t.trackName || t.name || ''), 
             testingStatus: String(t.testingStatus || ''), 
             releaseNotes: String(t.releaseNotes || 'Release Notes'), 
-            releaseUrl: t.releaseUrl || t.release_url || '',
+            releaseUrl: t.releaseNotesUrl || t.releaseUrl || t.release_url || '',
             lastTestDate: t.lastTestDate || ''
           })) : [];
           
@@ -299,7 +305,7 @@ export default function Top25Tracks() {
         trackName: String(t.trackName || t.name || ''), 
         testingStatus: String(t.testingStatus || ''), 
         releaseNotes: String(t.releaseNotes || 'Release Notes'), 
-        releaseUrl: t.releaseUrl || t.release_url || '',
+        releaseUrl: t.releaseNotesUrl || t.releaseUrl || t.release_url || '',
         lastTestDate: t.lastTestDate || ''
       }));
       
@@ -420,7 +426,7 @@ export default function Top25Tracks() {
         if (matchEntry.match) {
           await tracksService.update(matchEntry.trackItem.sr, {
             ...matchEntry.trackItem,
-            releaseUrl: matchEntry.match.folderUrl
+            releaseNotesUrl: matchEntry.match.folderUrl
           });
         }
       }
@@ -441,6 +447,87 @@ export default function Top25Tracks() {
         description: "Some updates may not have been saved. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Sync last test dates from GitHub commits
+  const handleSyncFromGitHub = async () => {
+    setIsSyncingGitHub(true);
+    try {
+      // Get tracks with release notes URLs
+      const tracksWithUrls = tracksData.filter(t => t.releaseUrl && t.releaseUrl.trim() !== '');
+      
+      if (tracksWithUrls.length === 0) {
+        toast({
+          title: "No URLs to sync",
+          description: "No tracks have release notes URLs. Use Auto-Match first.",
+          variant: "destructive"
+        });
+        setIsSyncingGitHub(false);
+        return;
+      }
+
+      let updated = 0;
+      const updatedTracks: TrackItem[] = [...tracksData];
+
+      for (const track of tracksWithUrls) {
+        try {
+          // Extract folder name from GitHub URL
+          // URL format: https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/FolderName/Release-Notes.md
+          const urlMatch = track.releaseUrl?.match(/MS-Innovation-Release-Notes\/blob\/main\/([^/]+)/);
+          if (!urlMatch) continue;
+          
+          const folderName = decodeURIComponent(urlMatch[1]);
+          
+          // Fetch last commit for this folder
+          const response = await fetch(
+            `https://api.github.com/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/commits?path=${encodeURIComponent(folderName)}&per_page=1`
+          );
+          
+          if (!response.ok) continue;
+          
+          const commits = await response.json();
+          if (commits && commits.length > 0) {
+            const commitDate = commits[0].commit.committer.date.split('T')[0]; // YYYY-MM-DD
+            
+            // Find and update track
+            const trackIndex = updatedTracks.findIndex(t => t.sr === track.sr);
+            if (trackIndex !== -1 && updatedTracks[trackIndex].lastTestDate !== commitDate) {
+              updatedTracks[trackIndex] = { ...updatedTracks[trackIndex], lastTestDate: commitDate };
+              
+              // Save to backend
+              await tracksService.update(track.sr, { 
+                ...track, 
+                lastTestDate: commitDate,
+                releaseNotesUrl: track.releaseUrl 
+              });
+              updated++;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to sync track:', track.trackName, err);
+        }
+      }
+
+      setTracksData(updatedTracks);
+      
+      toast({
+        title: "Sync Complete!",
+        description: updated > 0 
+          ? `Updated ${updated} track(s) with latest GitHub commit dates.`
+          : "All tracks already up to date.",
+      });
+
+      try { window.dispatchEvent(new CustomEvent('tracks:changed')) } catch {}
+    } catch (error) {
+      console.error('GitHub sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: "Could not sync from GitHub. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncingGitHub(false);
     }
   };
 
@@ -473,6 +560,17 @@ export default function Top25Tracks() {
                 >
                   <Wand2 className="h-4 w-4" />
                   {isAutoMatching ? "Matching..." : "Auto-Match URLs"}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isSyncingGitHub}
+                  onClick={handleSyncFromGitHub}
+                  title="Sync last test dates from GitHub commit history"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncingGitHub ? 'animate-spin' : ''}`} />
+                  {isSyncingGitHub ? "Syncing..." : "Sync GitHub Dates"}
                 </Button>
                 <input 
                   ref={fileInputRef}
