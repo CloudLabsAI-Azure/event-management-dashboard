@@ -479,26 +479,54 @@ export default function Top25Tracks() {
           
           const folderName = decodeURIComponent(urlMatch[1]);
           
-          // Fetch last commit for this folder
-          const response = await fetch(
-            `https://api.github.com/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/commits?path=${encodeURIComponent(folderName)}&per_page=1`
-          );
+          // Fetch the actual Release-Notes.md file content to get the date
+          const rawUrl = `https://raw.githubusercontent.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/main/${encodeURIComponent(folderName)}/Release-Notes.md`;
+          const response = await fetch(rawUrl);
           
           if (!response.ok) continue;
           
-          const commits = await response.json();
-          if (commits && commits.length > 0) {
-            const commitDate = commits[0].commit.committer.date.split('T')[0]; // YYYY-MM-DD
-            
+          const content = await response.text();
+          
+          // Skip if file not found (404 page)
+          if (content.includes('404:') || content.includes('Not Found')) continue;
+          
+          // Try multiple date patterns (in order of preference)
+          let releaseDate: string | null = null;
+          
+          // 1. <summary>YYYY-MM-DD</summary> - most common format
+          const summaryMatch = content.match(/<summary>(\d{4}-\d{2}-\d{2})<\/summary>/);
+          if (summaryMatch) {
+            releaseDate = summaryMatch[1];
+          }
+          
+          // 2. Release Date: YYYY-MM-DD or ## Release Date: YYYY-MM-DD
+          if (!releaseDate) {
+            const releaseDateMatch = content.match(/Release Date[:\s#]*(\d{4}-\d{2}-\d{2})/i);
+            if (releaseDateMatch) releaseDate = releaseDateMatch[1];
+          }
+          
+          // 3. Testing Date: YYYY-MM-DD or **Testing Date**: YYYY-MM-DD
+          if (!releaseDate) {
+            const testingDateMatch = content.match(/Testing Date[:\*\s]*(\d{4}-\d{2}-\d{2})/i);
+            if (testingDateMatch) releaseDate = testingDateMatch[1];
+          }
+          
+          // 4. Any YYYY-MM-DD as last resort
+          if (!releaseDate) {
+            const anyDateMatch = content.match(/(\d{4}-\d{2}-\d{2})/);
+            if (anyDateMatch) releaseDate = anyDateMatch[1];
+          }
+          
+          if (releaseDate) {
             // Find and update track
             const trackIndex = updatedTracks.findIndex(t => t.sr === track.sr);
-            if (trackIndex !== -1 && updatedTracks[trackIndex].lastTestDate !== commitDate) {
-              updatedTracks[trackIndex] = { ...updatedTracks[trackIndex], lastTestDate: commitDate };
+            if (trackIndex !== -1 && updatedTracks[trackIndex].lastTestDate !== releaseDate) {
+              updatedTracks[trackIndex] = { ...updatedTracks[trackIndex], lastTestDate: releaseDate };
               
               // Save to backend
               await tracksService.update(track.sr, { 
                 ...track, 
-                lastTestDate: commitDate,
+                lastTestDate: releaseDate,
                 releaseNotesUrl: track.releaseUrl 
               });
               updated++;
@@ -514,7 +542,7 @@ export default function Top25Tracks() {
       toast({
         title: "Sync Complete!",
         description: updated > 0 
-          ? `Updated ${updated} track(s) with latest GitHub commit dates.`
+          ? `Updated ${updated} track(s) with latest release notes dates.`
           : "All tracks already up to date.",
       });
 
