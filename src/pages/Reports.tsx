@@ -61,7 +61,7 @@ export default function Reports() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Top 25 Tracks</h1>
+          <h1 className="text-3xl font-bold text-foreground">Trending Tracks</h1>
           <p className="text-muted-foreground">
             As of 1st August 2025 - Look for tag titled "Trending" for these in the Request Management Portal – CloudEvents Admin Center
           </p>
@@ -71,7 +71,7 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Top 25 Tracks Report
+              Trending Tracks Report
             </CardTitle>
             <CardDescription>
               Trending tracks from the Request Management Portal with testing status and release information

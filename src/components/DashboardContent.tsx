@@ -94,9 +94,9 @@ export function DashboardContent() {
     tracksHealthPercentage: 0,
     lastUpdated: null as number | null,
   })
-  const [top25HealthDetails, setTop25HealthDetails] = useState({
+  const [trendingHealthDetails, setTrendingHealthDetails] = useState({
     testedCount: 0,
-    totalCount: 25,
+    totalCount: 0,
     oldestTestedDate: null as string | null,
   })
   const [roadmapStats, setRoadmapStats] = useState({
@@ -117,15 +117,15 @@ export function DashboardContent() {
         const tr = await api.get('/api/tracks').then(r => Array.isArray(r.data) ? r.data : [])
         setTracks(tr)
         
-        // Calculate Top 25 Tracks Health percentage based on last test dates within 30 days
-        const top25Tracks = tr.slice(0, 25) // Get first 25 tracks
+        // Calculate Trending Tracks Health percentage based on last test dates within 30 days
+        const trendingTracks = tr // Use all trending tracks
         const now = new Date()
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         let testedCount = 0
         let oldestTestedDate: Date | null = null
         let newestTestedDate: Date | null = null
         
-        top25Tracks.forEach((track: any) => {
+        trendingTracks.forEach((track: any) => {
           const lastTestedStr = track.lastTestDate || track.lastTested || track.lastTestedDate
           if (lastTestedStr) {
             const lastTested = new Date(lastTestedStr)
@@ -147,13 +147,13 @@ export function DashboardContent() {
         })
         
         // Health percentage = tracks tested in last 30 days / total tracks * 100
-        const tracksHealthPercentage = top25Tracks.length > 0 
-          ? Math.round((testedCount / top25Tracks.length) * 100) 
+        const tracksHealthPercentage = trendingTracks.length > 0 
+          ? Math.round((testedCount / trendingTracks.length) * 100) 
           : 0
         
-        setTop25HealthDetails({
+        setTrendingHealthDetails({
           testedCount,
-          totalCount: top25Tracks.length,
+          totalCount: trendingTracks.length,
           oldestTestedDate: oldestTestedDate ? oldestTestedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
         })
         
@@ -459,7 +459,7 @@ export function DashboardContent() {
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1.5 justify-end mb-1">
-                    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Top 25 Tracks</p>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">Trending Tracks</p>
                     <Tooltip delayDuration={100}>
                       <TooltipTrigger asChild>
                         <button className="text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors p-0.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30">
@@ -478,7 +478,7 @@ export function DashboardContent() {
                           
                           {/* Description */}
                           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                            Percentage of Top 25 tracks tested within the last 30 days.
+                            Percentage of Trending tracks tested within the last 30 days.
                           </p>
                           
                           {/* Stats */}
@@ -486,20 +486,20 @@ export function DashboardContent() {
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-slate-600 dark:text-slate-400">Tested (last 30 days)</span>
                               <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                {top25HealthDetails.testedCount} tracks
+                                {trendingHealthDetails.testedCount} tracks
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-slate-600 dark:text-slate-400">To be revalidated (30+ days)</span>
                               <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
-                                {top25HealthDetails.totalCount - top25HealthDetails.testedCount} tracks
+                                {trendingHealthDetails.totalCount - trendingHealthDetails.testedCount} tracks
                               </span>
                             </div>
-                            {top25HealthDetails.oldestTestedDate && (
+                            {trendingHealthDetails.oldestTestedDate && (
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-600 dark:text-slate-400">Oldest test date</span>
                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                  {top25HealthDetails.oldestTestedDate}
+                                  {trendingHealthDetails.oldestTestedDate}
                                 </span>
                               </div>
                             )}
@@ -515,9 +515,9 @@ export function DashboardContent() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-slate-700 dark:text-slate-300 font-medium">Health Status</p>
-                {top25HealthDetails.testedCount > 0 && (
+                {trendingHealthDetails.testedCount > 0 && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {top25HealthDetails.testedCount}/{top25HealthDetails.totalCount} tested
+                    {trendingHealthDetails.testedCount}/{trendingHealthDetails.totalCount} tested
                   </span>
                 )}
               </div>

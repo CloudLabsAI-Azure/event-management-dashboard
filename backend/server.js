@@ -1348,7 +1348,7 @@ app.get('/api/check-duplicate-eventid', async (req, res) => {
         if (excludeSr && excludeResource === 'tracks' && String(track.sr) === String(excludeSr)) {
           continue;
         }
-        if (!existsIn.includes('Top 25 Tracks')) existsIn.push('Top 25 Tracks');
+        if (!existsIn.includes('Trending Tracks')) existsIn.push('Trending Tracks');
       }
     }
     

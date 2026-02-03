@@ -146,7 +146,7 @@ export default function LabMaintenancePage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Lab Maintenance</h1>
           <p className="text-muted-foreground">
-            Track maintenance tasks for labs (Other than Top 25)
+            Track maintenance tasks for labs (Other than Trending Tracks)
           </p>
         </div>
         
@@ -167,10 +167,10 @@ export default function LabMaintenancePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
-              Lab Maintenance (Other than Top 25)
+              Lab Maintenance (Other than Trending Tracks)
             </CardTitle>
             <CardDescription>
-              Track maintenance tasks for labs not in the Top 25
+              Track maintenance tasks for labs not in Trending Tracks
             </CardDescription>
           </CardHeader>
           <CardContent>

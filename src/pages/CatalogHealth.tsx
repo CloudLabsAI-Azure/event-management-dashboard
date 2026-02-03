@@ -555,7 +555,7 @@ export default function CatalogHealth() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Catalog Health</h1>
             <p className="text-muted-foreground">
-              Latest updated Tracks apart from Top 25 for the upcoming 2 Weeks
+              Latest updated Tracks apart from Trending Tracks for the upcoming 2 Weeks
             </p>
           </div>
           <div className="flex gap-2">
