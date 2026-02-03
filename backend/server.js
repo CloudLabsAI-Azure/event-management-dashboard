@@ -994,6 +994,109 @@ app.get('/api/github-release-notes', async (req, res) => {
   }
 });
 
+// GitHub Trending Tracks sync status
+app.get('/api/github-sync/status', async (req, res) => {
+  try {
+    const data = await readData();
+    res.json({
+      lastSync: data.githubSyncLastRun || null,
+      tracksUpdated: data.githubSyncTracksUpdated || 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get sync status' });
+  }
+});
+
+// Manual GitHub sync trigger
+app.post('/api/github-sync/run', requireAdmin, async (req, res) => {
+  try {
+    const result = await runGitHubSync();
+    res.json(result);
+  } catch (err) {
+    console.error('GitHub sync error:', err);
+    res.status(500).json({ error: 'Failed to sync from GitHub', details: err.message });
+  }
+});
+
+// GitHub sync function - syncs last test dates from Release-Notes.md files
+async function runGitHubSync() {
+  console.log('🔄 Starting GitHub sync for Trending Tracks...');
+  const data = await readData();
+  const tracks = data.tracks || [];
+  
+  let updated = 0;
+  const errors = [];
+  
+  for (const track of tracks) {
+    const releaseUrl = track.releaseNotesUrl || '';
+    if (!releaseUrl) continue;
+    
+    try {
+      // Extract folder name from GitHub URL
+      const urlMatch = releaseUrl.match(/MS-Innovation-Release-Notes\/blob\/main\/([^/]+)/);
+      if (!urlMatch) continue;
+      
+      const folderName = decodeURIComponent(urlMatch[1]);
+      
+      // Fetch the Release-Notes.md file
+      const rawUrl = `https://raw.githubusercontent.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/main/${encodeURIComponent(folderName)}/Release-Notes.md`;
+      const response = await fetch(rawUrl);
+      
+      if (!response.ok) continue;
+      
+      const content = await response.text();
+      
+      // Skip if file not found
+      if (content.includes('404:') || content.includes('Not Found')) continue;
+      
+      // Try multiple date patterns
+      let releaseDate = null;
+      
+      const summaryMatch = content.match(/<summary>(\d{4}-\d{2}-\d{2})<\/summary>/);
+      if (summaryMatch) releaseDate = summaryMatch[1];
+      
+      if (!releaseDate) {
+        const releaseDateMatch = content.match(/Release Date[:\s#]*(\d{4}-\d{2}-\d{2})/i);
+        if (releaseDateMatch) releaseDate = releaseDateMatch[1];
+      }
+      
+      if (!releaseDate) {
+        const testingDateMatch = content.match(/Testing Date[:\*\s]*(\d{4}-\d{2}-\d{2})/i);
+        if (testingDateMatch) releaseDate = testingDateMatch[1];
+      }
+      
+      if (!releaseDate) {
+        const anyDateMatch = content.match(/(\d{4}-\d{2}-\d{2})/);
+        if (anyDateMatch) releaseDate = anyDateMatch[1];
+      }
+      
+      if (releaseDate && track.lastTestDate !== releaseDate) {
+        track.lastTestDate = releaseDate;
+        updated++;
+        console.log(`  ✓ Updated: ${track.trackName.substring(0, 40)} → ${releaseDate}`);
+      }
+    } catch (err) {
+      errors.push({ track: track.trackName, error: err.message });
+    }
+  }
+  
+  // Save updated data
+  data.tracks = tracks;
+  data.githubSyncLastRun = new Date().toISOString();
+  data.githubSyncTracksUpdated = updated;
+  await writeData(data);
+  
+  console.log(`✅ GitHub sync complete: ${updated} tracks updated`);
+  
+  return {
+    success: true,
+    updated,
+    total: tracks.length,
+    lastSync: data.githubSyncLastRun,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
 // Fix eventName format for existing DevOps items (migration endpoint)
 app.post('/api/devops/fix-titles', requireAdmin, async (req, res) => {
   try {
@@ -1639,6 +1742,18 @@ app.listen(PORT, () => {
   } else {
     console.log('⚠️ DevOps sync not scheduled (missing configuration)');
   }
+  
+  // Schedule daily GitHub sync for Trending Tracks at 6:30 AM
+  const githubSyncSchedule = process.env.GITHUB_SYNC_SCHEDULE || '30 6 * * *'; // Default: 6:30 AM daily
+  cron.schedule(githubSyncSchedule, async () => {
+    console.log('\n🕐 Running scheduled GitHub sync for Trending Tracks...');
+    try {
+      await runGitHubSync();
+    } catch (err) {
+      console.error('❌ Scheduled GitHub sync failed:', err.message);
+    }
+  });
+  console.log(`📅 GitHub sync for Trending Tracks scheduled: ${githubSyncSchedule}`);
 });
 
 // If a client build exists (Vite -> dist), serve it as static files in production

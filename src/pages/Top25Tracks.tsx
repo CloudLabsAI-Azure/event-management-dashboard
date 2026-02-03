@@ -75,6 +75,7 @@ export default function Top25Tracks() {
   const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
   // GitHub sync state
   const [isSyncingGitHub, setIsSyncingGitHub] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   // Removed bulk upload and metrics edit for this page per requirements
   
   const itemsPerPage = 10
@@ -263,6 +264,19 @@ export default function Top25Tracks() {
     }
     window.addEventListener('tracks:changed', onTracksChanged as EventListener)
     
+    // Load GitHub sync status
+    const loadSyncStatus = async () => {
+      try {
+        const res = await api.get('/api/github-sync/status');
+        if (res.data && res.data.lastSync) {
+          setLastSyncTime(res.data.lastSync);
+        }
+      } catch (e) {
+        // Ignore - sync status is optional
+      }
+    };
+    loadSyncStatus();
+    
     return () => { 
       mounted = false; 
       window.removeEventListener('tracks:changed', onTracksChanged as EventListener)
@@ -450,103 +464,29 @@ export default function Top25Tracks() {
     }
   };
 
-  // Sync last test dates from GitHub commits
+  // Sync last test dates from GitHub Release-Notes.md files (via backend)
   const handleSyncFromGitHub = async () => {
     setIsSyncingGitHub(true);
     try {
-      // Get tracks with release notes URLs
-      const tracksWithUrls = tracksData.filter(t => t.releaseUrl && t.releaseUrl.trim() !== '');
+      // Call backend API to sync
+      const res = await api.post('/api/github-sync/run');
       
-      if (tracksWithUrls.length === 0) {
+      if (res.data && res.data.success) {
+        // Update last sync time
+        setLastSyncTime(res.data.lastSync);
+        
+        // Reload tracks data
+        try { window.dispatchEvent(new CustomEvent('tracks:changed')) } catch {}
+        
         toast({
-          title: "No URLs to sync",
-          description: "No tracks have release notes URLs. Use Auto-Match first.",
-          variant: "destructive"
+          title: "Sync Complete!",
+          description: res.data.updated > 0 
+            ? `Updated ${res.data.updated} track(s) with latest release notes dates.`
+            : "All tracks already up to date.",
         });
-        setIsSyncingGitHub(false);
-        return;
+      } else {
+        throw new Error('Sync returned unsuccessful');
       }
-
-      let updated = 0;
-      const updatedTracks: TrackItem[] = [...tracksData];
-
-      for (const track of tracksWithUrls) {
-        try {
-          // Extract folder name from GitHub URL
-          // URL format: https://github.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/blob/main/FolderName/Release-Notes.md
-          const urlMatch = track.releaseUrl?.match(/MS-Innovation-Release-Notes\/blob\/main\/([^/]+)/);
-          if (!urlMatch) continue;
-          
-          const folderName = decodeURIComponent(urlMatch[1]);
-          
-          // Fetch the actual Release-Notes.md file content to get the date
-          const rawUrl = `https://raw.githubusercontent.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/main/${encodeURIComponent(folderName)}/Release-Notes.md`;
-          const response = await fetch(rawUrl);
-          
-          if (!response.ok) continue;
-          
-          const content = await response.text();
-          
-          // Skip if file not found (404 page)
-          if (content.includes('404:') || content.includes('Not Found')) continue;
-          
-          // Try multiple date patterns (in order of preference)
-          let releaseDate: string | null = null;
-          
-          // 1. <summary>YYYY-MM-DD</summary> - most common format
-          const summaryMatch = content.match(/<summary>(\d{4}-\d{2}-\d{2})<\/summary>/);
-          if (summaryMatch) {
-            releaseDate = summaryMatch[1];
-          }
-          
-          // 2. Release Date: YYYY-MM-DD or ## Release Date: YYYY-MM-DD
-          if (!releaseDate) {
-            const releaseDateMatch = content.match(/Release Date[:\s#]*(\d{4}-\d{2}-\d{2})/i);
-            if (releaseDateMatch) releaseDate = releaseDateMatch[1];
-          }
-          
-          // 3. Testing Date: YYYY-MM-DD or **Testing Date**: YYYY-MM-DD
-          if (!releaseDate) {
-            const testingDateMatch = content.match(/Testing Date[:\*\s]*(\d{4}-\d{2}-\d{2})/i);
-            if (testingDateMatch) releaseDate = testingDateMatch[1];
-          }
-          
-          // 4. Any YYYY-MM-DD as last resort
-          if (!releaseDate) {
-            const anyDateMatch = content.match(/(\d{4}-\d{2}-\d{2})/);
-            if (anyDateMatch) releaseDate = anyDateMatch[1];
-          }
-          
-          if (releaseDate) {
-            // Find and update track
-            const trackIndex = updatedTracks.findIndex(t => t.sr === track.sr);
-            if (trackIndex !== -1 && updatedTracks[trackIndex].lastTestDate !== releaseDate) {
-              updatedTracks[trackIndex] = { ...updatedTracks[trackIndex], lastTestDate: releaseDate };
-              
-              // Save to backend
-              await tracksService.update(track.sr, { 
-                ...track, 
-                lastTestDate: releaseDate,
-                releaseNotesUrl: track.releaseUrl 
-              });
-              updated++;
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to sync track:', track.trackName, err);
-        }
-      }
-
-      setTracksData(updatedTracks);
-      
-      toast({
-        title: "Sync Complete!",
-        description: updated > 0 
-          ? `Updated ${updated} track(s) with latest release notes dates.`
-          : "All tracks already up to date.",
-      });
-
-      try { window.dispatchEvent(new CustomEvent('tracks:changed')) } catch {}
     } catch (error) {
       console.error('GitHub sync error:', error);
       toast({
@@ -600,6 +540,11 @@ export default function Top25Tracks() {
                   <RefreshCw className={`h-4 w-4 ${isSyncingGitHub ? 'animate-spin' : ''}`} />
                   {isSyncingGitHub ? "Syncing..." : "Sync GitHub Dates"}
                 </Button>
+                {lastSyncTime && (
+                  <span className="text-xs text-muted-foreground">
+                    Last synced: {new Date(lastSyncTime).toLocaleString()}
+                  </span>
+                )}
                 <input 
                   ref={fileInputRef}
                   type="file" 

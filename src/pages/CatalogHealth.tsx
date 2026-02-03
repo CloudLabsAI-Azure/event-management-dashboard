@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2, Loader2 } from "lucide-react"
+import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2, Loader2, RefreshCw } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
@@ -92,6 +92,10 @@ export default function CatalogHealth() {
     selected: boolean;
   }>>([]);
   const [isMatchPreviewOpen, setIsMatchPreviewOpen] = useState(false);
+  
+  // GitHub sync state
+  const [isSyncingGitHub, setIsSyncingGitHub] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   
   // Function to load catalog data from backend
   const loadCatalogData = async () => {
@@ -226,6 +230,19 @@ export default function CatalogHealth() {
   // Load catalog from backend on mount
   useEffect(() => {
     loadCatalogData()
+    
+    // Load GitHub sync status
+    const loadSyncStatus = async () => {
+      try {
+        const res = await api.get('/api/github-sync/status');
+        if (res.data && res.data.lastSync) {
+          setLastSyncTime(res.data.lastSync);
+        }
+      } catch (e) {
+        // Ignore - sync status is optional
+      }
+    };
+    loadSyncStatus();
   }, [])
 
   // Filter data based on status filter and sort by eventDate
@@ -548,6 +565,41 @@ export default function CatalogHealth() {
     }
   };
 
+  // Sync last test dates from GitHub Release-Notes.md files (via backend)
+  const handleSyncFromGitHub = async () => {
+    setIsSyncingGitHub(true);
+    try {
+      // Call backend API to sync (this syncs tracks, which may have overlap with catalog)
+      const res = await api.post('/api/github-sync/run');
+      
+      if (res.data && res.data.success) {
+        // Update last sync time
+        setLastSyncTime(res.data.lastSync);
+        
+        // Reload catalog data (in case any tracks overlap)
+        loadCatalogData();
+        
+        toast({
+          title: "Sync Complete!",
+          description: res.data.updated > 0 
+            ? `Updated ${res.data.updated} track(s) with latest release notes dates.`
+            : "All tracks already up to date.",
+        });
+      } else {
+        throw new Error('Sync returned unsuccessful');
+      }
+    } catch (error) {
+      console.error('GitHub sync error:', error);
+      toast({
+        title: "Sync Failed",
+        description: "Could not sync from GitHub. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncingGitHub(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -575,6 +627,22 @@ export default function CatalogHealth() {
                   <Wand2 className="h-4 w-4" />
                   {isAutoMatching ? "Matching..." : "Auto-Match URLs"}
                 </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={isSyncingGitHub}
+                  onClick={handleSyncFromGitHub}
+                  title="Sync last test dates from GitHub release notes"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncingGitHub ? 'animate-spin' : ''}`} />
+                  {isSyncingGitHub ? "Syncing..." : "Sync GitHub Dates"}
+                </Button>
+                {lastSyncTime && (
+                  <span className="text-xs text-muted-foreground self-center">
+                    Last synced: {new Date(lastSyncTime).toLocaleString()}
+                  </span>
+                )}
                 <Button 
                   size="sm" 
                   variant="outline" 
