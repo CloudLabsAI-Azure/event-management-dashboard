@@ -448,9 +448,14 @@ export default function Top25Tracks() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Top 25 Tracks</h1>
-            {/* Subtitle removed per request */}
+          <div className="max-w-4xl">
+            <h1 className="text-3xl font-bold text-foreground">Trending Tracks</h1>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              Trending tracks are identified and tagged as "Trending" in the Request Management Portal and can be easily filtered from the UI. A minimum of 25 unique tracks with hands-on labs (excluding onboarding, TTT, and lunch-and-learn) are maintained monthly, with full end-to-end validation including UI updates, screenshots, testing, and upgrade assessment—independent of the number of events in the quarter.
+            </p>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              The list is refreshed quarterly based on prior-quarter demand, with additional tracks maintained under a separate monthly budget to keep the total at 30 active tracks. All other tracks are updated event-driven, with major upgrades planned case-by-case based on priority, funding approval, and coordination with the PMO team.
+            </p>
           </div>
           {role === 'admin' && (
             <div className="flex items-center gap-2">
@@ -491,7 +496,7 @@ export default function Top25Tracks() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Top 25 Tracks Report
+              Trending Tracks Report
             </CardTitle>
             <CardDescription>
               Trending tracks from the Request Management Portal with testing status and release information
