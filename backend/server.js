@@ -1070,10 +1070,34 @@ async function runGitHubSync() {
         if (anyDateMatch) releaseDate = anyDateMatch[1];
       }
       
-      if (releaseDate && track.lastTestDate !== releaseDate) {
-        track.lastTestDate = releaseDate;
-        updated++;
-        console.log(`  ✓ Updated: ${track.trackName.substring(0, 40)} → ${releaseDate}`);
+      if (releaseDate) {
+        // Calculate if the date is within 32 days (30 + 2 buffer)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const thresholdDate = new Date(today);
+        thresholdDate.setDate(thresholdDate.getDate() - 32); // 30 days + 2 day buffer
+        
+        const testDate = new Date(releaseDate);
+        testDate.setHours(0, 0, 0, 0);
+        
+        const isWithin30Days = testDate >= thresholdDate;
+        const newStatus = isWithin30Days ? 'Completed' : 'In-progress';
+        
+        // Check if anything changed
+        const dateChanged = track.lastTestDate !== releaseDate;
+        const statusChanged = track.testingStatus !== newStatus;
+        
+        if (dateChanged || statusChanged) {
+          if (dateChanged) {
+            track.lastTestDate = releaseDate;
+          }
+          if (statusChanged) {
+            track.testingStatus = newStatus;
+            track.testingCompleted = isWithin30Days;
+          }
+          updated++;
+          console.log(`  ✓ Updated: ${track.trackName.substring(0, 40)} → ${releaseDate} (${newStatus})`);
+        }
       }
     } catch (err) {
       errors.push({ track: track.trackName, error: err.message });
