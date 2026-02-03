@@ -117,10 +117,10 @@ export function DashboardContent() {
         const tr = await api.get('/api/tracks').then(r => Array.isArray(r.data) ? r.data : [])
         setTracks(tr)
         
-        // Calculate Trending Tracks Health percentage based on last test dates within 30 days
+        // Calculate Trending Tracks Health percentage based on last test dates within 30 days (+2 day buffer)
         const trendingTracks = tr // Use all trending tracks
         const now = new Date()
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        const thresholdDaysAgo = new Date(now.getTime() - 32 * 24 * 60 * 60 * 1000) // 30 days + 2 day buffer
         let testedCount = 0
         let oldestTestedDate: Date | null = null
         let newestTestedDate: Date | null = null
@@ -130,8 +130,8 @@ export function DashboardContent() {
           if (lastTestedStr) {
             const lastTested = new Date(lastTestedStr)
             if (!isNaN(lastTested.getTime())) {
-              // Count as tested if tested in last 30 days
-              if (lastTested >= thirtyDaysAgo) {
+              // Count as tested if tested in last 30 days (+2 day buffer)
+              if (lastTested >= thresholdDaysAgo) {
                 testedCount++
               }
               // Track oldest tested date

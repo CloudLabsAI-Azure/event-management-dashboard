@@ -210,11 +210,11 @@ export default function Top25Tracks() {
             lastTestDate: t.lastTestDate || ''
           })) : [];
           
-          // Auto-mark tracks as "In-progress" if last test date is older than 30 days
+          // Auto-mark tracks as "In-progress" if last test date is older than 30 days (+2 day buffer = 32 days)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const thirtyDaysAgo = new Date(today);
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const thresholdDaysAgo = new Date(today);
+          thresholdDaysAgo.setDate(thresholdDaysAgo.getDate() - 32); // 30 days + 2 day buffer
           
           const tracksToUpdate: TrackItem[] = [];
           const updatedMapped = mapped.map((track: TrackItem) => {
@@ -222,7 +222,7 @@ export default function Top25Tracks() {
               const testDate = new Date(track.lastTestDate);
               testDate.setHours(0, 0, 0, 0);
               
-              if (testDate < thirtyDaysAgo) {
+              if (testDate < thresholdDaysAgo) {
                 const updatedTrack = { ...track, testingStatus: 'In-progress' };
                 tracksToUpdate.push(updatedTrack);
                 return updatedTrack;
