@@ -16,12 +16,21 @@ function parseContainerUrl(url) {
 
 const { baseUrl, sasToken } = parseContainerUrl(BLOB_CONTAINER_URL);
 
-// Create BlobServiceClient for audit.json
-const blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
-const containerName = baseUrl.split('/').pop();
-const containerClient = blobServiceClient.getContainerClient(containerName);
-const auditBlobClient = containerClient.getBlobClient(AUDIT_BLOB_NAME);
-const auditBlockBlobClient = auditBlobClient.getBlockBlobClient();
+// SECURITY: Only initialize blob clients if URL is configured
+let blobServiceClient, containerName, containerClient, auditBlobClient, auditBlockBlobClient;
+
+if (BLOB_CONTAINER_URL && baseUrl) {
+  try {
+    // Create BlobServiceClient for audit.json
+    blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
+    containerName = baseUrl.split('/').pop();
+    containerClient = blobServiceClient.getContainerClient(containerName);
+    auditBlobClient = containerClient.getBlobClient(AUDIT_BLOB_NAME);
+    auditBlockBlobClient = auditBlobClient.getBlockBlobClient();
+  } catch (error) {
+    console.error('❌ Failed to initialize audit blob storage client:', error.message);
+  }
+}
 
 /**
  * Helper function to convert stream to buffer
@@ -45,6 +54,12 @@ async function streamToBuffer(readableStream) {
  */
 export async function readAuditLog() {
   try {
+    // SECURITY: Check if blob storage is configured
+    if (!auditBlobClient) {
+      console.warn('⚠️  Audit blob storage not configured');
+      return [];
+    }
+    
     const exists = await auditBlobClient.exists();
     if (!exists) {
       return [];
@@ -68,6 +83,12 @@ export async function readAuditLog() {
  */
 async function writeAuditLog(entries) {
   try {
+    // SECURITY: Check if blob storage is configured
+    if (!auditBlockBlobClient) {
+      console.warn('⚠️  Audit blob storage not configured, cannot write audit log');
+      return;
+    }
+    
     const data = {
       _metadata: {
         lastUpdated: new Date().toISOString(),

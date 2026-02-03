@@ -21,13 +21,22 @@ function parseContainerUrl(url) {
 
 const { baseUrl, sasToken } = parseContainerUrl(BLOB_CONTAINER_URL);
 
-// Create BlobServiceClient - this creates paths under container/containerName/... 
-// which matches the existing structure: mseventscatalogcontainer/mseventscatalogcontainer/data.json
-const blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
-const containerName = baseUrl.split('/').pop();
-const containerClient = blobServiceClient.getContainerClient(containerName);
-const blobClient = containerClient.getBlobClient(BLOB_NAME);
-const blockBlobClient = blobClient.getBlockBlobClient();
+// SECURITY: Only initialize blob clients if URL is configured
+let blobServiceClient, containerName, containerClient, blobClient, blockBlobClient;
+
+if (BLOB_CONTAINER_URL && baseUrl) {
+  try {
+    // Create BlobServiceClient - this creates paths under container/containerName/... 
+    // which matches the existing structure: mseventscatalogcontainer/mseventscatalogcontainer/data.json
+    blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
+    containerName = baseUrl.split('/').pop();
+    containerClient = blobServiceClient.getContainerClient(containerName);
+    blobClient = containerClient.getBlobClient(BLOB_NAME);
+    blockBlobClient = blobClient.getBlockBlobClient();
+  } catch (error) {
+    console.error('❌ Failed to initialize blob storage client:', error.message);
+  }
+}
 
 /**
  * Read data from Azure Blob Storage
@@ -35,6 +44,12 @@ const blockBlobClient = blobClient.getBlockBlobClient();
  */
 export async function readDataFromBlob() {
   try {
+    // SECURITY: Check if blob storage is configured
+    if (!blobClient) {
+      console.warn('⚠️  Blob storage not configured, cannot read data');
+      return {};
+    }
+    
     console.log('📥 Reading data from blob storage...');
     
     // Check if blob exists
@@ -68,6 +83,12 @@ export async function readDataFromBlob() {
  */
 export async function writeDataToBlob(data, options = {}) {
   try {
+    // SECURITY: Check if blob storage is configured
+    if (!blockBlobClient) {
+      console.error('❌ Blob storage not configured, cannot write data');
+      throw new Error('Blob storage not configured');
+    }
+    
     const { updateTimestamp = true } = options;
     console.log('📤 Writing data to blob storage...');
     
