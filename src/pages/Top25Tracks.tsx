@@ -486,10 +486,10 @@ export default function Top25Tracks() {
           </div>
           <div className="w-full">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Trending tracks are identified and tagged as "Trending" in the Request Management Portal and can be easily filtered from the UI. A minimum of 25 unique tracks with hands-on labs (excluding onboarding, TTT, and lunch-and-learn) are maintained monthly, with full end-to-end validation including UI updates, screenshots, testing, and upgrade assessment—independent of the number of events in the quarter.
+              Trending tracks are identified and tagged as "Trending" in the Request Management Portal and can be easily filtered from the UI. A minimum of 25 unique tracks with hands-on labs (excluding onboarding, TTT, and lunch-and-learn) are maintained monthly, with full end-to-end validation including UI updates, screenshots, testing, and upgrade assessment independent of the number of events in the quarter.
             </p>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-              The list is refreshed quarterly based on prior-quarter demand, with additional tracks maintained under a separate monthly budget to keep the total at ~30 active tracks. All other tracks are updated event-driven, with major upgrades planned case-by-case based on priority, funding approval, and coordination with the PMO team.
+              The list is refreshed quarterly based on prior-quarter demand, with additional tracks maintained under a separate monthly budget to keep the total at 30 active tracks. All other tracks are updated event-driven, with major upgrades planned case-by-case based on priority, funding approval, and coordination with the PMO team.
             </p>
           </div>
         </div>
