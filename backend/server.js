@@ -1038,9 +1038,14 @@ async function runGitHubSync() {
       
       const folderName = decodeURIComponent(urlMatch[1]);
       
-      // Fetch the Release-Notes.md file
-      const rawUrl = `https://raw.githubusercontent.com/CloudLabsAI-Azure/MS-Innovation-Release-Notes/main/${encodeURIComponent(folderName)}/Release-Notes.md`;
-      const response = await fetch(rawUrl);
+      // Fetch the Release-Notes.md file via GitHub API (bypasses CDN cache)
+      const apiUrl = `https://api.github.com/repos/CloudLabsAI-Azure/MS-Innovation-Release-Notes/contents/${encodeURIComponent(folderName)}/Release-Notes.md`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': 'MS-Events-Dashboard',
+          'Accept': 'application/vnd.github.v3.raw'
+        }
+      });
       
       if (!response.ok) continue;
       
