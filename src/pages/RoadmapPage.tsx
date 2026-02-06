@@ -656,7 +656,14 @@ export default function RoadmapPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="duration" className="text-right">Duration</Label>
-                <Input id="duration" value={editForm.duration || ''} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} className="col-span-3" placeholder="e.g., 2 weeks, 1 month" />
+                <Select value={editForm.duration || ''} onValueChange={(value) => setEditForm({ ...editForm, duration: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select duration" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1 hour">1 hour</SelectItem>
+                    <SelectItem value="4 hours">4 hours</SelectItem>
+                    <SelectItem value="8 hours">8 hours</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="programType" className="text-right">Sponsored by</Label>
