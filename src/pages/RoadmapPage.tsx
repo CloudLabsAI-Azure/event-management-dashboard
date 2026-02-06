@@ -34,6 +34,8 @@ interface RoadmapItem {
   eventId?: string;
   programType?: string;
   approvalDate?: string;
+  duration?: string;
+  labType?: string;
   progressDeck?: string;
   notes?: string;
   activityLog?: ActivityLogEntry[];
@@ -43,10 +45,10 @@ interface RoadmapItem {
 const getPhaseBadge = (phase: string) => {
   if (phase === "Under assessment") {
     return <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Under assessment</Badge>
-  } else if (phase === "Development") {
-    return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Development</Badge>
-  } else if (phase === "Release-ready") {
-    return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-ready</Badge>
+  } else if (phase === "In-Development") {
+    return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">In-Development</Badge>
+  } else if (phase === "Release-Ready") {
+    return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Release-Ready</Badge>
   } else if (phase === "Released") {
     return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Released</Badge>
   } else if (phase === "Backlog") {
@@ -120,6 +122,8 @@ export default function RoadmapPage() {
     eventId: "",
     programType: "",
     approvalDate: "",
+    duration: "",
+    labType: "",
     progressDeck: "",
     notes: "",
     isUpgrade: false
@@ -171,6 +175,8 @@ export default function RoadmapPage() {
           eventId: r.eventId || '',
           programType: r.programType || '',
           approvalDate: r.approvalDate || '',
+          duration: r.duration || '',
+          labType: r.labType || (r.isUpgrade ? 'Lab Upgrade' : ''),
           progressDeck: r.progressDeck || '',
           notes: r.notes || '',
           activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
@@ -442,6 +448,7 @@ export default function RoadmapPage() {
                     <TableRow>
                       <TableHead className="w-32">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Title</TableHead>
+                      <TableHead className="w-36">Type</TableHead>
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
                           <span>Phase</span>
@@ -452,9 +459,9 @@ export default function RoadmapPage() {
                             <SelectContent>
                               <SelectItem value="all">All Phases</SelectItem>
                               <SelectItem value="Under assessment">Under assessment</SelectItem>
-                              <SelectItem value="Development">Development</SelectItem>
+                              <SelectItem value="In-Development">In-Development</SelectItem>
                               <SelectItem value="Testing">Testing</SelectItem>
-                              <SelectItem value="Release-ready">Release-ready</SelectItem>
+                              <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                               <SelectItem value="Released">Released</SelectItem>
                               <SelectItem value="Backlog">Backlog</SelectItem>
                               <SelectItem value="Delayed">Delayed</SelectItem>
@@ -480,8 +487,10 @@ export default function RoadmapPage() {
                           </Select>
                         </div>
                       </TableHead>
-                      <TableHead className="w-40">Target Completion</TableHead>
-                      <TableHead className="w-40">Approval Month</TableHead>
+                      <TableHead className="w-32">Target Completion</TableHead>
+                      <TableHead className="w-24">Duration</TableHead>
+                      <TableHead className="w-32">Approval Month</TableHead>
+                      <TableHead className="w-20">Quarter</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -497,14 +506,20 @@ export default function RoadmapPage() {
                       >
                         <TableCell className="font-mono text-sm">{track.eventId || 'TBD'}</TableCell>
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {track.trackTitle}
-                            {track.isUpgrade && (
-                              <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500 text-xs">
-                                Lab Upgrade
-                              </Badge>
-                            )}
-                          </div>
+                          {track.trackTitle}
+                        </TableCell>
+                        <TableCell>
+                          {track.labType ? (
+                            <Badge variant="outline" className={
+                              track.labType === "New Lab Onboarding"
+                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500 whitespace-nowrap text-xs"
+                                : "bg-orange-500/10 text-orange-600 border-orange-500 whitespace-nowrap text-xs"
+                            }>
+                              {track.labType}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
                         </TableCell>
                         <TableCell>{getPhaseBadge(track.phase)}</TableCell>
                         <TableCell>
@@ -533,13 +548,26 @@ export default function RoadmapPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
+                          {track.duration ? (
+                            <span className="text-sm">{track.duration}</span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
                           {track.approvalDate ? (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-green-500" />
-                              <span className="text-sm">
-                                {getMonthName(parseApprovalMonth(track.approvalDate))} ({getQuarterFromMonth(parseApprovalMonth(track.approvalDate))})
-                              </span>
-                            </div>
+                            <span className="text-sm">
+                              {getMonthName(parseApprovalMonth(track.approvalDate))}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.approvalDate ? (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500">
+                              {getQuarterFromMonth(parseApprovalMonth(track.approvalDate))}
+                            </Badge>
                           ) : (
                             <span className="text-gray-500">-</span>
                           )}
@@ -600,14 +628,24 @@ export default function RoadmapPage() {
                 <Input id="trackTitle" value={editForm.trackTitle} onChange={(e) => setEditForm({ ...editForm, trackTitle: e.target.value })} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="labType" className="text-right">Type</Label>
+                <Select value={editForm.labType || ''} onValueChange={(value) => setEditForm({ ...editForm, labType: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="New Lab Onboarding">New Lab Onboarding</SelectItem>
+                    <SelectItem value="Lab Upgrade">Lab Upgrade</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="phase" className="text-right">Phase</Label>
                 <Select value={editForm.phase} onValueChange={(value) => setEditForm({ ...editForm, phase: value })}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select phase" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Under assessment">Under assessment</SelectItem>
-                    <SelectItem value="Development">Development</SelectItem>
+                    <SelectItem value="In-Development">In-Development</SelectItem>
                     <SelectItem value="Testing">Testing</SelectItem>
-                    <SelectItem value="Release-ready">Release-ready</SelectItem>
+                    <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                     <SelectItem value="Released">Released</SelectItem>
                     <SelectItem value="Backlog">Backlog</SelectItem>
                     <SelectItem value="Delayed">Delayed</SelectItem>
@@ -615,6 +653,10 @@ export default function RoadmapPage() {
                     <SelectItem value="Completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="duration" className="text-right">Duration</Label>
+                <Input id="duration" value={editForm.duration || ''} onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })} className="col-span-3" placeholder="e.g., 2 weeks, 1 month" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="programType" className="text-right">Sponsored by</Label>
@@ -830,9 +872,9 @@ export default function RoadmapPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Under assessment">Under assessment</SelectItem>
-                        <SelectItem value="Development">Development</SelectItem>
+                        <SelectItem value="In-Development">In-Development</SelectItem>
                         <SelectItem value="Testing">Testing</SelectItem>
-                        <SelectItem value="Release-ready">Release-ready</SelectItem>
+                        <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                         <SelectItem value="Released">Released</SelectItem>
                         <SelectItem value="Backlog">Backlog</SelectItem>
                         <SelectItem value="Delayed">Delayed</SelectItem>
