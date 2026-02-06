@@ -18,6 +18,7 @@ import csv from 'csv-parser';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import https from 'https';
+import rateLimit from 'express-rate-limit';
 
 // Dynamic import for modules that need env vars
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob } = await import('./blobStorageService.js');
@@ -27,8 +28,54 @@ const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditS
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// SECURITY: Configure CORS with specific origins instead of allowing all
+const ALLOWED_ORIGINS = process.env.CORS_ALLOWED_ORIGINS 
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4000'];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow localhost variations
+    if (process.env.NODE_ENV !== 'production') {
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        return callback(null, true);
+      }
+    }
+    
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// SECURITY: Rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: 'Too many login attempts, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -36,7 +83,55 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const upload = multer({ dest: UPLOAD_DIR });
+// SECURITY: Configure secure file upload with validation
+const ALLOWED_FILE_TYPES = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'application/pdf': '.pdf'
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const multerStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (req, file, cb) {
+    // Generate secure filename
+    const uniqueSuffix = crypto.randomBytes(8).toString('hex');
+    const ext = path.extname(file.originalname);
+    cb(null, `upload_${Date.now()}_${uniqueSuffix}${ext}`);
+  }
+});
+
+const multerFilter = function (req, file, cb) {
+  // SECURITY: Validate MIME type against whitelist
+  if (!ALLOWED_FILE_TYPES[file.mimetype]) {
+    return cb(new Error(`Invalid file type. Allowed types: ${Object.keys(ALLOWED_FILE_TYPES).join(', ')}`), false);
+  }
+  
+  // SECURITY: Validate file extension matches MIME type
+  const ext = path.extname(file.originalname).toLowerCase();
+  const expectedExt = ALLOWED_FILE_TYPES[file.mimetype];
+  if (ext !== expectedExt && !expectedExt.includes(ext)) {
+    return cb(new Error('File extension does not match MIME type'), false);
+  }
+  
+  cb(null, true);
+};
+
+const upload = multer({ 
+  storage: multerStorage,
+  fileFilter: multerFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+    files: 20 // Max 20 files per request
+  }
+});
+
 const DATA_PATH = path.join(__dirname, 'data.json');
 
 // Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
@@ -109,14 +204,20 @@ app.get('/api/blob-image/:filename', async (req, res) => {
       return res.status(400).json({ error: 'Filename required' });
     }
     
-    // Security: Only allow image files
-    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
-    const ext = path.extname(filename).toLowerCase();
+    // SECURITY: Sanitize filename to prevent path traversal
+    const sanitizedFilename = path.basename(filename);
+    if (sanitizedFilename !== filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid filename - path traversal not allowed' });
+    }
+    
+    // SECURITY: Only allow image files
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.pdf'];
+    const ext = path.extname(sanitizedFilename).toLowerCase();
     if (!allowedExtensions.includes(ext)) {
       return res.status(400).json({ error: 'Invalid file type' });
     }
     
-    const result = await streamImageFromBlob(filename);
+    const result = await streamImageFromBlob(sanitizedFilename);
     
     if (!result) {
       return res.status(404).json({ error: 'Image not found' });
@@ -175,15 +276,16 @@ app.get('/api/last-updated', async (req, res) => {
 });
 
 // Reviews screenshots upload (images or PDFs). Multiple files accepted under one event name.
-app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (req, res) => {
+// SECURITY: Rate limited to prevent abuse
+app.post('/api/upload-review', apiLimiter, requireAdmin, upload.array('files', 20), async (req, res) => {
   try {
     const files = Array.isArray(req.files) ? req.files : []
     const eventName = req.body.eventName || ''
     const data = await readData()
     data.reviews = Array.isArray(data.reviews) ? data.reviews : []
     
-    // Generate a group ID to link all images uploaded together
-    const groupId = `grp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    // SECURITY: Generate a secure group ID using crypto instead of Math.random()
+    const groupId = `grp_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const uploadTimestamp = Date.now();
     
     const saved = [];
@@ -220,7 +322,7 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (r
       }
       
       saved.push({
-        id: `r_${uploadTimestamp}_${i}_${Math.random().toString(36).slice(2,6)}`,
+        id: `r_${uploadTimestamp}_${i}_${crypto.randomBytes(3).toString('hex')}`,
         originalName: f.originalname,
         eventName: eventName.trim() || f.originalname,
         mime: f.mimetype,
@@ -362,9 +464,11 @@ async function ensureDataSchema() {
     data.users = [];
     changed = true;
   }
-  // If no users exist, create a default admin (dev only)
-  if (data.users.length === 0) {
-    const hashed = bcrypt.hashSync('password', 8);
+  // If no users exist, create a default admin with a secure random password
+  // SECURITY: Only in development mode, and with a strong random password
+  if (data.users.length === 0 && process.env.NODE_ENV !== 'production') {
+    const randomPassword = crypto.randomBytes(16).toString('hex');
+    const hashed = bcrypt.hashSync(randomPassword, 12); // Use 12 rounds for modern security best practices
     const defaultAdmin = { 
       id: 'admin', 
       username: 'admin', 
@@ -373,8 +477,12 @@ async function ensureDataSchema() {
       role: 'admin' 
     };
     data.users.push(defaultAdmin);
-    console.warn('No users found in data.json — creating default admin: admin@example.com/password (hashed)');
+    console.warn('⚠️  [DEV ONLY] Created default admin user. IMPORTANT: Set a secure password immediately!');
+    console.warn('⚠️  Temporary password (save this): ' + randomPassword);
+    console.warn('⚠️  Email: admin@example.com');
     changed = true;
+  } else if (data.users.length === 0) {
+    console.error('❌ CRITICAL: No users found in production mode. Please create users via Azure B2C or manual data configuration.');
   }
   if (changed) {
     console.log('📝 Schema changes detected, updating data (preserving timestamp)...');
@@ -464,10 +572,11 @@ async function requireAuth(req, res, next) {
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
-  // Allow dev bypass token in localhost/development
+  // SECURITY: Dev bypass token ONLY in development mode and localhost
   const isLocalhost = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
-  if (token === 'dev-bypass-token-local' && isLocalhost) {
-    console.log('🚀 Dev bypass token accepted for localhost');
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  if (token === 'dev-bypass-token-local' && isLocalhost && isDevelopment) {
+    console.log('🚀 [DEV ONLY] Dev bypass token accepted for localhost');
     req.user = { id: 'dev-admin', email: 'dev@localhost', role: 'admin' };
     return next();
   }
@@ -491,10 +600,11 @@ async function requireAdmin(req, res, next) {
   if (parts.length !== 2 || parts[0] !== 'Bearer') return res.status(401).json({ error: 'Unauthorized' });
   const token = parts[1];
   
-  // Allow dev bypass token in localhost/development (grants admin access)
+  // SECURITY: Dev bypass token ONLY in development mode and localhost
   const isLocalhost = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
-  if (token === 'dev-bypass-token-local' && isLocalhost) {
-    console.log('🚀 Dev bypass token accepted for admin access on localhost');
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  if (token === 'dev-bypass-token-local' && isLocalhost && isDevelopment) {
+    console.log('🚀 [DEV ONLY] Dev bypass token accepted for admin access on localhost');
     req.user = { id: 'dev-admin', email: 'dev@localhost', role: 'admin' };
     return next();
   }
@@ -510,7 +620,8 @@ async function requireAdmin(req, res, next) {
 
 // Login endpoint: POST /api/login { email, password } or { username, password }
 // Supports login with either email or username for backward compatibility
-app.post('/api/login', async (req, res) => {
+// SECURITY: Rate limited to prevent brute force attacks
+app.post('/api/login', authLimiter, async (req, res) => {
   const { email, username, password } = req.body || {};
   const loginField = email || username; // Use email if provided, otherwise username
   try {
@@ -526,7 +637,9 @@ app.post('/api/login', async (req, res) => {
       }
     });
     if (!user) return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    // verify password: support hashed passwords and fallback to plaintext migration
+    
+    // SECURITY: Only support hashed passwords, no plaintext migration
+    // This removes the security risk of storing plaintext passwords temporarily
     const provided = String(password || '');
     let ok = false;
     try {
@@ -534,19 +647,12 @@ app.post('/api/login', async (req, res) => {
         ok = true;
       }
     } catch (e) {
-      // compareSync may throw if stored password isn't a hash — fallback below
+      // compareSync may throw if stored password isn't a valid hash
+      console.error('Password validation error:', e.message);
     }
-    if (!ok) {
-      // fallback: if stored password equals provided plaintext, migrate to hash
-      if (user.password && String(user.password) === provided) {
-        const data2 = await readData();
-        // update the user's password to hashed
-        data2.users = (data2.users || []).map((u) => (String(u.id) === String(user.id) ? { ...u, password: bcrypt.hashSync(provided, 8) } : u));
-        await writeData(data2);
-        ok = true;
-      }
-    }
+    
     if (!ok) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    
     // If the user was created with a temporary password and hasn't reset yet,
     // require a password reset before issuing a normal token. We still consider
     // the provided password valid (we matched above) but return mustReset flag.
@@ -567,7 +673,8 @@ app.post('/api/login', async (req, res) => {
 });
 
 // B2C Authentication validation endpoint
-app.post('/api/validate-b2c-user', async (req, res) => {
+// SECURITY: Rate limited to prevent brute force attacks
+app.post('/api/validate-b2c-user', authLimiter, async (req, res) => {
   const { email } = req.body;
   
   if (!email) {
@@ -630,7 +737,8 @@ app.post('/api/validate-b2c-user', async (req, res) => {
 });
 
 // Self-service password reset: user provides email/username, oldPassword (temporary) and newPassword
-app.post('/api/reset-password', async (req, res) => {
+// SECURITY: Rate limited to prevent brute force attacks
+app.post('/api/reset-password', authLimiter, async (req, res) => {
   const { email, username, oldPassword, newPassword } = req.body || {};
   const loginField = email || username;
   if (!loginField || !oldPassword || !newPassword) return res.status(400).json({ success: false, error: 'Missing parameters' });
@@ -658,7 +766,7 @@ app.post('/api/reset-password', async (req, res) => {
     }
     if (!ok) return res.status(401).json({ success: false, error: 'Invalid temporary password' });
     // update to new password and clear mustReset
-    const hashed = bcrypt.hashSync(String(newPassword), 8);
+    const hashed = bcrypt.hashSync(String(newPassword), 12); // Use 12 rounds for modern security best practices
     data.users = users.map((u) => (String(u.id) === String(user.id) ? { ...u, password: hashed, mustReset: false } : u));
     // generate token so user can be logged in after reset
     const token = crypto.randomBytes(24).toString('hex');
@@ -790,9 +898,21 @@ app.post('/api/add-track', async (req, res) => {
 });
 
 // Generic CSV upload: ?resource=tracks|catalog|users|events (defaults to tracks)
-app.post('/api/upload-csv', requireAdmin, upload.single('file'), async (req, res) => {
+// SECURITY: Rate limited to prevent abuse
+app.post('/api/upload-csv', apiLimiter, requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+  
+  // SECURITY: Validate resource parameter against whitelist
   const resource = String(req.query.resource || 'tracks');
+  const VALID_RESOURCES = ['tracks', 'catalog', 'users', 'events'];
+  if (!VALID_RESOURCES.includes(resource)) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ 
+      success: false, 
+      error: `Invalid resource type. Allowed: ${VALID_RESOURCES.join(', ')}` 
+    });
+  }
+  
   const results = [];
   
   // Define required columns for each resource type
@@ -1535,13 +1655,13 @@ app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
     const id = String(item.id || `u_${Date.now()}`);
     // If caller provided password, hash it; otherwise generate temporary password and mustReset flag
     if (item.password) {
-      const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 8), mustReset: false };
+      const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 12), mustReset: false }; // Use 12 rounds for modern security best practices
       list.push(newItem);
       await setResource(resource, list);
       return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role } });
     }
     const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
-    const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 8), mustReset: true };
+    const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 12), mustReset: true }; // Use 12 rounds for modern security best practices
     list.push(newItem);
     await setResource(resource, list);
     return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword });
@@ -1801,8 +1921,58 @@ try {
   // ignore
 }
 
-// Global error handler to capture uncaught errors in routes
+// SECURITY: Enhanced global error handler to capture uncaught errors in routes
+// Includes special handling for multer file upload errors
 app.use((err, req, res, next) => {
   console.error('Express error handler caught:', err && err.stack ? err.stack : err);
-  res.status(500).json({ error: String(err && err.message ? err.message : err) });
+  
+  // Handle multer file upload errors
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ 
+        success: false, 
+        error: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` 
+      });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Too many files. Maximum is 20 files per upload' 
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Unexpected file field' 
+      });
+    }
+    return res.status(400).json({ 
+      success: false, 
+      error: `File upload error: ${err.message}` 
+    });
+  }
+  
+  // Handle file type validation errors
+  if (err.message && err.message.includes('Invalid file type')) {
+    return res.status(400).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+  
+  // Handle CORS errors
+  if (err.message && err.message.includes('Not allowed by CORS')) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'CORS policy: Origin not allowed' 
+    });
+  }
+  
+  // Generic error response
+  res.status(500).json({ 
+    success: false, 
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : String(err && err.message ? err.message : err) 
+  });
 });
