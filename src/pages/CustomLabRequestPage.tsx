@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Plus } from "lucide-react"
+import { Edit, Trash2, Plus, Download } from "lucide-react"
+import * as XLSX from 'xlsx'
 import { useState, useEffect } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
@@ -51,6 +52,51 @@ export default function CustomLabRequestPage() {
   // Notes popup state
   const [selectedItem, setSelectedItem] = useState<CustomLabRequest | null>(null);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+
+  // Export to Excel function
+  const handleExportExcel = () => {
+    // Prepare data for export
+    const exportData = customLabData.map(item => ({
+      'Event ID': item.eventId || '',
+      'Event Date': item.eventDate || '',
+      'Track Title': item.trackTitle || '',
+      'Sponsor': item.sponsor || '',
+      'HOL Lab Requested': item.holLabRequested || '',
+      'Frequency': item.frequency || '',
+      'Move to Regular Catalog': item.moveToRegularCatalog || '',
+      'Notes': item.notes || ''
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 15 },  // Event ID
+      { wch: 12 },  // Event Date
+      { wch: 50 },  // Track Title
+      { wch: 30 },  // Sponsor
+      { wch: 18 },  // HOL Lab Requested
+      { wch: 12 },  // Frequency
+      { wch: 22 },  // Move to Regular Catalog
+      { wch: 50 }   // Notes
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Custom Lab Requests');
+    
+    // Generate filename with date
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `Custom_Lab_Requests_${date}.xlsx`;
+    
+    // Download
+    XLSX.writeFile(wb, filename);
+    
+    toast({
+      title: "Export Successful",
+      description: `Exported ${exportData.length} items to ${filename}`,
+    });
+  };
 
   useEffect(() => {
     let mounted = true
@@ -160,7 +206,15 @@ export default function CustomLabRequestPage() {
           </p>
         </div>
         
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={handleExportExcel}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export Excel
+          </Button>
           {role === 'admin' && (
             <Button size="sm" onClick={() => { 
               setEditingCustomLab({ sr: 0, eventId: '', trackTitle: '', sponsor: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' }); 

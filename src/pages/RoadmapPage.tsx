@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History } from "lucide-react"
+import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download } from "lucide-react"
+import * as XLSX from 'xlsx'
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useAuth } from '@/components/AuthProvider'
@@ -329,6 +330,61 @@ export default function RoadmapPage() {
     }
   }
 
+  // Export to Excel function
+  const handleExportExcel = () => {
+    // Prepare data for export
+    const exportData = filteredRoadmapData.map(item => {
+      const month = parseApprovalMonth(item.approvalDate);
+      const quarter = month ? getQuarterFromMonth(month) : '';
+      const monthName = month ? getMonthName(month) : '';
+      
+      return {
+        'Event ID': item.eventId || '',
+        'Track Title': item.trackTitle || '',
+        'Type': item.labType || '',
+        'Phase': item.phase || '',
+        'Sponsored by': item.programType || '',
+        'Target Completion': item.eta || '',
+        'Duration': item.duration || '',
+        'Approval Month': monthName,
+        'Quarter': quarter,
+        'Notes': item.notes || ''
+      };
+    });
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 15 },  // Event ID
+      { wch: 50 },  // Track Title
+      { wch: 20 },  // Type
+      { wch: 15 },  // Phase
+      { wch: 25 },  // Sponsored by
+      { wch: 20 },  // Target Completion
+      { wch: 10 },  // Duration
+      { wch: 15 },  // Approval Month
+      { wch: 10 },  // Quarter
+      { wch: 50 }   // Notes
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Lab Development');
+    
+    // Generate filename with date
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `Lab_Development_Roadmap_${date}.xlsx`;
+    
+    // Download
+    XLSX.writeFile(wb, filename);
+    
+    toast({
+      title: "Export Successful",
+      description: `Exported ${exportData.length} items to ${filename}`,
+    });
+  };
+
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setCsvError("");
     setCsvUploading(true);
@@ -419,6 +475,14 @@ export default function RoadmapPage() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 {csvUploading ? "Uploading..." : "Bulk Upload (.csv)"}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleExportExcel}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Export Excel
               </Button>
               <input 
                 ref={fileInputRef}
