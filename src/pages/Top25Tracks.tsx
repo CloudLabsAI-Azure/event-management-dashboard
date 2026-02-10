@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2, Wand2, RefreshCw } from "lucide-react"
+import { FileText, TrendingUp, ChevronLeft, ChevronRight, Plus, Edit, Trash2, Wand2, RefreshCw, Search } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { FileUploadModal } from "@/components/FileUploadModal"
@@ -79,11 +79,23 @@ export default function Top25Tracks() {
   // Removed bulk upload and metrics edit for this page per requirements
   
   const itemsPerPage = 10
-  const totalPages = Math.ceil(tracksData.length / itemsPerPage)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredTracksData = tracksData.filter(item => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return true;
+    return (item.trackName || '').toLowerCase().includes(query) ||
+      (item.testingStatus || '').toLowerCase().includes(query) ||
+      (item.releaseNotes || '').toLowerCase().includes(query);
+  });
+
+  const totalPages = Math.ceil(filteredTracksData.length / itemsPerPage)
   
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const currentData = tracksData.slice(startIndex, endIndex)
+  const currentData = filteredTracksData.slice(startIndex, endIndex)
   
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
@@ -588,6 +600,22 @@ export default function Top25Tracks() {
               ) : (
                 <>
               {/* Scrollable Table Container */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by track name, status..."
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                {searchQuery && (
+                  <Badge variant="secondary" className="text-xs">
+                    {filteredTracksData.length} result{filteredTracksData.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
               <ScrollArea className="h-[600px] w-full rounded-md border">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">

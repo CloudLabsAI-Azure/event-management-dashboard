@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download } from "lucide-react"
+import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download, Search } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
@@ -139,6 +139,7 @@ export default function RoadmapPage() {
   // Filter state - initialize from URL if present
   const [phaseFilter, setPhaseFilter] = useState<string>(initialPhaseFilter);
   const [sponsorFilter, setSponsorFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   
   // Notes popup state
   const [selectedItem, setSelectedItem] = useState<RoadmapItem | null>(null);
@@ -149,11 +150,17 @@ export default function RoadmapPage() {
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [addingUpdate, setAddingUpdate] = useState(false);
 
-  // Filtered data based on phase and sponsor filters
+  // Filtered data based on search, phase and sponsor filters
   const filteredRoadmapData = roadmapData.filter(item => {
     const matchesPhase = phaseFilter === "all" || item.phase === phaseFilter;
     const matchesSponsor = sponsorFilter === "all" || item.programType === sponsorFilter;
-    return matchesPhase && matchesSponsor;
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = !query || 
+      (item.trackTitle || '').toLowerCase().includes(query) ||
+      (item.eventId || '').toLowerCase().includes(query) ||
+      (item.notes || '').toLowerCase().includes(query) ||
+      (item.programType || '').toLowerCase().includes(query);
+    return matchesPhase && matchesSponsor && matchesSearch;
   });
 
   // Get unique sponsors for filter dropdown
@@ -509,6 +516,22 @@ export default function RoadmapPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by title, event ID, notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              {searchQuery && (
+                <Badge variant="secondary" className="text-xs">
+                  {filteredRoadmapData.length} result{filteredRoadmapData.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
             <ScrollArea className="h-[600px] w-full rounded-md border">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">

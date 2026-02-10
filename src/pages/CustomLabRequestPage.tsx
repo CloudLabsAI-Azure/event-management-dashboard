@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus } from "lucide-react"
+import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus, Search } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect } from "react"
 import { useAuth } from '@/components/AuthProvider'
@@ -64,6 +64,9 @@ export default function CustomLabRequestPage() {
   const [newUpdate, setNewUpdate] = useState("");
   const [addingUpdate, setAddingUpdate] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Export to Excel function
   const handleExportExcel = () => {
@@ -253,6 +256,17 @@ export default function CustomLabRequestPage() {
     });
   };
 
+  // Filtered data based on search
+  const filteredCustomLabData = customLabData.filter(item => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return true;
+    return (item.eventId || '').toLowerCase().includes(query) ||
+      (item.trackTitle || '').toLowerCase().includes(query) ||
+      (item.sponsor || '').toLowerCase().includes(query) ||
+      (item.notes || '').toLowerCase().includes(query) ||
+      (item.frequency || '').toLowerCase().includes(query);
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -295,6 +309,22 @@ export default function CustomLabRequestPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by event ID, title, sponsor..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              {searchQuery && (
+                <Badge variant="secondary" className="text-xs">
+                  {filteredCustomLabData.length} result{filteredCustomLabData.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
             <ScrollArea className="h-[500px] w-full rounded-md border">
               <Table>
                 <TableHeader className="sticky top-0 bg-background z-10">
@@ -310,7 +340,7 @@ export default function CustomLabRequestPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {customLabData.map((item, index) => (
+                  {filteredCustomLabData.map((item, index) => (
                     <TableRow 
                       key={`${item.id || item.sr}-${index}`}
                       className="cursor-pointer hover:bg-muted/50"
@@ -391,7 +421,7 @@ export default function CustomLabRequestPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {customLabData.length === 0 && (
+                  {filteredCustomLabData.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         No custom lab requests found. Click "Add Custom Lab Request" to create one.

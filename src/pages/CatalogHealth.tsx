@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2, Loader2, RefreshCw } from "lucide-react"
+import { Calendar, TrendingUp, ChevronLeft, ChevronRight, Clock, Plus, Edit, Trash2, Wand2, Loader2, RefreshCw, Search } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { FileUploadModal } from "@/components/FileUploadModal"
 import api from "@/lib/api"
@@ -80,6 +80,9 @@ export default function CatalogHealth() {
   
   // Status filter - default to hide completed (show only upcoming)
   const [statusFilter, setStatusFilter] = useState<string>("upcoming");
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Pagination - items per page
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
@@ -254,10 +257,20 @@ export default function CatalogHealth() {
       // Check if event date is in the past
       const isPastEvent = item.eventDate ? new Date(item.eventDate) < today : false;
       
-      if (statusFilter === "all") return true;
-      if (statusFilter === "upcoming") return !isPastEvent; // Hide past events, show items without date
-      if (statusFilter === "completed") return isPastEvent; // Show only past events
-      return item.status === statusFilter;
+      if (statusFilter === "all") { /* pass */ }
+      else if (statusFilter === "upcoming" && isPastEvent) return false;
+      else if (statusFilter === "completed" && !isPastEvent) return false;
+      else if (statusFilter !== "all" && statusFilter !== "upcoming" && statusFilter !== "completed" && item.status !== statusFilter) return false;
+
+      // Search filter
+      const query = searchQuery.toLowerCase();
+      if (query) {
+        return (item.trackName || '').toLowerCase().includes(query) ||
+          (item.eventId || '').toLowerCase().includes(query) ||
+          (item.status || '').toLowerCase().includes(query) ||
+          (item.notesETA || '').toLowerCase().includes(query);
+      }
+      return true;
     })
     .sort((a, b) => {
       // Sort by eventDate ascending (earliest first)
@@ -279,7 +292,7 @@ export default function CatalogHealth() {
   // Reset to page 1 when filter or items per page changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, itemsPerPage]);
+  }, [statusFilter, itemsPerPage, searchQuery]);
 
   const handleEdit = (item: CatalogItem) => {
     setEditingItem(item)
@@ -690,6 +703,15 @@ export default function CatalogHealth() {
                     <SelectItem value="In-progress">In Progress</SelectItem>
                   </SelectContent>
                 </Select>
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by title, event ID, name..."
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    className="pl-9 h-9"
+                  />
+                </div>
                 <Badge variant="secondary" className="ml-2">
                   {filteredData.length} / {catalogData.length}
                 </Badge>
