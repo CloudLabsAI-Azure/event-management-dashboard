@@ -89,6 +89,7 @@ export interface RoadmapItem extends BaseCatalogItem {
   progressDeck?: string
   activityLog?: ActivityLogEntry[]
   isUpgrade?: boolean
+  needsAttention?: boolean
 }
 
 export type RoadmapPhase = 

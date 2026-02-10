@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download, Search } from "lucide-react"
+import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download, Search, AlertTriangle } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
@@ -42,6 +42,7 @@ interface RoadmapItem {
   notes?: string;
   activityLog?: ActivityLogEntry[];
   isUpgrade?: boolean;
+  needsAttention?: boolean;
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -150,9 +151,24 @@ export default function RoadmapPage() {
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [addingUpdate, setAddingUpdate] = useState(false);
 
+  // Toggle needs attention flag
+  const handleToggleAttention = async (item: RoadmapItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const updated = { ...item, needsAttention: !item.needsAttention, type: 'roadmapItem' };
+      await catalogService.update(item.sr, updated);
+      setRoadmapData(prev => prev.map(r => r.sr === item.sr ? { ...r, needsAttention: !r.needsAttention } : r));
+      toast({ title: updated.needsAttention ? 'Flagged' : 'Unflagged', description: `"${item.trackTitle}" ${updated.needsAttention ? 'marked as needs attention' : 'flag removed'}` });
+    } catch (err) {
+      console.error('Error toggling attention flag:', err);
+      toast({ title: 'Error', description: 'Failed to update flag', variant: 'destructive' });
+    }
+  };
+
   // Filtered data based on search, phase and sponsor filters
   const filteredRoadmapData = roadmapData.filter(item => {
-    const matchesPhase = phaseFilter === "all" || item.phase === phaseFilter;
+    const matchesPhase = phaseFilter === "all" || phaseFilter === "needs-attention" ? true : item.phase === phaseFilter;
+    const matchesAttention = phaseFilter === "needs-attention" ? item.needsAttention === true : true;
     const matchesSponsor = sponsorFilter === "all" || item.programType === sponsorFilter;
     const query = searchQuery.toLowerCase();
     const matchesSearch = !query || 
@@ -160,7 +176,7 @@ export default function RoadmapPage() {
       (item.eventId || '').toLowerCase().includes(query) ||
       (item.notes || '').toLowerCase().includes(query) ||
       (item.programType || '').toLowerCase().includes(query);
-    return matchesPhase && matchesSponsor && matchesSearch;
+    return matchesPhase && matchesAttention && matchesSponsor && matchesSearch;
   });
 
   // Get unique sponsors for filter dropdown
@@ -189,7 +205,8 @@ export default function RoadmapPage() {
           progressDeck: r.progressDeck || '',
           notes: r.notes || '',
           activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
-          isUpgrade: r.isUpgrade || false
+          isUpgrade: r.isUpgrade || false,
+          needsAttention: r.needsAttention || false
         }))
         setRoadmapData(mapped)
       } catch (err) {
@@ -548,6 +565,9 @@ export default function RoadmapPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">All Phases</SelectItem>
+                              <SelectItem value="needs-attention">
+                                <span className="flex items-center gap-1">⚠ Needs Attention</span>
+                              </SelectItem>
                               <SelectItem value="Under assessment">Under assessment</SelectItem>
                               <SelectItem value="In-Development">In-Development</SelectItem>
                               <SelectItem value="Testing">Testing</SelectItem>
@@ -611,7 +631,17 @@ export default function RoadmapPage() {
                             <span className="text-gray-500">-</span>
                           )}
                         </TableCell>
-                        <TableCell>{getPhaseBadge(track.phase)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {getPhaseBadge(track.phase)}
+                            {track.needsAttention && (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500 text-[10px] px-1.5 py-0 gap-0.5">
+                                <AlertTriangle className="h-3 w-3" />
+                                Attention
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {track.programType ? (
                             <Badge variant="outline" className={
@@ -663,7 +693,18 @@ export default function RoadmapPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            {role === 'admin' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => handleToggleAttention(track, e)}
+                              className={`h-8 w-8 p-0 ${track.needsAttention ? 'bg-amber-100 text-amber-600 border-amber-400 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-600' : 'text-muted-foreground hover:text-amber-600'}`}
+                              title={track.needsAttention ? 'Remove attention flag' : 'Flag as needs attention'}
+                            >
+                              <AlertTriangle className="h-4 w-4" />
+                            </Button>
+                            )}
                             {role === 'admin' && (
                             <Button
                               variant="outline"
@@ -842,6 +883,14 @@ export default function RoadmapPage() {
             
             <div className="flex-1 overflow-y-auto min-h-0 pr-2">
               <div className="space-y-4 py-4">
+
+              {/* Needs Attention Banner */}
+              {selectedItem?.needsAttention && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-400">This item has been flagged as needing attention</span>
+                </div>
+              )}
               
               {/* Activity Log Timeline - FIRST */}
               <div className="space-y-3">
