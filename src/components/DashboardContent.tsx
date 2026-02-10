@@ -269,7 +269,7 @@ export function DashboardContent() {
           const roadmapData = await api.get('/api/catalog').then(r => Array.isArray(r.data) ? r.data : [])
           const roadmapItems = roadmapData.filter((item: any) => item.type === 'roadmapItem')
           
-          const development = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'development').length
+          const development = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'in-development').length
           const released = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'released').length
           const underAssessment = roadmapItems.filter((item: any) => String(item.phase || '').toLowerCase() === 'under assessment').length
           
@@ -950,7 +950,7 @@ export function DashboardContent() {
                 </div>
               </div>
               <div 
-                onClick={() => navigate('/dashboard/roadmap?phase=Development')}
+                onClick={() => navigate('/dashboard/roadmap?phase=In-Development')}
                 className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all duration-300 group/phase cursor-pointer"
               >
                 <div>

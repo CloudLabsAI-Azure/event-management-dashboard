@@ -106,6 +106,7 @@ export type RoadmapPhase =
 export interface ActivityLogEntry {
   date: string
   text: string
+  addedBy?: string
 }
 
 // =====================

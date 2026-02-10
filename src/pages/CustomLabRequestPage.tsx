@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Plus, Download } from "lucide-react"
+import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect } from "react"
 import { useAuth } from '@/components/AuthProvider'
@@ -16,6 +16,12 @@ import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+
+interface ActivityLogEntry {
+  date: string;
+  text: string;
+  addedBy?: string;
+}
 
 interface CustomLabRequest {
   id?: string;
@@ -28,6 +34,7 @@ interface CustomLabRequest {
   moveToRegularCatalog: 'Yes' | 'No' | 'TBD';
   holLabRequested: 'Yes' | 'No';
   notes?: string;
+  activityLog?: ActivityLogEntry[];
 }
 
 export default function CustomLabRequestPage() {
@@ -47,11 +54,16 @@ export default function CustomLabRequestPage() {
   });
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
-  const { userRole: role } = useAuth()
+  const { userRole: role, user } = useAuth()
   
   // Notes popup state
   const [selectedItem, setSelectedItem] = useState<CustomLabRequest | null>(null);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+
+  // Activity log state
+  const [newUpdate, setNewUpdate] = useState("");
+  const [addingUpdate, setAddingUpdate] = useState(false);
+  const [showFullHistory, setShowFullHistory] = useState(false);
 
   // Export to Excel function
   const handleExportExcel = () => {
@@ -116,7 +128,8 @@ export default function CustomLabRequestPage() {
           frequency: r.frequency || 'One Time',
           moveToRegularCatalog: r.moveToRegularCatalog || 'TBD',
           holLabRequested: r.holLabRequested || 'No',
-          notes: r.notes || ''
+          notes: r.notes || '',
+          activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
         }))
         setCustomLabData(mapped)
       } catch (err) {
@@ -194,6 +207,50 @@ export default function CustomLabRequestPage() {
         }
       })();
     }
+  };
+
+  // Add activity log update
+  const handleAddUpdate = async () => {
+    if (!selectedItem || !newUpdate.trim()) return;
+    
+    setAddingUpdate(true);
+    try {
+      const currentUser = user?.name || user?.email || user?.username || 'Unknown';
+      const newEntry: ActivityLogEntry = {
+        date: new Date().toISOString(),
+        text: newUpdate.trim(),
+        addedBy: currentUser
+      };
+      
+      const updatedLog = [newEntry, ...(selectedItem.activityLog || [])];
+      const payload = { ...selectedItem, activityLog: updatedLog, type: 'customLabRequest' };
+      
+      await catalogService.update(selectedItem.sr, payload);
+      
+      const updatedItem = { ...selectedItem, activityLog: updatedLog };
+      setSelectedItem(updatedItem);
+      setCustomLabData(prev => prev.map(item => item.sr === selectedItem.sr ? updatedItem : item));
+      setNewUpdate("");
+      
+      toast({ title: 'Update Added', description: 'Activity log updated successfully' });
+    } catch (err) {
+      console.error('Error adding update:', err);
+      toast({ title: 'Error', description: 'Failed to add update', variant: 'destructive' });
+    } finally {
+      setAddingUpdate(false);
+    }
+  };
+
+  // Format date for display
+  const formatLogDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -426,15 +483,98 @@ export default function CustomLabRequestPage() {
         
         {/* Notes Popup Dialog */}
         <Dialog open={isNotesDialogOpen} onOpenChange={setIsNotesDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>{selectedItem?.trackTitle || 'Custom Lab Request Details'}</DialogTitle>
               <DialogDescription>
                 Request details and notes
               </DialogDescription>
             </DialogHeader>
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
+
+              {/* Activity Log Timeline - FIRST */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-violet-600" />
+                    <Label className="font-semibold">Activity Log</Label>
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">{selectedItem.activityLog.length} updates</Badge>
+                    )}
+                  </div>
+                  {selectedItem?.activityLog && selectedItem.activityLog.length > 3 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowFullHistory(!showFullHistory)}
+                      className="text-xs"
+                    >
+                      {showFullHistory ? 'Show Less' : 'Show All History'}
+                    </Button>
+                  )}
+                </div>
+                
+                <ScrollArea className={showFullHistory ? "h-[200px]" : ""}>
+                  <div className="space-y-3 pr-4">
+                    {selectedItem?.activityLog && selectedItem.activityLog.length > 0 ? (
+                      (showFullHistory ? selectedItem.activityLog : selectedItem.activityLog.slice(0, 3)).map((entry, idx) => (
+                        <div key={idx} className="relative pl-6 pb-3 border-l-2 border-violet-200 dark:border-violet-800 last:border-transparent">
+                          <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                            <Clock className="h-2.5 w-2.5 text-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                              <span>{formatLogDate(entry.date)}</span>
+                              {entry.addedBy && (
+                                <span className="inline-flex items-center gap-1 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                                  by {entry.addedBy}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">
+                              {entry.text}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic py-4 text-center">
+                        No activity updates yet. Add your first update below.
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Add New Update Section - SECOND */}
+              {role === 'admin' && (
+                <div className="space-y-3 p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-950/20">
+                  <div className="flex items-center gap-2">
+                    <MessageSquarePlus className="h-4 w-4 text-blue-600" />
+                    <Label className="font-semibold text-blue-700 dark:text-blue-400">Add Update</Label>
+                  </div>
+                  <textarea
+                    value={newUpdate}
+                    onChange={(e) => setNewUpdate(e.target.value)}
+                    className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                    placeholder="Add a progress note, status update, or comment..."
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={handleAddUpdate}
+                    disabled={!newUpdate.trim() || addingUpdate}
+                    className="w-full"
+                  >
+                    {addingUpdate ? 'Adding...' : 'Add Update'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Request Details - THIRD */}
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                <Label className="text-xs text-muted-foreground font-semibold">Request Details</Label>
+                <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Label className="font-semibold">Event ID:</Label>
                   <span className="text-sm font-mono">{selectedItem?.eventId || '-'}</span>
@@ -481,13 +621,19 @@ export default function CustomLabRequestPage() {
               </div>
               <div className="space-y-2">
                 <Label className="font-semibold">Notes:</Label>
-                <div className="rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[100px]">
+                <div className="rounded-md border bg-muted/50 p-4 text-sm whitespace-pre-wrap min-h-[60px]">
                   {selectedItem?.notes || 'No notes available for this request.'}
                 </div>
               </div>
+              </div>
+            </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsNotesDialogOpen(false);
+                setNewUpdate("");
+                setShowFullHistory(false);
+              }}>
                 Close
               </Button>
             </DialogFooter>

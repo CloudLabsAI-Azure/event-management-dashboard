@@ -24,6 +24,7 @@ import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 interface ActivityLogEntry {
   date: string;
   text: string;
+  addedBy?: string;
 }
 
 interface RoadmapItem {
@@ -265,7 +266,7 @@ export default function RoadmapPage() {
     })
   }
 
-  const { userRole: role } = useAuth()
+  const { userRole: role, user } = useAuth()
 
   // Add activity log update
   const handleAddUpdate = async () => {
@@ -273,9 +274,11 @@ export default function RoadmapPage() {
     
     setAddingUpdate(true);
     try {
+      const currentUser = user?.name || user?.email || user?.username || 'Unknown';
       const newEntry: ActivityLogEntry = {
         date: new Date().toISOString(),
-        text: newUpdate.trim()
+        text: newUpdate.trim(),
+        addedBy: currentUser
       };
       
       const updatedLog = [newEntry, ...(selectedItem.activityLog || [])];
@@ -848,8 +851,13 @@ export default function RoadmapPage() {
                             <Clock className="h-2.5 w-2.5 text-white" />
                           </div>
                           <div className="space-y-1">
-                            <div className="text-xs text-muted-foreground font-medium">
-                              {formatLogDate(entry.date)}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                              <span>{formatLogDate(entry.date)}</span>
+                              {entry.addedBy && (
+                                <span className="inline-flex items-center gap-1 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                                  by {entry.addedBy}
+                                </span>
+                              )}
                             </div>
                             <div className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">
                               {entry.text}
