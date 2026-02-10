@@ -54,8 +54,8 @@ const getPhaseBadge = (phase: string) => {
     return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Released</Badge>
   } else if (phase === "Backlog") {
     return <Badge variant="secondary" className="bg-gray-500 hover:bg-gray-600 text-white">Backlog</Badge>
-  } else if (phase === "Delayed") {
-    return <Badge variant="default" className="bg-orange-600 hover:bg-orange-700">Delayed</Badge>
+  } else if (phase === "On-Hold") {
+    return <Badge variant="default" className="bg-orange-600 hover:bg-orange-700">On-Hold</Badge>
   } else if (phase === "Blocked") {
     return <Badge variant="destructive" className="bg-red-600 hover:bg-red-700">Blocked</Badge>
   }
@@ -528,7 +528,7 @@ export default function RoadmapPage() {
                               <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                               <SelectItem value="Released">Released</SelectItem>
                               <SelectItem value="Backlog">Backlog</SelectItem>
-                              <SelectItem value="Delayed">Delayed</SelectItem>
+                              <SelectItem value="On-Hold">On-Hold</SelectItem>
                               <SelectItem value="Blocked">Blocked</SelectItem>
                               <SelectItem value="Completed">Completed</SelectItem>
                             </SelectContent>
@@ -712,7 +712,7 @@ export default function RoadmapPage() {
                     <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                     <SelectItem value="Released">Released</SelectItem>
                     <SelectItem value="Backlog">Backlog</SelectItem>
-                    <SelectItem value="Delayed">Delayed</SelectItem>
+                    <SelectItem value="On-Hold">On-Hold</SelectItem>
                     <SelectItem value="Blocked">Blocked</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                   </SelectContent>
@@ -948,7 +948,7 @@ export default function RoadmapPage() {
                         <SelectItem value="Release-Ready">Release-Ready</SelectItem>
                         <SelectItem value="Released">Released</SelectItem>
                         <SelectItem value="Backlog">Backlog</SelectItem>
-                        <SelectItem value="Delayed">Delayed</SelectItem>
+                        <SelectItem value="On-Hold">On-Hold</SelectItem>
                         <SelectItem value="Blocked">Blocked</SelectItem>
                         <SelectItem value="Completed">Completed</SelectItem>
                       </SelectContent>

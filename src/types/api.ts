@@ -98,7 +98,7 @@ export type RoadmapPhase =
   | 'Release-ready'
   | 'Released'
   | 'Backlog'
-  | 'Delayed'
+  | 'On-Hold'
   | 'Blocked'
   | 'Completed'
   | string
