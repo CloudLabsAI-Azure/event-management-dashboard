@@ -645,7 +645,7 @@ export default function RoadmapPage() {
                         <TableCell>
                           {track.programType ? (
                             <Badge variant="outline" className={
-                              track.programType === "Program Sponsored" 
+                              track.programType.startsWith("Program Sponsored") 
                                 ? "bg-green-500/10 text-green-500 border-green-500 whitespace-nowrap" 
                                 : track.programType === "Spektra Sponsored"
                                 ? "bg-purple-500/10 text-purple-500 border-purple-500 whitespace-nowrap"
@@ -801,7 +801,9 @@ export default function RoadmapPage() {
                 <Select value={editForm.programType} onValueChange={(value) => setEditForm({ ...editForm, programType: value })}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select sponsor" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                    <SelectItem value="Program Sponsored - CAIP">Program Sponsored - CAIP</SelectItem>
+                    <SelectItem value="Program Sponsored - ABS">Program Sponsored - ABS</SelectItem>
+                    <SelectItem value="Program Sponsored - Security">Program Sponsored - Security</SelectItem>
                     <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
                     <SelectItem value="Third Party">Third Party</SelectItem>
                   </SelectContent>
@@ -986,7 +988,7 @@ export default function RoadmapPage() {
                     <div className="flex items-center gap-2 col-span-2">
                       <Label className="text-xs text-muted-foreground">Sponsor:</Label>
                       <Badge variant="outline" className={
-                        selectedItem.programType === "Program Sponsored" 
+                        selectedItem.programType.startsWith("Program Sponsored") 
                           ? "bg-green-500/10 text-green-500 border-green-500 text-xs" 
                           : selectedItem.programType === "Spektra Sponsored"
                           ? "bg-purple-500/10 text-purple-500 border-purple-500 text-xs"

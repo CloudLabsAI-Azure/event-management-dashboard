@@ -357,7 +357,7 @@ export default function CustomLabRequestPage() {
                       <TableCell>
                         {item.sponsor ? (
                           <Badge variant="outline" className={
-                            item.sponsor === "Program Sponsored" 
+                            item.sponsor.startsWith("Program Sponsored") 
                               ? "bg-green-500/10 text-green-500 border-green-500 whitespace-nowrap" 
                               : item.sponsor === "Spektra Sponsored"
                               ? "bg-purple-500/10 text-purple-500 border-purple-500 whitespace-nowrap"
@@ -460,7 +460,9 @@ export default function CustomLabRequestPage() {
                 <Select value={customLabForm.sponsor} onValueChange={(value) => setCustomLabForm({ ...customLabForm, sponsor: value })}>
                   <SelectTrigger className="col-span-3"><SelectValue placeholder="Select sponsor" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Program Sponsored">Program Sponsored</SelectItem>
+                    <SelectItem value="Program Sponsored - CAIP">Program Sponsored - CAIP</SelectItem>
+                    <SelectItem value="Program Sponsored - ABS">Program Sponsored - ABS</SelectItem>
+                    <SelectItem value="Program Sponsored - Security">Program Sponsored - Security</SelectItem>
                     <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
                     <SelectItem value="Third Party">Third Party</SelectItem>
                   </SelectContent>
@@ -617,7 +619,7 @@ export default function CustomLabRequestPage() {
                   <div className="flex items-center gap-2">
                     <Label className="font-semibold">Sponsor:</Label>
                     <Badge variant="outline" className={
-                      selectedItem.sponsor === "Program Sponsored" 
+                      selectedItem.sponsor.startsWith("Program Sponsored") 
                         ? "bg-green-500/10 text-green-500 border-green-500" 
                         : selectedItem.sponsor === "Spektra Sponsored"
                         ? "bg-purple-500/10 text-purple-500 border-purple-500"
