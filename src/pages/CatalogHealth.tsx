@@ -17,6 +17,7 @@ import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
 import { findBestMatch, type MatchResult } from '@/lib/fuzzyMatch'
 import { useToast } from '@/hooks/use-toast'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface CatalogItem {
   id?: string;
@@ -294,9 +295,12 @@ export default function CatalogHealth() {
     setCurrentPage(1);
   }, [statusFilter, itemsPerPage, searchQuery]);
 
+  const dirty = useDirtyFields<CatalogItem>()
+
   const handleEdit = (item: CatalogItem) => {
     setEditingItem(item)
     setEditForm({ ...item })
+    dirty.initOriginal(item)
     setIsEditDialogOpen(true)
   }
 
@@ -324,7 +328,8 @@ export default function CatalogHealth() {
       }
       
       try {
-        await api.put(`/api/catalog/${String(editForm.sr)}`, { ...editForm, type: 'catalog' })
+        const payload = { ...dirty.getDirtyPayload(editForm), type: 'catalog' }
+        await api.put(`/api/catalog/${String(editForm.sr)}`, payload)
         try { window.dispatchEvent(new CustomEvent('catalog:changed')) } catch {}
         // Reload data to get fresh sr values
         await loadCatalogData()

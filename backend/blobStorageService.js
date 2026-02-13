@@ -1,4 +1,16 @@
-import { BlobServiceClient } from '@azure/storage-blob';
+import { BlobServiceClient, RestError } from '@azure/storage-blob';
+
+/**
+ * Custom error thrown when a write fails due to ETag mismatch (concurrent modification).
+ * Callers should catch this to retry with fresh data.
+ */
+export class ConcurrencyError extends Error {
+  constructor(message = 'Data was modified by another process. Retry with fresh data.') {
+    super(message);
+    this.name = 'ConcurrencyError';
+    this.statusCode = 412;
+  }
+}
 
 // Get SAS URL from environment variable
 const BLOB_CONTAINER_URL = process.env.AZURE_BLOB_SAS_URL || '';
@@ -31,7 +43,7 @@ const blockBlobClient = blobClient.getBlockBlobClient();
 
 /**
  * Read data from Azure Blob Storage
- * @returns {Promise<Object>} Parsed JSON data from blob
+ * @returns {Promise<{ data: Object, etag: string|null }>} Parsed JSON data and ETag from blob
  */
 export async function readDataFromBlob() {
   try {
@@ -41,35 +53,38 @@ export async function readDataFromBlob() {
     const exists = await blobClient.exists();
     if (!exists) {
       console.log('⚠️  Blob does not exist, returning empty object');
-      return {};
+      return { data: {}, etag: null };
     }
 
-    // Download blob content
+    // Download blob content (includes ETag in response)
     const downloadResponse = await blockBlobClient.download();
+    const etag = downloadResponse.etag || null;
     const downloaded = await streamToBuffer(downloadResponse.readableStreamBody);
     const content = downloaded.toString('utf8');
     
     const data = content ? JSON.parse(content) : {};
-    console.log('✅ Data read successfully from blob storage');
-    return data;
+    console.log(`✅ Data read successfully from blob storage (ETag: ${etag ? etag.substring(0, 16) + '...' : 'none'})`);
+    return { data, etag };
   } catch (error) {
     console.error('❌ Error reading data from blob:', error.message);
     // Return empty object on error to maintain compatibility
-    return {};
+    return { data: {}, etag: null };
   }
 }
 
 /**
- * Write data to Azure Blob Storage
+ * Write data to Azure Blob Storage with optional ETag-based optimistic concurrency.
  * @param {Object} data - Data to write to blob
  * @param {Object} options - Write options
  * @param {boolean} options.updateTimestamp - Whether to update the lastUpdated timestamp (default: true)
- * @returns {Promise<void>}
+ * @param {string|null} options.etag - If provided, only write if blob's current ETag matches (optimistic concurrency)
+ * @returns {Promise<string>} The new ETag after successful write
+ * @throws {ConcurrencyError} If etag is provided and doesn't match (412 Precondition Failed)
  */
 export async function writeDataToBlob(data, options = {}) {
   try {
-    const { updateTimestamp = true } = options;
-    console.log('📤 Writing data to blob storage...');
+    const { updateTimestamp = true, etag = null } = options;
+    console.log(`📤 Writing data to blob storage...${etag ? ' (with ETag condition: ' + etag.substring(0, 16) + '...)' : ' (unconditional)'}`);
     
     // Update or preserve timestamp based on options
     const timestamp = updateTimestamp ? new Date().toISOString() : (data._metadata?.lastUpdated || new Date().toISOString());
@@ -87,15 +102,30 @@ export async function writeDataToBlob(data, options = {}) {
     // Convert data to JSON string
     const content = JSON.stringify(dataWithTimestamp, null, 2);
     
-    // Upload to blob (overwrites if exists)
-    await blockBlobClient.upload(content, content.length, {
+    // Build upload options
+    const uploadOptions = {
       blobHTTPHeaders: {
         blobContentType: 'application/json'
       }
-    });
+    };
     
-    console.log(`✅ Data written successfully to blob storage. Timestamp: ${timestamp} ${updateTimestamp ? '(updated)' : '(preserved)'}`);
+    // If ETag provided, add conditional header for optimistic concurrency
+    if (etag) {
+      uploadOptions.conditions = { ifMatch: etag };
+    }
+    
+    // Upload to blob (conditional if ETag provided)
+    const uploadResponse = await blockBlobClient.upload(content, content.length, uploadOptions);
+    const newEtag = uploadResponse.etag || null;
+    
+    console.log(`✅ Data written successfully to blob storage. Timestamp: ${timestamp} ${updateTimestamp ? '(updated)' : '(preserved)'} (New ETag: ${newEtag ? newEtag.substring(0, 16) + '...' : 'none'})`);
+    return newEtag;
   } catch (error) {
+    // Detect ETag mismatch (412 Precondition Failed) — concurrent modification
+    if (error instanceof RestError && error.statusCode === 412) {
+      console.warn('⚠️  ETag mismatch — data was modified by another process since last read');
+      throw new ConcurrencyError();
+    }
     console.error('❌ Error writing data to blob:', error.message);
     throw error; // Propagate error so caller knows write failed
   }

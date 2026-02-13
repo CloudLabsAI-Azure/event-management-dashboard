@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 import { isNonEmptyString } from '@/lib/validation'
 import api from "@/lib/api";
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface ActivityLogEntry {
   date: string;
@@ -221,9 +222,12 @@ export default function RoadmapPage() {
     return () => { mounted = false }
   }, [])
 
+  const dirty = useDirtyFields<RoadmapItem>()
+
   const handleEdit = (item: RoadmapItem) => {
     setEditingItem(item)
     setEditForm({ ...item })
+    dirty.initOriginal(item)
     setIsEditDialogOpen(true)
   }
 
@@ -253,7 +257,7 @@ export default function RoadmapPage() {
         }
       }
       
-      const payload = { ...editForm, eventId: eventIdValue, type: 'roadmapItem' }
+      const payload = { ...dirty.getDirtyPayload(editForm), eventId: eventIdValue, type: 'roadmapItem' }
       console.log('Saving roadmap item:', payload) // Debug log
       
       if (editingItem && editingItem.sr && editingItem.sr > 0) {

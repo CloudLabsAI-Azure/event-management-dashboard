@@ -14,6 +14,7 @@ import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface LabMaintenanceItem {
   id?: string;
@@ -90,9 +91,12 @@ export default function LabMaintenancePage() {
     return () => { mounted = false }
   }, [])
 
+  const dirty = useDirtyFields<LabMaintenanceItem>()
+
   const handleEditLabMaintenance = (item: LabMaintenanceItem) => {
     setEditingLabMaintenance(item);
     setLabMaintenanceForm({ ...item });
+    dirty.initOriginal(item);
     setIsLabMaintenanceDialogOpen(true);
   };
 
@@ -102,7 +106,7 @@ export default function LabMaintenancePage() {
     }
     
     try {
-      const payload = { ...labMaintenanceForm, type: 'labMaintenance' };
+      const payload = { ...dirty.getDirtyPayload(labMaintenanceForm), type: 'labMaintenance' };
       
       if (editingLabMaintenance && editingLabMaintenance.sr && editingLabMaintenance.sr > 0) {
         await catalogService.update(editingLabMaintenance.sr, payload);

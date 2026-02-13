@@ -21,6 +21,7 @@ import { FileUploadModal } from "@/components/FileUploadModal"
 import MetricsEditor from '@/components/MetricsEditor'
 import { GitHubReleasePicker } from '@/components/GitHubReleasePicker'
 import { findBestMatch, type MatchResult } from '@/lib/fuzzyMatch'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface TrackItem {
   id?: string;
@@ -101,9 +102,12 @@ export default function Top25Tracks() {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)))
   }
 
+  const dirty = useDirtyFields<TrackItem>()
+
   const handleEdit = (item: TrackItem) => {
     setEditingItem(item)
     setEditForm({ ...item })
+    dirty.initOriginal(item)
     setIsEditDialogOpen(true)
   }
 
@@ -123,7 +127,8 @@ export default function Top25Tracks() {
         return
       }
       // persist to backend - transform releaseUrl to releaseNotesUrl for storage
-      const saveData = { ...editForm, releaseNotesUrl: editForm.releaseUrl };
+      const dirtyFields = dirty.getDirtyPayload(editForm);
+      const saveData = { ...dirtyFields, releaseNotesUrl: editForm.releaseUrl };
       delete (saveData as any).releaseUrl;
       await tracksService.update(editingItem.sr, saveData)
       const updated = tracksData.map((t) => (t.sr === editingItem.sr ? { ...editForm } : t));

@@ -20,9 +20,10 @@ import bcrypt from 'bcryptjs';
 import https from 'https';
 
 // Dynamic import for modules that need env vars
-const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob } = await import('./blobStorageService.js');
+const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
+import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -42,10 +43,41 @@ const DATA_PATH = path.join(__dirname, 'data.json');
 // Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
 const STORAGE_MODE = process.env.STORAGE_MODE || 'blob';
 
-// Helper to read/write JSON - supports both blob and local storage
+// =====================
+// Concurrency-Safe Data Access
+// =====================
+// Track the latest ETag from blob storage for optimistic concurrency.
+// Safe as a module-level variable because the write lock serializes access.
+let _lastEtag = null;
+const MAX_CONCURRENCY_RETRIES = 3;
+
+// =====================
+// Read Cache — avoid hitting blob on every request
+// =====================
+// Cache the parsed data for a short TTL so rapid successive reads
+// (e.g. requireAuth + getResource on the same request) reuse one blob fetch.
+const READ_CACHE_TTL_MS = 5000; // 5 seconds
+let _readCache = null;   // { data, timestamp }
+
+function _invalidateReadCache() {
+  _readCache = null;
+}
+
+/**
+ * Read data from storage. Returns parsed data object.
+ * Uses a short-lived in-memory cache to avoid excessive blob reads.
+ * Also updates _lastEtag for subsequent writes.
+ */
 async function readData() {
   if (STORAGE_MODE === 'blob') {
-    return await readDataFromBlob();
+    // Return cached data if fresh enough
+    if (_readCache && (Date.now() - _readCache.timestamp) < READ_CACHE_TTL_MS) {
+      return _readCache.data;
+    }
+    const { data, etag } = await readDataFromBlob();
+    _lastEtag = etag;
+    _readCache = { data, timestamp: Date.now() };
+    return data;
   } else {
     // Local file system fallback
     try {
@@ -59,9 +91,31 @@ async function readData() {
   }
 }
 
+/**
+ * Write data to storage with ETag-based optimistic concurrency (blob mode).
+ * If an ETag mismatch occurs (another process wrote first), automatically retries
+ * by re-reading the blob to get the fresh ETag, re-applying the data, and writing again.
+ * After MAX_CONCURRENCY_RETRIES, gives up and throws ConcurrencyError to the caller.
+ */
 async function writeData(data, options = {}) {
   if (STORAGE_MODE === 'blob') {
-    await writeDataToBlob(data, options);
+    for (let attempt = 1; attempt <= MAX_CONCURRENCY_RETRIES; attempt++) {
+      try {
+        const newEtag = await writeDataToBlob(data, { ...options, etag: _lastEtag });
+        _lastEtag = newEtag; // Update ETag after successful write
+        _invalidateReadCache(); // Force fresh read on next access
+        return;
+      } catch (err) {
+        if (err instanceof ConcurrencyError && attempt < MAX_CONCURRENCY_RETRIES) {
+          console.warn(`⚠️ ETag mismatch on write (attempt ${attempt}/${MAX_CONCURRENCY_RETRIES}), refreshing and retrying...`);
+          // Re-read to get fresh ETag, then caller's data overwrites
+          const { etag: freshEtag } = await readDataFromBlob();
+          _lastEtag = freshEtag;
+          continue;
+        }
+        throw err; // Final attempt or non-concurrency error
+      }
+    }
   } else {
     // Local file system fallback
     try {
@@ -179,13 +233,12 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (r
   try {
     const files = Array.isArray(req.files) ? req.files : []
     const eventName = req.body.eventName || ''
-    const data = await readData()
-    data.reviews = Array.isArray(data.reviews) ? data.reviews : []
     
     // Generate a group ID to link all images uploaded together
     const groupId = `grp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
     const uploadTimestamp = Date.now();
     
+    // Upload files to blob/local storage first (outside lock — no data.json contention)
     const saved = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
@@ -234,8 +287,14 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (r
       });
     }
     
-    data.reviews.push(...saved)
-    await writeData(data)
+    // Lock only for the data.json read-modify-write
+    await withLock(async () => {
+      const data = await readData();
+      data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
+      data.reviews.push(...saved);
+      await writeData(data);
+    }, 'upload-review');
+    
     return res.json({ success: true, items: saved, groupId })
   } catch (err) {
     console.error('upload-review error', err)
@@ -244,7 +303,9 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (r
 })
 
 app.post('/api/data', async (req, res) => {
-  await writeData(req.body || {});
+  await withLock(async () => {
+    await writeData(req.body || {});
+  }, 'POST /api/data');
   res.json({ success: true });
 });
 
@@ -252,22 +313,31 @@ app.post('/api/data', async (req, res) => {
 app.delete('/api/reviews/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params
-    const data = await readData()
     
-    if (!Array.isArray(data.reviews)) {
+    // Lock for the data.json read-modify-write; capture deleted review info for file cleanup
+    const deletedReview = await withLock(async () => {
+      const data = await readData()
+      
+      if (!Array.isArray(data.reviews)) {
+        return null;
+      }
+      
+      const reviewIndex = data.reviews.findIndex(review => review.id === id)
+      if (reviewIndex === -1) {
+        return null;
+      }
+      
+      // Remove the review from data
+      const removed = data.reviews.splice(reviewIndex, 1)[0]
+      await writeData(data)
+      return removed;
+    }, 'DELETE /api/reviews');
+    
+    if (!deletedReview) {
       return res.status(404).json({ success: false, error: 'Review not found' })
     }
     
-    const reviewIndex = data.reviews.findIndex(review => review.id === id)
-    if (reviewIndex === -1) {
-      return res.status(404).json({ success: false, error: 'Review not found' })
-    }
-    
-    // Remove the review from data
-    const deletedReview = data.reviews.splice(reviewIndex, 1)[0]
-    await writeData(data)
-    
-    // Delete the file from blob storage or filesystem
+    // Delete the file from blob storage or filesystem (outside lock)
     try {
       if (deletedReview.storedIn === 'blob') {
         // Delete from Azure Blob Storage
@@ -339,49 +409,51 @@ async function setResource(name, arr) {
 
 // Ensure data schema (tokens as objects, users list) exists and normalize old tokens
 async function ensureDataSchema() {
-  const data = await readData();
-  let changed = false;
-  if (!Array.isArray(data.tokens)) {
-    data.tokens = [];
-    changed = true;
-  } else {
-    // normalize string tokens to objects { token, userId, role }
-    const normalized = data.tokens.map((t) => {
-      if (typeof t === 'string') {
-        return { token: t, userId: null, role: 'admin' };
+  await withLock(async () => {
+    const data = await readData();
+    let changed = false;
+    if (!Array.isArray(data.tokens)) {
+      data.tokens = [];
+      changed = true;
+    } else {
+      // normalize string tokens to objects { token, userId, role }
+      const normalized = data.tokens.map((t) => {
+        if (typeof t === 'string') {
+          return { token: t, userId: null, role: 'admin' };
+        }
+        return t;
+      });
+      // detect change
+      if (JSON.stringify(normalized) !== JSON.stringify(data.tokens)) {
+        data.tokens = normalized;
+        changed = true;
       }
-      return t;
-    });
-    // detect change
-    if (JSON.stringify(normalized) !== JSON.stringify(data.tokens)) {
-      data.tokens = normalized;
+    }
+    if (!Array.isArray(data.users)) {
+      data.users = [];
       changed = true;
     }
-  }
-  if (!Array.isArray(data.users)) {
-    data.users = [];
-    changed = true;
-  }
-  // If no users exist, create a default admin (dev only)
-  if (data.users.length === 0) {
-    const hashed = bcrypt.hashSync('password', 8);
-    const defaultAdmin = { 
-      id: 'admin', 
-      username: 'admin', 
-      email: 'admin@example.com', 
-      password: hashed, 
-      role: 'admin' 
-    };
-    data.users.push(defaultAdmin);
-    console.warn('No users found in data.json — creating default admin: admin@example.com/password (hashed)');
-    changed = true;
-  }
-  if (changed) {
-    console.log('📝 Schema changes detected, updating data (preserving timestamp)...');
-    await writeData(data, { updateTimestamp: false });
-  } else {
-    console.log('✅ Data schema is up to date, no changes needed');
-  }
+    // If no users exist, create a default admin (dev only)
+    if (data.users.length === 0) {
+      const hashed = bcrypt.hashSync('password', 8);
+      const defaultAdmin = { 
+        id: 'admin', 
+        username: 'admin', 
+        email: 'admin@example.com', 
+        password: hashed, 
+        role: 'admin' 
+      };
+      data.users.push(defaultAdmin);
+      console.warn('No users found in data.json — creating default admin: admin@example.com/password (hashed)');
+      changed = true;
+    }
+    if (changed) {
+      console.log('📝 Schema changes detected, updating data (preserving timestamp)...');
+      await writeData(data, { updateTimestamp: false });
+    } else {
+      console.log('✅ Data schema is up to date, no changes needed');
+    }
+  }, 'ensureDataSchema');
 }
 
 await ensureDataSchema();
@@ -458,6 +530,7 @@ function sanitizeRequest(req, res, next) {
 // =====================
 
 // Simple auth middleware: expects Authorization: Bearer <token>
+// NOTE: Token cleanup is deferred — only writes when expired tokens are actually removed
 async function requireAuth(req, res, next) {
   const auth = req.headers['authorization'] || '';
   const parts = String(auth).split(' ');
@@ -474,10 +547,19 @@ async function requireAuth(req, res, next) {
   
   const data = await readData();
   if (!Array.isArray(data.tokens)) return res.status(401).json({ error: 'Invalid token' });
-  // cleanup expired tokens
-  data.tokens = (data.tokens || []).filter((t) => !t.expiresAt || Number(t.expiresAt) > Date.now());
-  await writeData(data);
-  const entry = data.tokens.find((t) => t && t.token === token);
+  
+  // Cleanup expired tokens — but only write if some were actually removed
+  const before = data.tokens.length;
+  const cleaned = (data.tokens || []).filter((t) => !t.expiresAt || Number(t.expiresAt) > Date.now());
+  if (cleaned.length < before) {
+    await withLock(async () => {
+      const freshData = await readData();
+      freshData.tokens = (freshData.tokens || []).filter((t) => !t.expiresAt || Number(t.expiresAt) > Date.now());
+      await writeData(freshData);
+    }, 'requireAuth-tokenCleanup');
+  }
+  
+  const entry = cleaned.find((t) => t && t.token === token);
   if (!entry) return res.status(401).json({ error: 'Invalid token' });
   // attach user metadata for downstream handlers (including email for audit logging)
   req.user = { id: entry.userId, email: entry.email || 'unknown@user', role: entry.role };
@@ -514,52 +596,55 @@ app.post('/api/login', async (req, res) => {
   const { email, username, password } = req.body || {};
   const loginField = email || username; // Use email if provided, otherwise username
   try {
-    const data = await readData();
-    // Find user by email or username
-    const user = Array.isArray(data.users) && data.users.find((u) => {
-      if (!u) return false;
-      // If email is provided, search by email; otherwise search by username
-      if (email) {
-        return String(u.email || '').toLowerCase() === String(email).toLowerCase();
-      } else {
-        return String(u.username || '') === String(username);
+    const result = await withLock(async () => {
+      const data = await readData();
+      // Find user by email or username
+      const user = Array.isArray(data.users) && data.users.find((u) => {
+        if (!u) return false;
+        if (email) {
+          return String(u.email || '').toLowerCase() === String(email).toLowerCase();
+        } else {
+          return String(u.username || '') === String(username);
+        }
+      });
+      if (!user) return { status: 401, body: { success: false, error: 'Invalid credentials' } };
+      // verify password: support hashed passwords and fallback to plaintext migration
+      const provided = String(password || '');
+      let ok = false;
+      try {
+        if (user.password && bcrypt.compareSync(provided, String(user.password))) {
+          ok = true;
+        }
+      } catch (e) {
+        // compareSync may throw if stored password isn't a hash — fallback below
       }
-    });
-    if (!user) return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    // verify password: support hashed passwords and fallback to plaintext migration
-    const provided = String(password || '');
-    let ok = false;
-    try {
-      if (user.password && bcrypt.compareSync(provided, String(user.password))) {
-        ok = true;
+      if (!ok) {
+        // fallback: if stored password equals provided plaintext, migrate to hash
+        if (user.password && String(user.password) === provided) {
+          // update the user's password to hashed (already inside lock, data is fresh)
+          data.users = (data.users || []).map((u) => (String(u.id) === String(user.id) ? { ...u, password: bcrypt.hashSync(provided, 8) } : u));
+          await writeData(data);
+          // Re-read for token push below since we just wrote
+          const freshData = await readData();
+          ok = true;
+        }
       }
-    } catch (e) {
-      // compareSync may throw if stored password isn't a hash — fallback below
-    }
-    if (!ok) {
-      // fallback: if stored password equals provided plaintext, migrate to hash
-      if (user.password && String(user.password) === provided) {
-        const data2 = await readData();
-        // update the user's password to hashed
-        data2.users = (data2.users || []).map((u) => (String(u.id) === String(user.id) ? { ...u, password: bcrypt.hashSync(provided, 8) } : u));
-        await writeData(data2);
-        ok = true;
+      if (!ok) return { status: 401, body: { success: false, error: 'Invalid credentials' } };
+      if (user.mustReset) {
+        return { status: 200, body: { success: true, mustReset: true, message: 'Password reset required' } };
       }
-    }
-    if (!ok) return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    // If the user was created with a temporary password and hasn't reset yet,
-    // require a password reset before issuing a normal token. We still consider
-    // the provided password valid (we matched above) but return mustReset flag.
-    if (user.mustReset) {
-      return res.json({ success: true, mustReset: true, message: 'Password reset required' });
-    }
-    // generate token tied to user id and role
-    const token = crypto.randomBytes(24).toString('hex');
-  const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
-  data.tokens = data.tokens || [];
-  data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
-    await writeData(data);
-    return res.json({ success: true, token, role: user.role || 'user' });
+      // generate token tied to user id and role
+      const token = crypto.randomBytes(24).toString('hex');
+      const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
+      // Re-read to get latest data (in case password migration wrote above)
+      const latestData = await readData();
+      latestData.tokens = latestData.tokens || [];
+      latestData.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
+      await writeData(latestData);
+      return { status: 200, body: { success: true, token, role: user.role || 'user' } };
+    }, 'POST /api/login');
+    
+    return res.status(result.status).json(result.body);
   } catch (err) {
     console.error('Login handler error', err && err.stack ? err.stack : err);
     return res.status(500).json({ success: false, error: String(err && err.message ? err.message : err) });
@@ -578,48 +663,54 @@ app.post('/api/validate-b2c-user', async (req, res) => {
   }
 
   try {
-    const data = await readData();
-    
-    // Find user by email in the users array
-    const user = Array.isArray(data.users) && data.users.find(u => 
-      u && u.email && u.email.toLowerCase() === email.toLowerCase()
-    );
-    
-    if (user) {
-      // Generate a session token for the validated B2C user
-      const token = crypto.randomBytes(24).toString('hex');
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const result = await withLock(async () => {
+      const data = await readData();
       
-      // Store the token
-      if (!Array.isArray(data.tokens)) data.tokens = [];
-      data.tokens.push({ 
-        token, 
-        userId: user.id,
-        email: user.email,
-        role: user.role || 'user', 
-        expiresAt,
-        source: 'b2c' // Mark as B2C authenticated
-      });
-      await writeData(data);
+      // Find user by email in the users array
+      const user = Array.isArray(data.users) && data.users.find(u => 
+        u && u.email && u.email.toLowerCase() === email.toLowerCase()
+      );
       
-      return res.json({ 
-        success: true, 
-        user: {
-          id: user.id,
-          username: user.username,
+      if (user) {
+        // Generate a session token for the validated B2C user
+        const token = crypto.randomBytes(24).toString('hex');
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+        
+        // Store the token
+        if (!Array.isArray(data.tokens)) data.tokens = [];
+        data.tokens.push({ 
+          token, 
+          userId: user.id,
           email: user.email,
-          role: user.role || 'user'
-        },
-        token,
-        role: user.role || 'user'
-      });
-    }
+          role: user.role || 'user', 
+          expiresAt,
+          source: 'b2c' // Mark as B2C authenticated
+        });
+        await writeData(data);
+        
+        return { 
+          status: 200,
+          body: {
+            success: true, 
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              role: user.role || 'user'
+            },
+            token,
+            role: user.role || 'user'
+          }
+        };
+      }
+      
+      return { 
+        status: 403,
+        body: { success: false, error: 'User not found. Please contact administrator.' }
+      };
+    }, 'POST /api/validate-b2c-user');
     
-    return res.status(403).json({ 
-      success: false, 
-      error: 'User not found. Please contact administrator.' 
-    });
-    
+    return res.status(result.status).json(result.body);
   } catch (err) {
     console.error('B2C validation error:', err);
     return res.status(500).json({ 
@@ -635,38 +726,42 @@ app.post('/api/reset-password', async (req, res) => {
   const loginField = email || username;
   if (!loginField || !oldPassword || !newPassword) return res.status(400).json({ success: false, error: 'Missing parameters' });
   try {
-    const data = await readData();
-    const users = data.users || [];
-    // Find user by email or username
-    const user = users.find((u) => {
-      if (!u) return false;
-      if (email) {
-        return String(u.email || '').toLowerCase() === String(email).toLowerCase();
-      } else {
-        return String(u.username || '') === String(username);
+    const result = await withLock(async () => {
+      const data = await readData();
+      const users = data.users || [];
+      // Find user by email or username
+      const user = users.find((u) => {
+        if (!u) return false;
+        if (email) {
+          return String(u.email || '').toLowerCase() === String(email).toLowerCase();
+        } else {
+          return String(u.username || '') === String(username);
+        }
+      });
+      if (!user) return { status: 404, body: { success: false, error: 'User not found' } };
+      // Only allow reset when mustReset is true (created with temporary password)
+      if (!user.mustReset) return { status: 400, body: { success: false, error: 'Password reset not required' } };
+      // verify oldPassword matches stored hash
+      let ok = false;
+      try {
+        if (user.password && bcrypt.compareSync(String(oldPassword), String(user.password))) ok = true;
+      } catch (e) {
+        // ignore
       }
-    });
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-    // Only allow reset when mustReset is true (created with temporary password)
-    if (!user.mustReset) return res.status(400).json({ success: false, error: 'Password reset not required' });
-    // verify oldPassword matches stored hash
-    let ok = false;
-    try {
-      if (user.password && bcrypt.compareSync(String(oldPassword), String(user.password))) ok = true;
-    } catch (e) {
-      // ignore
-    }
-    if (!ok) return res.status(401).json({ success: false, error: 'Invalid temporary password' });
-    // update to new password and clear mustReset
-    const hashed = bcrypt.hashSync(String(newPassword), 8);
-    data.users = users.map((u) => (String(u.id) === String(user.id) ? { ...u, password: hashed, mustReset: false } : u));
-    // generate token so user can be logged in after reset
-    const token = crypto.randomBytes(24).toString('hex');
-    const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7;
-    data.tokens = data.tokens || [];
-    data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
-    await writeData(data);
-    return res.json({ success: true, token, role: user.role || 'user' });
+      if (!ok) return { status: 401, body: { success: false, error: 'Invalid temporary password' } };
+      // update to new password and clear mustReset
+      const hashed = bcrypt.hashSync(String(newPassword), 8);
+      data.users = users.map((u) => (String(u.id) === String(user.id) ? { ...u, password: hashed, mustReset: false } : u));
+      // generate token so user can be logged in after reset
+      const token = crypto.randomBytes(24).toString('hex');
+      const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7;
+      data.tokens = data.tokens || [];
+      data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
+      await writeData(data);
+      return { status: 200, body: { success: true, token, role: user.role || 'user' } };
+    }, 'POST /api/reset-password');
+    
+    return res.status(result.status).json(result.body);
   } catch (err) {
     console.error('reset-password error', err);
     return res.status(500).json({ success: false, error: 'Reset failed' });
@@ -683,67 +778,86 @@ app.get('/api/users', requireAdmin, async (req, res) => {
 
 app.post('/api/users', requireAdmin, async (req, res) => {
   const payload = req.body || {};
-  const data = await readData();
-  const users = data.users || [];
-  const id = String(payload.id || `u_${Date.now()}`);
-
+  
   if (!payload.email) {
     return res.status(400).json({ success: false, error: 'Email is required' });
   }
-  const email = String(payload.email).toLowerCase();
-  const existingUser = users.find(u => u && String(u.email || '').toLowerCase() === email);
-  if (existingUser) {
-    return res.status(400).json({ success: false, error: 'Email already exists' });
+  
+  try {
+    const result = await withLock(async () => {
+      const data = await readData();
+      const users = data.users || [];
+      const id = String(payload.id || `u_${Date.now()}`);
+      const email = String(payload.email).toLowerCase();
+      const existingUser = users.find(u => u && String(u.email || '').toLowerCase() === email);
+      if (existingUser) {
+        return { status: 400, body: { success: false, error: 'Email already exists' } };
+      }
+      const username = String(payload.username || email.split('@')[0] || id);
+      const newUser = {
+        id,
+        username,
+        email,
+        role: payload.role === 'admin' ? 'admin' : 'user'
+      };
+      users.push(newUser);
+      data.users = users;
+      await writeData(data);
+      
+      // Audit log
+      await logAudit({
+        user: req.user,
+        action: 'CREATE',
+        resource: 'users',
+        resourceId: newUser.id,
+        newData: { id: newUser.id, email: newUser.email, role: newUser.role }
+      });
+      
+      return { status: 200, body: { success: true, user: { id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role } } };
+    }, 'POST /api/users');
+    
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    console.error('Create user error', err);
+    return res.status(500).json({ success: false, error: 'Failed to create user' });
   }
-  const username = String(payload.username || email.split('@')[0] || id);
-  const newUser = {
-    id,
-    username,
-    email,
-    role: payload.role === 'admin' ? 'admin' : 'user'
-  };
-  users.push(newUser);
-  data.users = users;
-  await writeData(data);
-  
-  // Audit log
-  await logAudit({
-    user: req.user,
-    action: 'CREATE',
-    resource: 'users',
-    resourceId: newUser.id,
-    newData: { id: newUser.id, email: newUser.email, role: newUser.role }
-  });
-  
-  return res.json({ success: true, user: { id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role } });
 });
 
 app.put('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
-  const data = await readData();
-  const oldUser = (data.users || []).find(u => String(u.id) === id);
-  const body = { ...req.body };
-  // Ignore any password fields under SSO model
-  delete body.password;
-  delete body.mustReset;
-  if (body.email) body.email = String(body.email).toLowerCase();
-  data.users = (data.users || []).map((u) => (String(u.id) === id ? { ...u, ...body } : u));
-  await writeData(data);
-  const updated = (data.users || []).find(u => String(u.id) === id);
-  
-  // Audit log
-  if (oldUser && updated) {
-    await logAudit({
-      user: req.user,
-      action: 'UPDATE',
-      resource: 'users',
-      resourceId: id,
-      oldData: { id: oldUser.id, email: oldUser.email, role: oldUser.role },
-      newData: { id: updated.id, email: updated.email, role: updated.role }
-    });
+  try {
+    const result = await withLock(async () => {
+      const data = await readData();
+      const oldUser = (data.users || []).find(u => String(u.id) === id);
+      const body = { ...req.body };
+      // Ignore any password fields under SSO model
+      delete body.password;
+      delete body.mustReset;
+      if (body.email) body.email = String(body.email).toLowerCase();
+      data.users = (data.users || []).map((u) => (String(u.id) === id ? { ...u, ...body } : u));
+      await writeData(data);
+      const updated = (data.users || []).find(u => String(u.id) === id);
+      
+      // Audit log
+      if (oldUser && updated) {
+        await logAudit({
+          user: req.user,
+          action: 'UPDATE',
+          resource: 'users',
+          resourceId: id,
+          oldData: { id: oldUser.id, email: oldUser.email, role: oldUser.role },
+          newData: { id: updated.id, email: updated.email, role: updated.role }
+        });
+      }
+      
+      return { user: updated ? { id: updated.id, username: updated.username, email: updated.email, role: updated.role } : null };
+    }, 'PUT /api/users');
+    
+    res.json({ success: true, user: result.user });
+  } catch (err) {
+    console.error('Update user error', err);
+    res.status(500).json({ success: false, error: 'Failed to update user' });
   }
-  
-  res.json({ success: true, user: updated ? { id: updated.id, username: updated.username, email: updated.email, role: updated.role } : null });
 });
 
 // Logout: invalidate token
@@ -751,42 +865,55 @@ app.post('/api/logout', requireAuth, async (req, res) => {
   const auth = req.headers['authorization'] || '';
   const parts = String(auth).split(' ');
   const token = parts[1];
-  const data = await readData();
-  data.tokens = (data.tokens || []).filter((t) => t.token !== token);
-  await writeData(data);
+  await withLock(async () => {
+    const data = await readData();
+    data.tokens = (data.tokens || []).filter((t) => t.token !== token);
+    await writeData(data);
+  }, 'POST /api/logout');
   res.json({ success: true });
 });
 
 app.delete('/api/users/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id);
-  const data = await readData();
-  const deletedUser = (data.users || []).find(u => String(u.id) === id);
-  data.users = (data.users || []).filter((u) => String(u.id) !== id);
-  await writeData(data);
-  
-  // Audit log
-  if (deletedUser) {
-    await logAudit({
-      user: req.user,
-      action: 'DELETE',
-      resource: 'users',
-      resourceId: id,
-      oldData: { id: deletedUser.id, email: deletedUser.email, role: deletedUser.role }
-    });
+  try {
+    const deletedUser = await withLock(async () => {
+      const data = await readData();
+      const found = (data.users || []).find(u => String(u.id) === id);
+      data.users = (data.users || []).filter((u) => String(u.id) !== id);
+      await writeData(data);
+      return found;
+    }, 'DELETE /api/users');
+    
+    // Audit log (outside lock)
+    if (deletedUser) {
+      await logAudit({
+        user: req.user,
+        action: 'DELETE',
+        resource: 'users',
+        resourceId: id,
+        oldData: { id: deletedUser.id, email: deletedUser.email, role: deletedUser.role }
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete user error', err);
+    res.status(500).json({ success: false, error: 'Failed to delete user' });
   }
-  
-  res.json({ success: true });
 });
 
 // Compatibility endpoint: append to tracks
 app.post('/api/add-track', async (req, res) => {
   const item = req.body || {};
-  const tracks = await getResource('tracks');
-  const nextSr = tracks.length > 0 ? Math.max(...tracks.map(t => Number(t.sr || 0))) + 1 : 1;
-  const newItem = { ...item, sr: Number(item.sr || nextSr) };
-  tracks.push(newItem);
-  await setResource('tracks', tracks);
-  res.json({ success: true, item: newItem });
+  const result = await withLock(async () => {
+    const tracks = await getResource('tracks');
+    const nextSr = tracks.length > 0 ? Math.max(...tracks.map(t => Number(t.sr || 0))) + 1 : 1;
+    const newItem = { ...item, sr: Number(item.sr || nextSr) };
+    tracks.push(newItem);
+    await setResource('tracks', tracks);
+    return newItem;
+  }, 'POST /api/add-track');
+  res.json({ success: true, item: result });
 });
 
 // Generic CSV upload: ?resource=tracks|catalog|users|events (defaults to tracks)
@@ -850,32 +977,38 @@ app.post('/api/upload-csv', requireAdmin, upload.single('file'), async (req, res
           });
         }
         
-        const existing = await getResource(resource);
-        const startingSr = existing.length;
-        
-        console.log(`CSV Upload: Processing ${validResults.length} valid rows for ${resource}`);
-        
-        // Assign unique IDs and serial numbers to new items
-        // Always generate new IDs to prevent duplicates from CSV imports
-        const processedResults = validResults.map((item, idx) => ({
-          ...item,
-          id: crypto.randomBytes(8).toString('hex'), // Always generate new ID
-          sr: startingSr + idx + 1,
-          // Use type from CSV if provided, otherwise default based on resource
-          type: item.type || (resource === 'catalog' ? 'catalog' : (resource === 'tracks' ? 'track' : resource))
-        }));
-        
-        const merged = (existing || []).concat(processedResults);
-        await setResource(resource, merged);
-        
-        console.log(`CSV Upload: Successfully saved ${processedResults.length} items to ${resource}`);
+        // Lock for the data.json read-modify-write (merge with existing data)
+        await withLock(async () => {
+          const existing = await getResource(resource);
+          const startingSr = existing.length;
+          
+          console.log(`CSV Upload: Processing ${validResults.length} valid rows for ${resource}`);
+          
+          // Assign unique IDs and serial numbers to new items
+          // Always generate new IDs to prevent duplicates from CSV imports
+          const processedResults = validResults.map((item, idx) => ({
+            ...item,
+            id: crypto.randomBytes(8).toString('hex'), // Always generate new ID
+            sr: startingSr + idx + 1,
+            // Use type from CSV if provided, otherwise default based on resource
+            type: item.type || (resource === 'catalog' ? 'catalog' : (resource === 'tracks' ? 'track' : resource))
+          }));
+          
+          const merged = (existing || []).concat(processedResults);
+          await setResource(resource, merged);
+          
+          console.log(`CSV Upload: Successfully saved ${processedResults.length} items to ${resource}`);
+          
+          // Store for response
+          validResults._processedCount = processedResults.length;
+        }, 'POST /api/upload-csv');
         
         res.json({ 
           success: true, 
           resource, 
-          uploaded: processedResults.length,
+          uploaded: validResults._processedCount || validResults.length,
           total: results.length,
-          message: `Successfully uploaded ${processedResults.length} items${results.length !== processedResults.length ? ` (${results.length - processedResults.length} rows skipped due to missing data)` : ''}`
+          message: `Successfully uploaded ${validResults._processedCount || validResults.length} items${results.length !== validResults.length ? ` (${results.length - validResults.length} rows skipped due to missing data)` : ''}`
         });
       } catch (err) {
         console.error('CSV save error', err);
@@ -913,11 +1046,15 @@ app.get('/api/metrics', async (req, res) => {
 });
 
 app.put('/api/metrics', requireAdmin, async (req, res) => {
-  const oldMetrics = await getMetrics() || {};
   const payload = req.body || {};
-  await setMetrics(payload);
   
-  // Audit log
+  const oldMetrics = await withLock(async () => {
+    const prev = await getMetrics() || {};
+    await setMetrics(payload);
+    return prev;
+  }, 'PUT /api/metrics');
+  
+  // Audit log (outside lock)
   await logAudit({
     user: req.user,
     action: 'UPDATE',
@@ -1021,11 +1158,14 @@ app.post('/api/github-sync/run', requireAdmin, async (req, res) => {
 // GitHub sync function - syncs last test dates from Release-Notes.md files
 async function runGitHubSync() {
   console.log('🔄 Starting GitHub sync for Trending Tracks...');
+  
+  // First, fetch all release notes data (network I/O, no lock needed)
   const data = await readData();
   const tracks = data.tracks || [];
   
   let updated = 0;
   const errors = [];
+  const trackUpdates = []; // Collect updates to apply under lock
   
   for (const track of tracks) {
     const releaseUrl = track.releaseNotesUrl || '';
@@ -1076,11 +1216,10 @@ async function runGitHubSync() {
       }
       
       if (releaseDate) {
-        // Calculate if the date is within 32 days (30 + 2 buffer)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const thresholdDate = new Date(today);
-        thresholdDate.setDate(thresholdDate.getDate() - 32); // 30 days + 2 day buffer
+        thresholdDate.setDate(thresholdDate.getDate() - 32);
         
         const testDate = new Date(releaseDate);
         testDate.setHours(0, 0, 0, 0);
@@ -1088,18 +1227,19 @@ async function runGitHubSync() {
         const isWithin30Days = testDate >= thresholdDate;
         const newStatus = isWithin30Days ? 'Completed' : 'In-progress';
         
-        // Check if anything changed
         const dateChanged = track.lastTestDate !== releaseDate;
         const statusChanged = track.testingStatus !== newStatus;
         
         if (dateChanged || statusChanged) {
-          if (dateChanged) {
-            track.lastTestDate = releaseDate;
-          }
-          if (statusChanged) {
-            track.testingStatus = newStatus;
-            track.testingCompleted = isWithin30Days;
-          }
+          // Collect update to apply under lock
+          trackUpdates.push({
+            trackName: track.trackName,
+            sr: track.sr,
+            id: track.id,
+            lastTestDate: dateChanged ? releaseDate : undefined,
+            testingStatus: statusChanged ? newStatus : undefined,
+            testingCompleted: statusChanged ? isWithin30Days : undefined
+          });
           updated++;
           console.log(`  ✓ Updated: ${track.trackName.substring(0, 40)} → ${releaseDate} (${newStatus})`);
         }
@@ -1109,11 +1249,25 @@ async function runGitHubSync() {
     }
   }
   
-  // Save updated data
-  data.tracks = tracks;
-  data.githubSyncLastRun = new Date().toISOString();
-  data.githubSyncTracksUpdated = updated;
-  await writeData(data);
+  // Apply all updates under a single lock
+  await withLock(async () => {
+    const freshData = await readData();
+    const freshTracks = freshData.tracks || [];
+    
+    for (const update of trackUpdates) {
+      const t = freshTracks.find(tr => tr.id === update.id || tr.sr === update.sr);
+      if (t) {
+        if (update.lastTestDate !== undefined) t.lastTestDate = update.lastTestDate;
+        if (update.testingStatus !== undefined) t.testingStatus = update.testingStatus;
+        if (update.testingCompleted !== undefined) t.testingCompleted = update.testingCompleted;
+      }
+    }
+    
+    freshData.tracks = freshTracks;
+    freshData.githubSyncLastRun = new Date().toISOString();
+    freshData.githubSyncTracksUpdated = updated;
+    await writeData(freshData);
+  }, 'runGitHubSync');
   
   console.log(`✅ GitHub sync complete: ${updated} tracks updated`);
   
@@ -1121,7 +1275,7 @@ async function runGitHubSync() {
     success: true,
     updated,
     total: tracks.length,
-    lastSync: data.githubSyncLastRun,
+    lastSync: new Date().toISOString(),
     errors: errors.length > 0 ? errors : undefined
   };
 }
@@ -1129,41 +1283,44 @@ async function runGitHubSync() {
 // Fix eventName format for existing DevOps items (migration endpoint)
 app.post('/api/devops/fix-titles', requireAdmin, async (req, res) => {
   try {
-    const data = await readData();
-    data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
-    
-    let fixed = 0;
-    for (const review of data.reviews) {
-      if (review.source === 'devops' && review.workItemId) {
-        // Format event date
-        let formattedDate = '';
-        if (review.eventDate) {
-          try {
-            const d = new Date(review.eventDate);
-            formattedDate = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-          } catch {
-            formattedDate = String(review.eventDate).split('T')[0] || '';
+    const fixed = await withLock(async () => {
+      const data = await readData();
+      data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
+      
+      let count = 0;
+      for (const review of data.reviews) {
+        if (review.source === 'devops' && review.workItemId) {
+          // Format event date
+          let formattedDate = '';
+          if (review.eventDate) {
+            try {
+              const d = new Date(review.eventDate);
+              formattedDate = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            } catch {
+              formattedDate = String(review.eventDate).split('T')[0] || '';
+            }
+          }
+          
+          // Build new eventName in correct format: WI-{id} | {date} | {title}
+          const eventNameParts = [`WI-${review.workItemId}`];
+          if (formattedDate) eventNameParts.push(formattedDate);
+          if (review.workItemTitle) eventNameParts.push(review.workItemTitle);
+          
+          const newEventName = eventNameParts.join(' | ');
+          
+          // Only update if different
+          if (review.eventName !== newEventName) {
+            review.eventName = newEventName;
+            count++;
           }
         }
-        
-        // Build new eventName in correct format: WI-{id} | {date} | {title}
-        const eventNameParts = [`WI-${review.workItemId}`];
-        if (formattedDate) eventNameParts.push(formattedDate);
-        if (review.workItemTitle) eventNameParts.push(review.workItemTitle);
-        
-        const newEventName = eventNameParts.join(' | ');
-        
-        // Only update if different
-        if (review.eventName !== newEventName) {
-          review.eventName = newEventName;
-          fixed++;
-        }
       }
-    }
-    
-    if (fixed > 0) {
-      await writeData(data);
-    }
+      
+      if (count > 0) {
+        await writeData(data);
+      }
+      return count;
+    }, 'POST /api/devops/fix-titles');
     
     res.json({ success: true, fixed, message: `Fixed ${fixed} DevOps items` });
   } catch (err) {
@@ -1237,13 +1394,16 @@ app.post('/api/devops/import-screenshots', requireAdmin, async (req, res) => {
     
     if (result.items.length === 0) {
       // Update sync time and processed IDs even if no items
-      data._devopsSync.lastSync = result.syncTime;
-      data._devopsSync.lastResult = { imported: 0, processed: result.processed, skipped: result.skipped };
-      // Add newly processed work item IDs to local tracking
-      if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
-        data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
-      }
-      await writeData(data);
+      await withLock(async () => {
+        const freshData = await readData();
+        freshData._devopsSync = freshData._devopsSync || {};
+        freshData._devopsSync.lastSync = result.syncTime;
+        freshData._devopsSync.lastResult = { imported: 0, processed: result.processed, skipped: result.skipped };
+        if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+          freshData._devopsSync.processedWorkItemIds = [...new Set([...(freshData._devopsSync.processedWorkItemIds || []), ...result.processedWorkItemIds])];
+        }
+        await writeData(freshData);
+      }, 'devops-import-no-items');
       
       return res.json({ 
         success: true, 
@@ -1351,27 +1511,34 @@ app.post('/api/devops/import-screenshots', requireAdmin, async (req, res) => {
       }
     }
     
-    // Save reviews and update sync metadata
-    if (savedImages.length > 0) {
-      data.reviews.push(...savedImages);
-    }
-    
-    // Add newly processed work item IDs to local tracking
-    if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
-      data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
-    }
-    
-    data._devopsSync.lastSync = result.syncTime;
-    data._devopsSync.lastResult = {
-      imported: savedImages.length,
-      duplicates,
-      downloadErrors,
-      processed: result.processed,
-      skipped: result.skipped,
-      workItemErrors: result.errors.length
-    };
-    
-    await writeData(data);
+    // Save reviews and update sync metadata under lock
+    await withLock(async () => {
+      const freshData = await readData();
+      freshData.reviews = Array.isArray(freshData.reviews) ? freshData.reviews : [];
+      freshData._devopsSync = freshData._devopsSync || {};
+      
+      if (savedImages.length > 0) {
+        freshData.reviews.push(...savedImages);
+      }
+      
+      // Add newly processed work item IDs to local tracking
+      const existingProcessedIds = freshData._devopsSync.processedWorkItemIds || [];
+      if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+        freshData._devopsSync.processedWorkItemIds = [...new Set([...existingProcessedIds, ...result.processedWorkItemIds])];
+      }
+      
+      freshData._devopsSync.lastSync = result.syncTime;
+      freshData._devopsSync.lastResult = {
+        imported: savedImages.length,
+        duplicates,
+        downloadErrors,
+        processed: result.processed,
+        skipped: result.skipped,
+        workItemErrors: result.errors.length
+      };
+      
+      await writeData(freshData);
+    }, 'devops-import-save');
     
     console.log(`\n${'='.repeat(60)}`);
     console.log(`✅ IMPORT COMPLETE`);
@@ -1494,6 +1661,11 @@ app.get('/api/check-duplicate-eventid', async (req, res) => {
   }
 });
 
+// Diagnostics: lock status (admin only)
+app.get('/api/diagnostics/lock-status', requireAdmin, (req, res) => {
+  res.json(getLockStatus());
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -1505,7 +1677,7 @@ app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   
-  // Apply resource-specific validation
+  // Apply resource-specific validation (before lock — no data access needed)
   if (resource === 'users') {
     const { username, role } = req.body || {};
     if (!username || String(username).trim() === '') {
@@ -1529,87 +1701,106 @@ app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
     });
   }
   
-  const item = req.body || {};
-  const list = await getResource(resource) || [];
-  if (resource === 'users') {
-    const id = String(item.id || `u_${Date.now()}`);
-    // If caller provided password, hash it; otherwise generate temporary password and mustReset flag
-    if (item.password) {
-      const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 8), mustReset: false };
+  try {
+    const result = await withLock(async () => {
+      const item = req.body || {};
+      const list = await getResource(resource) || [];
+      if (resource === 'users') {
+        const id = String(item.id || `u_${Date.now()}`);
+        if (item.password) {
+          const newItem = { ...item, id, password: bcrypt.hashSync(String(item.password), 8), mustReset: false };
+          list.push(newItem);
+          await setResource(resource, list);
+          return { success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role } };
+        }
+        const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
+        const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 8), mustReset: true };
+        list.push(newItem);
+        await setResource(resource, list);
+        return { success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword };
+      }
+      // For catalog/tracks/events, generate unique ID if missing
+      const nextSr = list.length > 0 ? Math.max(...list.map(t => Number(t.sr || 0))) + 1 : 1;
+      const id = item.id || crypto.randomBytes(8).toString('hex');
+      const newItem = { ...item, id, sr: Number(item.sr || nextSr) };
       list.push(newItem);
       await setResource(resource, list);
-      return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role } });
+      return { success: true, item: newItem };
+    }, `POST /api/${resource}`);
+    
+    // Audit log (outside lock)
+    if (result.item && resource !== 'users') {
+      await logAudit({
+        user: req.user,
+        action: 'CREATE',
+        resource,
+        resourceId: result.item.id || result.item.sr,
+        newData: result.item
+      });
     }
-    const tempPassword = crypto.randomBytes(6).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
-    const newItem = { ...item, id, password: bcrypt.hashSync(String(tempPassword), 8), mustReset: true };
-    list.push(newItem);
-    await setResource(resource, list);
-    return res.json({ success: true, item: { id: newItem.id, username: newItem.username, role: newItem.role }, temporaryPassword: tempPassword });
+    
+    res.json(result);
+  } catch (err) {
+    console.error(`POST /api/${resource} error`, err);
+    res.status(500).json({ error: 'Failed to create resource' });
   }
-  // For catalog/tracks/events, generate unique ID if missing
-  const nextSr = list.length > 0 ? Math.max(...list.map(t => Number(t.sr || 0))) + 1 : 1;
-  const id = item.id || crypto.randomBytes(8).toString('hex');
-  const newItem = { ...item, id, sr: Number(item.sr || nextSr) };
-  list.push(newItem);
-  await setResource(resource, list);
-  
-  // Audit log
-  await logAudit({
-    user: req.user,
-    action: 'CREATE',
-    resource,
-    resourceId: newItem.id || newItem.sr,
-    newData: newItem
-  });
-  
-  res.json({ success: true, item: newItem });
 });
 
 app.put('/api/:resource/:id', requireAdmin, async (req, res) => {
   const resource = String(req.params.resource);
   const id = req.params.id;
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
-  const list = await getResource(resource) || [];
   
-  // Find old item for audit
-  let oldItem = null;
-  if (resource === 'users') {
-    oldItem = list.find(it => String(it && it.id) === id);
-  } else {
-    oldItem = list.find(it => String(it && it.sr) === id);
-  }
-  
-  const updated = list.map((it) => {
-    if (resource === 'users') {
-      if (String(it && it.id) === id) return { ...it, ...req.body };
-    } else {
-      if (String(it && it.sr) === id) return { ...it, ...req.body };
+  try {
+    const auditInfo = await withLock(async () => {
+      const list = await getResource(resource) || [];
+      
+      // Find old item for audit
+      let oldItem = null;
+      if (resource === 'users') {
+        oldItem = list.find(it => String(it && it.id) === id);
+      } else {
+        oldItem = list.find(it => String(it && it.sr) === id);
+      }
+      
+      const updated = list.map((it) => {
+        if (resource === 'users') {
+          if (String(it && it.id) === id) return { ...it, ...req.body };
+        } else {
+          if (String(it && it.sr) === id) return { ...it, ...req.body };
+        }
+        return it;
+      });
+      await setResource(resource, updated);
+      
+      // Find new item for audit
+      let newItem = null;
+      if (resource === 'users') {
+        newItem = updated.find(it => String(it && it.id) === id);
+      } else {
+        newItem = updated.find(it => String(it && it.sr) === id);
+      }
+      
+      return { oldItem, newItem };
+    }, `PUT /api/${resource}`);
+    
+    // Audit log (outside lock)
+    if (auditInfo.oldItem) {
+      await logAudit({
+        user: req.user,
+        action: 'UPDATE',
+        resource,
+        resourceId: id,
+        oldData: auditInfo.oldItem,
+        newData: auditInfo.newItem
+      });
     }
-    return it;
-  });
-  await setResource(resource, updated);
-  
-  // Find new item for audit
-  let newItem = null;
-  if (resource === 'users') {
-    newItem = updated.find(it => String(it && it.id) === id);
-  } else {
-    newItem = updated.find(it => String(it && it.sr) === id);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(`PUT /api/${resource}/${id} error`, err);
+    res.status(500).json({ error: 'Failed to update resource' });
   }
-  
-  // Audit log
-  if (oldItem) {
-    await logAudit({
-      user: req.user,
-      action: 'UPDATE',
-      resource,
-      resourceId: id,
-      oldData: oldItem,
-      newData: newItem
-    });
-  }
-  
-  res.json({ success: true });
 });
 
 app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
@@ -1617,47 +1808,52 @@ app.delete('/api/:resource/:id', requireAdmin, async (req, res) => {
   const id = req.params.id;
   console.log(`DELETE /${resource}/${id} requested`);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
-  const list = await getResource(resource) || [];
-  console.log(`Before delete: ${list.length} items`);
   
-  // Find deleted item for audit
-  let deletedItem = null;
-  
-  const filtered = list.filter((it) => {
-    if (resource === 'users') {
-      // Users use id field
-      if (String(it && it.id) === id) {
-        deletedItem = it;
-        return false;
-      }
-      return true;
+  try {
+    const deletedItem = await withLock(async () => {
+      const list = await getResource(resource) || [];
+      console.log(`Before delete: ${list.length} items`);
+      
+      let found = null;
+      
+      const filtered = list.filter((it) => {
+        if (resource === 'users') {
+          if (String(it && it.id) === id) {
+            found = it;
+            return false;
+          }
+          return true;
+        }
+        const matchesId = String(it && it.id) === id;
+        const matchesSr = String(it && it.sr) === id;
+        const shouldKeep = !matchesId && !matchesSr;
+        if (!shouldKeep) {
+          found = it;
+          console.log(`Deleting item: sr=${it.sr}, id=${it.id}, name=${it.trackName || it.name}`);
+        }
+        return shouldKeep;
+      });
+      console.log(`After delete: ${filtered.length} items`);
+      await setResource(resource, filtered);
+      return found;
+    }, `DELETE /api/${resource}`);
+    
+    // Audit log (outside lock)
+    if (deletedItem) {
+      await logAudit({
+        user: req.user,
+        action: 'DELETE',
+        resource,
+        resourceId: id,
+        oldData: deletedItem
+      });
     }
-    // For catalog/tracks/events, match either id OR sr
-    const matchesId = String(it && it.id) === id;
-    const matchesSr = String(it && it.sr) === id;
-    const shouldKeep = !matchesId && !matchesSr;
-    if (!shouldKeep) {
-      deletedItem = it;
-      console.log(`Deleting item: sr=${it.sr}, id=${it.id}, name=${it.trackName || it.name}`);
-    }
-    return shouldKeep;
-  });
-  // Note: We no longer renumber sr values to maintain stable IDs for frontend sync
-  console.log(`After delete: ${filtered.length} items`);
-  await setResource(resource, filtered);
-  
-  // Audit log
-  if (deletedItem) {
-    await logAudit({
-      user: req.user,
-      action: 'DELETE',
-      resource,
-      resourceId: id,
-      oldData: deletedItem
-    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(`DELETE /api/${resource}/${id} error`, err);
+    res.status(500).json({ error: 'Failed to delete resource' });
   }
-  
-  res.json({ success: true });
 });
 
 // Start server
@@ -1677,19 +1873,20 @@ app.listen(PORT, () => {
         const eventDateField = process.env.AZURE_DEVOPS_EVENTDATE_FIELD || 'Custom.EventDate';
         const eventIdField = process.env.AZURE_DEVOPS_EVENTID_FIELD || 'Custom.EventID';
         
-        const data = await readData();
-        data.reviews = Array.isArray(data.reviews) ? data.reviews : [];
-        data._devopsSync = data._devopsSync || {};
-        data._devopsSync.processedWorkItemIds = data._devopsSync.processedWorkItemIds || [];
+        // Phase 1: Read sync metadata (outside lock — read-only snapshot)
+        const snapshotData = await readData();
+        const syncMeta = snapshotData._devopsSync || {};
+        const lastSyncDate = syncMeta.lastSync || null;
+        const processedIds = syncMeta.processedWorkItemIds || [];
+        const existingReviews = Array.isArray(snapshotData.reviews) ? snapshotData.reviews : [];
         
-        const lastSyncDate = data._devopsSync.lastSync || null;
-        const processedIds = data._devopsSync.processedWorkItemIds;
+        // Phase 2: Fetch from DevOps + download images (outside lock — network I/O)
         const result = await processEventSummaryLogs(org, project, pat, feedbackField, eventDateField, eventIdField, lastSyncDate, 50, processedIds);
         
-        // Download and save images
+        const newReviewEntries = [];
         for (const item of result.items) {
           try {
-            const isDuplicate = data.reviews.some(r => 
+            const isDuplicate = existingReviews.some(r => 
               r.source === 'devops' && r.workItemId === item.workItemId && r.imageIndex === item.imageIndex
             );
             if (isDuplicate) continue;
@@ -1699,7 +1896,6 @@ app.listen(PORT, () => {
             const imageData = await downloadImage(item.imageUrl, pat);
             if (!imageData || imageData.length === 0) continue;
             
-            // Store in blob or local based on STORAGE_MODE
             let imagePath, blobUrl = null, storedIn = 'local';
             if (process.env.STORAGE_MODE === 'blob') {
               try {
@@ -1732,8 +1928,7 @@ app.listen(PORT, () => {
             if (formattedDate) eventNameParts.push(formattedDate);
             if (item.workItemTitle) eventNameParts.push(item.workItemTitle);
             
-            data.reviews.push({
-              id: `devops_${item.workItemId}_${Date.now()}_${data.reviews.length}`,
+            newReviewEntries.push({
               originalName: fileName,
               eventName: eventNameParts.join(' | '),
               eventId: item.eventId,
@@ -1754,13 +1949,35 @@ app.listen(PORT, () => {
           }
         }
         
-        data._devopsSync.lastSync = result.syncTime;
-        data._devopsSync.lastResult = { imported: result.items.length, processed: result.processed, skipped: result.skipped };
-        // Track processed work item IDs locally
-        if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
-          data._devopsSync.processedWorkItemIds = [...new Set([...processedIds, ...result.processedWorkItemIds])];
+        // Phase 3: Apply changes under lock (re-read fresh data)
+        if (newReviewEntries.length > 0 || result.processedWorkItemIds?.length > 0) {
+          await withLock(async () => {
+            const freshData = await readData();
+            freshData.reviews = Array.isArray(freshData.reviews) ? freshData.reviews : [];
+            freshData._devopsSync = freshData._devopsSync || {};
+            freshData._devopsSync.processedWorkItemIds = freshData._devopsSync.processedWorkItemIds || [];
+            
+            // Append new reviews (de-dup against fresh data)
+            for (const entry of newReviewEntries) {
+              const alreadyExists = freshData.reviews.some(r =>
+                r.source === 'devops' && r.workItemId === entry.workItemId && r.imageIndex === entry.imageIndex
+              );
+              if (!alreadyExists) {
+                freshData.reviews.push({
+                  ...entry,
+                  id: `devops_${entry.workItemId}_${Date.now()}_${freshData.reviews.length}`
+                });
+              }
+            }
+            
+            freshData._devopsSync.lastSync = result.syncTime;
+            freshData._devopsSync.lastResult = { imported: result.items.length, processed: result.processed, skipped: result.skipped };
+            if (result.processedWorkItemIds && result.processedWorkItemIds.length > 0) {
+              freshData._devopsSync.processedWorkItemIds = [...new Set([...freshData._devopsSync.processedWorkItemIds, ...result.processedWorkItemIds])];
+            }
+            await writeData(freshData);
+          }, 'cron-devops-sync');
         }
-        await writeData(data);
         
         console.log(`✅ Scheduled sync complete: ${result.items.length} images imported`);
       } catch (err) {
@@ -1803,6 +2020,10 @@ try {
 
 // Global error handler to capture uncaught errors in routes
 app.use((err, req, res, next) => {
+  // Return 409 for concurrency conflicts so frontend can handle gracefully
+  if (err instanceof ConcurrencyError) {
+    return res.status(409).json({ error: 'Conflict', message: 'Another user modified this data. Please refresh and try again.' });
+  }
   console.error('Express error handler caught:', err && err.stack ? err.stack : err);
   res.status(500).json({ error: String(err && err.message ? err.message : err) });
 });

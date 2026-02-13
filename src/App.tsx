@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -60,7 +60,17 @@ class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { ha
   }
 }
 
-const App = () => (
+const App = () => {
+  // Listen for data-conflict events from API interceptor and invalidate all queries
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries();
+    };
+    window.addEventListener('data-conflict', handler);
+    return () => window.removeEventListener('data-conflict', handler);
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="dark" storageKey="dashboard-theme">
       <TooltipProvider>
@@ -106,6 +116,7 @@ const App = () => (
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

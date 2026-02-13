@@ -16,6 +16,7 @@ import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface ActivityLogEntry {
   date: string;
@@ -147,9 +148,12 @@ export default function CustomLabRequestPage() {
     return () => { mounted = false }
   }, [])
 
+  const dirty = useDirtyFields<CustomLabRequest>()
+
   const handleEditCustomLab = (item: CustomLabRequest) => {
     setEditingCustomLab(item);
     setCustomLabForm({ ...item });
+    dirty.initOriginal(item);
     setIsCustomLabDialogOpen(true);
   };
 
@@ -174,7 +178,7 @@ export default function CustomLabRequestPage() {
     }
     
     try {
-      const payload = { ...customLabForm, type: 'customLabRequest' };
+      const payload = { ...dirty.getDirtyPayload(customLabForm), type: 'customLabRequest' };
       
       if (editingCustomLab && editingCustomLab.sr && editingCustomLab.sr > 0) {
         await catalogService.update(editingCustomLab.sr, payload);

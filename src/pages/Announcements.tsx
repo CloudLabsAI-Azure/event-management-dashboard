@@ -13,6 +13,7 @@ import { useAuth } from '@/components/AuthProvider'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
 import EntityEditDialog from '@/components/EntityEditDialog'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface PDFCatalog {
   id?: string
@@ -153,9 +154,14 @@ export default function Announcements() {
     setIsPdfDialogOpen(true)
   }
 
+  const dirtyPdf = useDirtyFields<PDFCatalog>()
+  const dirtyTrack = useDirtyFields<TrackChange>()
+  const dirtyAnnouncement = useDirtyFields<GeneralAnnouncement>()
+
   const handleEditPdf = (pdf: PDFCatalog) => {
     setEditingPdf(pdf)
     setPdfForm({ ...pdf })
+    dirtyPdf.initOriginal(pdf)
     setIsPdfDialogOpen(true)
   }
 
@@ -180,7 +186,7 @@ export default function Announcements() {
 
     setSavingPdf(true)
     try {
-      const payload = { ...pdfForm, type: 'pdfCatalog' }
+      const payload = { ...dirtyPdf.getDirtyPayload(pdfForm), type: 'pdfCatalog' }
       
       if (editingPdf && editingPdf.sr) {
         await api.put(`/api/catalog/${editingPdf.sr}`, payload)
@@ -242,6 +248,7 @@ export default function Announcements() {
   const handleEditTrack = (track: TrackChange) => {
     setEditingTrack(track)
     setTrackForm({ ...track })
+    dirtyTrack.initOriginal(track)
     setIsTrackDialogOpen(true)
   }
 
@@ -257,7 +264,7 @@ export default function Announcements() {
 
     setSavingTrack(true)
     try {
-      const payload = { ...trackForm, type: 'trackChange' }
+      const payload = { ...dirtyTrack.getDirtyPayload(trackForm), type: 'trackChange' }
       
       if (editingTrack && editingTrack.sr) {
         await api.put(`/api/catalog/${editingTrack.sr}`, payload)
@@ -318,6 +325,7 @@ export default function Announcements() {
   const handleEditAnnouncement = (announcement: GeneralAnnouncement) => {
     setEditingAnnouncement(announcement)
     setAnnouncementForm({ ...announcement })
+    dirtyAnnouncement.initOriginal(announcement)
     setIsAnnouncementDialogOpen(true)
   }
 
@@ -342,7 +350,7 @@ export default function Announcements() {
 
     setSavingAnnouncement(true)
     try {
-      const payload = { ...announcementForm, type: 'generalAnnouncement' }
+      const payload = { ...dirtyAnnouncement.getDirtyPayload(announcementForm), type: 'generalAnnouncement' }
       
       if (editingAnnouncement && editingAnnouncement.sr) {
         await api.put(`/api/catalog/${editingAnnouncement.sr}`, payload)

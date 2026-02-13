@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from '@/hooks/use-toast';
 
 // In production (Azure), use relative URLs since frontend and backend are on same server
 // In development, use localhost:4000
@@ -29,5 +30,24 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Handle concurrency conflicts (409/412) from the backend
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 409 || error.response.status === 412)) {
+      toast({
+        title: 'Data conflict',
+        description: 'Someone else updated this data. The page will refresh with the latest version.',
+        variant: 'destructive',
+      });
+      // Give user a moment to see the toast, then reload data
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('data-conflict'));
+      }, 1500);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

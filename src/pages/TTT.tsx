@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+import { useDirtyFields } from '@/hooks/use-dirty-fields'
 
 interface TTTSession {
   id?: string
@@ -156,9 +157,12 @@ export default function TTTPage() {
     setIsEditDialogOpen(true)
   }
 
+  const dirty = useDirtyFields<TTTSession>()
+
   const handleEdit = (session: TTTSession) => {
     setEditingSession(session)
     setEditForm({ ...session })
+    dirty.initOriginal(session)
     setIsEditDialogOpen(true)
   }
 
@@ -191,7 +195,7 @@ export default function TTTPage() {
 
     setSaving(true)
     try {
-      const payload = { ...editForm, type: 'tttSession' }
+      const payload = { ...dirty.getDirtyPayload(editForm), type: 'tttSession' }
       
       if (editingSession && editingSession.sr) {
         await api.put(`/api/catalog/${editingSession.sr}`, payload)
