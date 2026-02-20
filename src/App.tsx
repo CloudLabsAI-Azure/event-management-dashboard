@@ -24,6 +24,7 @@ import TTT from "./pages/TTT";
 import NotFound from "./pages/NotFound";
 import LocalDevBypass from "./pages/LocalDevBypass";
 import AuditLogPage from "./pages/AuditLog";
+import LabsBacklogPage from "./pages/LabsBacklogPage";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,7 @@ const App = () => {
                   <Route path="roadmap" element={<RoadmapPage />} />
                   <Route path="lab-maintenance" element={<LabMaintenancePage />} />
                   <Route path="custom-lab-request" element={<CustomLabRequestPage />} />
+                  <Route path="labs-backlog" element={<LabsBacklogPage />} />
                   <Route path="localized-tracks" element={<LocalizedTracksPage />} />
                   <Route path="participant-feedback" element={<ParticipantFeedbackPage />} />
                   <Route path="announcements" element={<Announcements />} />

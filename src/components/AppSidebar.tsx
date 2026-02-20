@@ -63,6 +63,7 @@ const reportItems: MenuItem[] = [
       { title: "Lab Development", url: "/dashboard/roadmap", icon: TrendingUp },
       // { title: "Lab Maintenance", url: "/dashboard/lab-maintenance", icon: Clock }, // Hidden for now
       { title: "Custom Lab Request", url: "/dashboard/custom-lab-request", icon: Plus },
+      { title: "Labs Backlog", url: "/dashboard/labs-backlog", icon: Clock },
     ]
   },
   { title: "Localized Tracks", url: "/dashboard/localized-tracks", icon: Globe },
