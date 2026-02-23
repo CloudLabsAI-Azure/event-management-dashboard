@@ -178,6 +178,11 @@ export default function RoadmapPage() {
       (item.notes || '').toLowerCase().includes(query) ||
       (item.programType || '').toLowerCase().includes(query);
     return matchesPhase && matchesAttention && matchesSponsor && matchesSearch;
+  }).sort((a, b) => {
+    // Push "Released" items to the bottom by default
+    const aReleased = (a.phase || '').toLowerCase() === 'released' ? 1 : 0;
+    const bReleased = (b.phase || '').toLowerCase() === 'released' ? 1 : 0;
+    return aReleased - bReleased;
   });
 
   // Get unique sponsors for filter dropdown
