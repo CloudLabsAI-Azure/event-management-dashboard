@@ -71,6 +71,7 @@ export interface CustomLabRequest extends BaseCatalogItem {
   status: CustomLabStatus
   sponsorDetails?: string
   requestedBy?: string
+  activityLog?: ActivityLogEntry[]
 }
 
 export type CustomLabStatus = 'Pending' | 'Approved' | 'In Progress' | 'Completed' | 'Rejected' | string

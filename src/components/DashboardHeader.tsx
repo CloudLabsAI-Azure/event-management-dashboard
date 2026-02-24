@@ -1,4 +1,5 @@
 import { ShieldCheck, LogOut } from "lucide-react"
+import { StaleItemsBell } from "@/components/StaleItemsBell"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import {
@@ -52,6 +53,7 @@ export function DashboardHeader() {
           {authError && msalAuthenticated && !isAuthorized && (
             <span className="text-xs text-red-500 max-w-[160px] line-clamp-2">{authError}</span>
           )}
+          <StaleItemsBell />
           <ThemeToggle />
           {msalAuthenticated ? (
             <Button size="sm" variant="outline" onClick={handleLogout} className="flex items-center gap-1">
