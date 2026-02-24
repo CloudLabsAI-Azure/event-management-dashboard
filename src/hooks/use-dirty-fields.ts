@@ -68,7 +68,13 @@ export function useDirtyFields<T extends Record<string, any>>() {
     if ('id' in currentForm) partial.id = currentForm.id
 
     for (const key of dirtyKeys.current) {
-      partial[key] = currentForm[key]
+      const val = currentForm[key]
+      // Skip null/undefined to prevent accidental overwrites
+      if (val === null || val === undefined) {
+        console.warn(`[DirtyFields] Skipping null value for field "${key}"`)
+        continue
+      }
+      partial[key] = val
     }
 
     return partial as Partial<T>

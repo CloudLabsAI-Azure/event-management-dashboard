@@ -1763,11 +1763,26 @@ app.put('/api/:resource/:id', requireAdmin, async (req, res) => {
         oldItem = list.find(it => String(it && it.sr) === id);
       }
       
+      // Strip null/undefined values from request body to prevent accidental overwrites
+      const safeBody = { ...req.body };
+      const nullGuarded = [];
+      if (oldItem) {
+        for (const [key, val] of Object.entries(safeBody)) {
+          if ((val === null || val === undefined || val === '') && oldItem[key] != null && oldItem[key] !== '') {
+            nullGuarded.push(key);
+            delete safeBody[key];
+          }
+        }
+        if (nullGuarded.length > 0) {
+          console.warn(`[NULL-GUARD] PUT /api/${resource}/${id}: blocked null overwrite for fields: ${nullGuarded.join(', ')} (user: ${req.user?.email || 'unknown'})`);
+        }
+      }
+
       const updated = list.map((it) => {
         if (resource === 'users') {
-          if (String(it && it.id) === id) return { ...it, ...req.body };
+          if (String(it && it.id) === id) return { ...it, ...safeBody };
         } else {
-          if (String(it && it.sr) === id) return { ...it, ...req.body };
+          if (String(it && it.sr) === id) return { ...it, ...safeBody };
         }
         return it;
       });
