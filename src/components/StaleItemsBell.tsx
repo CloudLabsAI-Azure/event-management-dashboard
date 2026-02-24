@@ -46,9 +46,9 @@ function typeBadgeClass(type: string) {
 /** Route path for each type */
 function routeForType(type: string) {
   switch (type) {
-    case "roadmapItem": return "/roadmap"
-    case "customLabRequest": return "/custom-lab-request"
-    case "labsBacklog": return "/labs-backlog"
+    case "roadmapItem": return "/dashboard/roadmap"
+    case "customLabRequest": return "/dashboard/custom-lab-request"
+    case "labsBacklog": return "/dashboard/labs-backlog"
     default: return "/dashboard"
   }
 }
