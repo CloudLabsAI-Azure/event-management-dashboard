@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from "react"
-import { Bell, AlertTriangle, Clock, ExternalLink } from "lucide-react"
+import { Bell, AlertTriangle, Clock, ExternalLink, X, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Popover,
   PopoverContent,
@@ -22,6 +21,7 @@ interface StaleItem {
 
 const STALE_THRESHOLD_DAYS = 7
 const POLL_INTERVAL_MS = 5 * 60 * 1000 // refresh every 5 minutes
+const DISMISSED_KEY = "stale-items-dismissed"
 
 /** Humanize a type string for display */
 function typeLabel(type: string) {
@@ -55,8 +55,19 @@ function routeForType(type: string) {
 
 export function StaleItemsBell() {
   const [staleItems, setStaleItems] = useState<StaleItem[]>([])
+  const [dismissedSrs, setDismissedSrs] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(DISMISSED_KEY)
+      return saved ? new Set(JSON.parse(saved)) : new Set()
+    } catch { return new Set() }
+  })
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+
+  const persistDismissed = useCallback((next: Set<string>) => {
+    setDismissedSrs(next)
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]))
+  }, [])
 
   const fetchStaleItems = useCallback(async () => {
     try {
@@ -121,7 +132,22 @@ export function StaleItemsBell() {
     return () => clearInterval(id)
   }, [fetchStaleItems])
 
-  const count = staleItems.length
+  // Filter out dismissed items for display
+  const visibleItems = staleItems.filter(i => !dismissedSrs.has(`${i.type}-${i.sr}`))
+  const count = visibleItems.length
+
+  const dismissItem = (item: StaleItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = new Set(dismissedSrs)
+    next.add(`${item.type}-${item.sr}`)
+    persistDismissed(next)
+  }
+
+  const clearAll = () => {
+    const next = new Set(dismissedSrs)
+    visibleItems.forEach(i => next.add(`${i.type}-${i.sr}`))
+    persistDismissed(next)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -153,7 +179,19 @@ export function StaleItemsBell() {
               </Badge>
             )}
           </div>
-          <span className="text-[10px] text-muted-foreground">No comment in 7+ days</span>
+          {count > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-[11px] text-muted-foreground hover:text-destructive px-2"
+              onClick={clearAll}
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear all
+            </Button>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">No comment in 7+ days</span>
+          )}
         </div>
 
         {/* Items list */}
@@ -163,12 +201,12 @@ export function StaleItemsBell() {
             <p className="text-sm">All items are up to date</p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[360px]">
+          <div className="overflow-y-auto max-h-[360px] scrollbar-thin" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}>
             <div className="divide-y">
-              {staleItems.map((item) => (
-                <button
+              {visibleItems.map((item) => (
+                <div
                   key={`${item.type}-${item.sr}`}
-                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors cursor-pointer group"
                   onClick={() => {
                     setOpen(false)
                     navigate(routeForType(item.type))
@@ -200,11 +238,17 @@ export function StaleItemsBell() {
                         : "No comments yet"}
                     </p>
                   </div>
-                  <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-50" />
-                </button>
+                  <button
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                    onClick={(e) => dismissItem(item, e)}
+                    title="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </PopoverContent>
     </Popover>
