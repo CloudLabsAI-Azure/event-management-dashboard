@@ -215,6 +215,16 @@ export default function RoadmapPage() {
           needsAttention: r.needsAttention || false
         }))
         setRoadmapData(mapped)
+
+        // Auto-open activity log if ?sr= is in URL
+        const srParam = searchParams.get('sr');
+        if (srParam) {
+          const target = mapped.find((r: RoadmapItem) => String(r.sr) === srParam);
+          if (target) {
+            setSelectedItem(target);
+            setIsNotesDialogOpen(true);
+          }
+        }
       } catch (err) {
         console.error('Error loading roadmap data:', err)
         toast({

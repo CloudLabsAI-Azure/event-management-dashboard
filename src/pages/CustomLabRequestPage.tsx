@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus, Search } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
 import EntityEditDialog from '@/components/EntityEditDialog'
@@ -39,6 +40,7 @@ interface CustomLabRequest {
 }
 
 export default function CustomLabRequestPage() {
+  const [searchParams] = useSearchParams();
   const [customLabData, setCustomLabData] = useState<CustomLabRequest[]>([]);
   const [editingCustomLab, setEditingCustomLab] = useState<CustomLabRequest | null>(null);
   const [isCustomLabDialogOpen, setIsCustomLabDialogOpen] = useState(false);
@@ -136,6 +138,16 @@ export default function CustomLabRequestPage() {
           activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
         }))
         setCustomLabData(mapped)
+
+        // Auto-open activity log if ?sr= is in URL
+        const srParam = searchParams.get('sr');
+        if (srParam) {
+          const target = mapped.find((r: CustomLabRequest) => String(r.sr) === srParam);
+          if (target) {
+            setSelectedItem(target);
+            setIsNotesDialogOpen(true);
+          }
+        }
       } catch (err) {
         console.error('Error loading custom lab request data:', err)
         toast({
