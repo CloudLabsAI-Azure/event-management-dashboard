@@ -260,7 +260,7 @@ export default function CustomLabRequestPage() {
     });
   };
 
-  // Filtered data based on search
+  // Filtered data based on search, sorted: upcoming events first (nearest future date on top), then past events (most recent past first), no-date at bottom
   const filteredCustomLabData = customLabData.filter(item => {
     const query = searchQuery.toLowerCase();
     if (!query) return true;
@@ -269,6 +269,25 @@ export default function CustomLabRequestPage() {
       (item.sponsor || '').toLowerCase().includes(query) ||
       (item.notes || '').toLowerCase().includes(query) ||
       (item.frequency || '').toLowerCase().includes(query);
+  }).sort((a, b) => {
+    const now = Date.now();
+    const dateA = a.eventDate ? new Date(a.eventDate).getTime() : NaN;
+    const dateB = b.eventDate ? new Date(b.eventDate).getTime() : NaN;
+    const aHasDate = !isNaN(dateA);
+    const bHasDate = !isNaN(dateB);
+    // No-date items go to the very bottom
+    if (!aHasDate && !bHasDate) return 0;
+    if (!aHasDate) return 1;
+    if (!bHasDate) return -1;
+    const aUpcoming = dateA >= now;
+    const bUpcoming = dateB >= now;
+    // Upcoming before past
+    if (aUpcoming && !bUpcoming) return -1;
+    if (!aUpcoming && bUpcoming) return 1;
+    // Both upcoming: nearest date first (ascending)
+    if (aUpcoming && bUpcoming) return dateA - dateB;
+    // Both past: most recent first (descending)
+    return dateB - dateA;
   });
 
   return (
