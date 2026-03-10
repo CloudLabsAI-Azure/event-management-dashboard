@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react"
-import { Bell, AlertTriangle, Clock, ExternalLink, X, Trash2 } from "lucide-react"
+import { Bell, AlertTriangle, Clock, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -21,7 +21,6 @@ interface StaleItem {
 
 const STALE_THRESHOLD_DAYS = 7
 const POLL_INTERVAL_MS = 5 * 60 * 1000 // refresh every 5 minutes
-const DISMISSED_KEY = "stale-items-dismissed"
 
 /** Humanize a type string for display */
 function typeLabel(type: string) {
@@ -55,19 +54,10 @@ function routeForType(type: string) {
 
 export function StaleItemsBell() {
   const [staleItems, setStaleItems] = useState<StaleItem[]>([])
-  const [dismissedSrs, setDismissedSrs] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem(DISMISSED_KEY)
-      return saved ? new Set(JSON.parse(saved)) : new Set()
-    } catch { return new Set() }
-  })
+  const [cleared, setCleared] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
-
-  const persistDismissed = useCallback((next: Set<string>) => {
-    setDismissedSrs(next)
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]))
-  }, [])
 
   const fetchStaleItems = useCallback(async () => {
     try {
@@ -79,23 +69,18 @@ export function StaleItemsBell() {
       const stale: StaleItem[] = []
 
       for (const item of items) {
-        // Only check actionable types
         if (!["roadmapItem", "customLabRequest"].includes(item.type)) continue
 
-        // Skip released / completed items
         const phase = (item.phase || "").toLowerCase()
         const status = (item.status || "").toLowerCase()
         if (phase === "released" || phase === "completed" || status === "completed" || status === "rejected") continue
 
-        // Find most recent activity log date
         let lastDate: Date | null = null
         if (Array.isArray(item.activityLog) && item.activityLog.length > 0) {
-          // activityLog is sorted newest-first
           const newest = item.activityLog[0]
           if (newest?.date) lastDate = new Date(newest.date)
         }
 
-        // Fall back to notes date pattern "YYYY/MM/DD" at the start of notes
         if (!lastDate && item.notes) {
           const match = item.notes.match(/^(\d{4}\/\d{2}\/\d{2})/)
           if (match) lastDate = new Date(match[1].replace(/\//g, "-"))
@@ -103,7 +88,7 @@ export function StaleItemsBell() {
 
         const daysSince = lastDate
           ? Math.floor((now - lastDate.getTime()) / (1000 * 60 * 60 * 24))
-          : 999 // no comment ever = definitely stale
+          : 999
 
         if (daysSince >= STALE_THRESHOLD_DAYS) {
           stale.push({
@@ -118,11 +103,11 @@ export function StaleItemsBell() {
         }
       }
 
-      // Sort: most stale first
       stale.sort((a, b) => b.daysSinceComment - a.daysSinceComment)
       setStaleItems(stale)
+      setCleared(false) // new data arrived, reset cleared state
     } catch {
-      // silently fail – don't break the header
+      // silently fail
     }
   }, [])
 
@@ -132,21 +117,17 @@ export function StaleItemsBell() {
     return () => clearInterval(id)
   }, [fetchStaleItems])
 
-  // Filter out dismissed items for display
-  const visibleItems = staleItems.filter(i => !dismissedSrs.has(`${i.type}-${i.sr}`))
-  const count = visibleItems.length
+  const count = cleared ? 0 : staleItems.length
 
-  const dismissItem = (item: StaleItem, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const next = new Set(dismissedSrs)
-    next.add(`${item.type}-${item.sr}`)
-    persistDismissed(next)
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    setCleared(false)
+    await fetchStaleItems()
+    setRefreshing(false)
   }
 
-  const clearAll = () => {
-    const next = new Set(dismissedSrs)
-    visibleItems.forEach(i => next.add(`${i.type}-${i.sr}`))
-    persistDismissed(next)
+  const handleClear = () => {
+    setCleared(true)
   }
 
   return (
@@ -156,11 +137,11 @@ export function StaleItemsBell() {
           variant="ghost"
           size="icon"
           className="relative h-9 w-9"
-          aria-label={`${count} stale items need attention`}
+          aria-label={`${count} items with no activity in 7+ days`}
         >
           <Bell className={`h-5 w-5 ${count > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
           {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
               {count > 99 ? "99+" : count}
             </span>
           )}
@@ -172,25 +153,38 @@ export function StaleItemsBell() {
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <span className="text-sm font-semibold">Stale Items</span>
+            <span className="text-sm font-semibold">No Activity (7+ days)</span>
             {count > 0 && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                 {count}
               </Badge>
             )}
           </div>
-          {count > 0 ? (
+          <span className="text-[10px] text-muted-foreground">Real-time</span>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 border-b px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-[11px] text-muted-foreground hover:text-foreground px-2"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {!cleared && staleItems.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1 text-[11px] text-muted-foreground hover:text-destructive px-2"
-              onClick={clearAll}
+              className="h-7 gap-1.5 text-[11px] text-muted-foreground hover:text-destructive px-2"
+              onClick={handleClear}
             >
               <Trash2 className="h-3 w-3" />
               Clear all
             </Button>
-          ) : (
-            <span className="text-[10px] text-muted-foreground">No comment in 7+ days</span>
           )}
         </div>
 
@@ -201,12 +195,12 @@ export function StaleItemsBell() {
             <p className="text-sm">All items are up to date</p>
           </div>
         ) : (
-          <div className="overflow-y-auto max-h-[360px] scrollbar-thin" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}>
+          <div className="overflow-y-auto max-h-[360px]" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}>
             <div className="divide-y">
-              {visibleItems.map((item) => (
+              {staleItems.map((item) => (
                 <div
                   key={`${item.type}-${item.sr}`}
-                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors cursor-pointer group"
+                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={() => {
                     setOpen(false)
                     navigate(`${routeForType(item.type)}?sr=${item.sr}`)
@@ -226,25 +220,13 @@ export function StaleItemsBell() {
                           {item.phase}
                         </span>
                       )}
-                      {item.status && !item.phase && (
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          {item.status}
-                        </span>
-                      )}
                     </div>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {item.lastCommentDate
-                        ? `Last comment: ${item.lastCommentDate} (${item.daysSinceComment}d ago)`
-                        : "No comments yet"}
+                        ? `Last activity: ${item.lastCommentDate} (${item.daysSinceComment}d ago)`
+                        : "No activity log yet"}
                     </p>
                   </div>
-                  <button
-                    className="mt-0.5 h-5 w-5 shrink-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
-                    onClick={(e) => dismissItem(item, e)}
-                    title="Dismiss"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               ))}
             </div>

@@ -555,7 +555,7 @@ async function requireAuth(req, res, next) {
     await withLock(async () => {
       const freshData = await readData();
       freshData.tokens = (freshData.tokens || []).filter((t) => !t.expiresAt || Number(t.expiresAt) > Date.now());
-      await writeData(freshData);
+      await writeData(freshData, { updateTimestamp: false });
     }, 'requireAuth-tokenCleanup');
   }
   
@@ -623,7 +623,7 @@ app.post('/api/login', async (req, res) => {
         if (user.password && String(user.password) === provided) {
           // update the user's password to hashed (already inside lock, data is fresh)
           data.users = (data.users || []).map((u) => (String(u.id) === String(user.id) ? { ...u, password: bcrypt.hashSync(provided, 8) } : u));
-          await writeData(data);
+          await writeData(data, { updateTimestamp: false });
           // Re-read for token push below since we just wrote
           const freshData = await readData();
           ok = true;
@@ -640,7 +640,7 @@ app.post('/api/login', async (req, res) => {
       const latestData = await readData();
       latestData.tokens = latestData.tokens || [];
       latestData.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
-      await writeData(latestData);
+      await writeData(latestData, { updateTimestamp: false });
       return { status: 200, body: { success: true, token, role: user.role || 'user' } };
     }, 'POST /api/login');
     
@@ -686,7 +686,7 @@ app.post('/api/validate-b2c-user', async (req, res) => {
           expiresAt,
           source: 'b2c' // Mark as B2C authenticated
         });
-        await writeData(data);
+        await writeData(data, { updateTimestamp: false });
         
         return { 
           status: 200,
@@ -757,7 +757,7 @@ app.post('/api/reset-password', async (req, res) => {
       const expiresAt = Date.now() + 1000 * 60 * 60 * 24 * 7;
       data.tokens = data.tokens || [];
       data.tokens.push({ token, userId: user.id, email: user.email, role: user.role || 'user', expiresAt });
-      await writeData(data);
+      await writeData(data, { updateTimestamp: false });
       return { status: 200, body: { success: true, token, role: user.role || 'user' } };
     }, 'POST /api/reset-password');
     
@@ -802,7 +802,7 @@ app.post('/api/users', requireAdmin, async (req, res) => {
       };
       users.push(newUser);
       data.users = users;
-      await writeData(data);
+      await writeData(data, { updateTimestamp: false });
       
       // Audit log
       await logAudit({
@@ -835,7 +835,7 @@ app.put('/api/users/:id', requireAdmin, async (req, res) => {
       delete body.mustReset;
       if (body.email) body.email = String(body.email).toLowerCase();
       data.users = (data.users || []).map((u) => (String(u.id) === id ? { ...u, ...body } : u));
-      await writeData(data);
+      await writeData(data, { updateTimestamp: false });
       const updated = (data.users || []).find(u => String(u.id) === id);
       
       // Audit log
@@ -868,7 +868,7 @@ app.post('/api/logout', requireAuth, async (req, res) => {
   await withLock(async () => {
     const data = await readData();
     data.tokens = (data.tokens || []).filter((t) => t.token !== token);
-    await writeData(data);
+    await writeData(data, { updateTimestamp: false });
   }, 'POST /api/logout');
   res.json({ success: true });
 });
@@ -880,7 +880,7 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
       const data = await readData();
       const found = (data.users || []).find(u => String(u.id) === id);
       data.users = (data.users || []).filter((u) => String(u.id) !== id);
-      await writeData(data);
+      await writeData(data, { updateTimestamp: false });
       return found;
     }, 'DELETE /api/users');
     

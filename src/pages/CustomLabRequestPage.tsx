@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus, Search } from "lucide-react"
+import { Edit, Trash2, Plus, Download, Clock, History, MessageSquarePlus, Search, AlertTriangle } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
@@ -25,6 +25,8 @@ interface ActivityLogEntry {
   addedBy?: string;
 }
 
+type CustomLabPhase = 'Under assessment' | 'In-Development' | 'Testing' | 'Release-Ready' | 'Released' | 'Backlog' | 'On-Hold' | 'Blocked' | string;
+
 interface CustomLabRequest {
   id?: string;
   sr: number;
@@ -32,11 +34,46 @@ interface CustomLabRequest {
   eventDate?: string;
   trackTitle: string;
   sponsor: string;
+  phase?: CustomLabPhase;
   frequency: 'One Time' | 'Recurring';
   moveToRegularCatalog: 'Yes' | 'No' | 'TBD';
   holLabRequested: 'Yes' | 'No';
   notes?: string;
   activityLog?: ActivityLogEntry[];
+}
+
+function phaseBadge(phase: string) {
+  const cls: Record<string, string> = {
+    'Under assessment': 'bg-amber-500 hover:bg-amber-600',
+    'In-Development': 'bg-blue-500 hover:bg-blue-600',
+    'Testing': 'bg-cyan-500 hover:bg-cyan-600',
+    'Release-Ready': 'bg-green-500 hover:bg-green-600',
+    'Released': 'bg-purple-500 hover:bg-purple-600',
+    'Backlog': 'bg-gray-500 hover:bg-gray-600 text-white',
+    'On-Hold': 'bg-orange-600 hover:bg-orange-700',
+    'Blocked': 'bg-red-600 hover:bg-red-700',
+  }
+  return cls[phase] || 'bg-gray-400 hover:bg-gray-500'
+}
+
+const STALE_DAYS = 7;
+/** Check if an item has had no activity log update in STALE_DAYS */
+function isItemStale(item: CustomLabRequest): boolean {
+  const phase = (item.phase || '').toLowerCase();
+  if (phase === 'released' || phase === 'completed') return false;
+  let lastDate: Date | null = null;
+  if (Array.isArray(item.activityLog) && item.activityLog.length > 0) {
+    const newest = item.activityLog[0];
+    if (newest?.date) lastDate = new Date(newest.date);
+  }
+  if (!lastDate && item.notes) {
+    const m = item.notes.match(/^(\d{4}\/\d{2}\/\d{2})/);
+    if (m) lastDate = new Date(m[1].replace(/\//g, '-'));
+  }
+  const daysSince = lastDate
+    ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 999;
+  return daysSince >= STALE_DAYS;
 }
 
 export default function CustomLabRequestPage() {
@@ -50,6 +87,7 @@ export default function CustomLabRequestPage() {
     eventDate: "",
     trackTitle: "",
     sponsor: "",
+    phase: "Under assessment",
     frequency: "One Time",
     moveToRegularCatalog: "TBD",
     holLabRequested: "No",
@@ -79,6 +117,7 @@ export default function CustomLabRequestPage() {
       'Event Date': item.eventDate || '',
       'Track Title': item.trackTitle || '',
       'Sponsor': item.sponsor || '',
+      'Phase': item.phase || '',
       'HOL Lab Requested': item.holLabRequested || '',
       'Frequency': item.frequency || '',
       'Move to Regular Catalog': item.moveToRegularCatalog || '',
@@ -95,6 +134,7 @@ export default function CustomLabRequestPage() {
       { wch: 12 },  // Event Date
       { wch: 50 },  // Track Title
       { wch: 30 },  // Sponsor
+      { wch: 18 },  // Phase
       { wch: 18 },  // HOL Lab Requested
       { wch: 12 },  // Frequency
       { wch: 22 },  // Move to Regular Catalog
@@ -131,6 +171,7 @@ export default function CustomLabRequestPage() {
           eventDate: r.eventDate || '',
           trackTitle: (r.trackTitle || r.sponsorDetails || '').trim(),
           sponsor: (r.sponsor || '').trim(),
+          phase: r.phase || '',
           frequency: r.frequency || 'One Time',
           moveToRegularCatalog: r.moveToRegularCatalog || 'TBD',
           holLabRequested: r.holLabRequested || 'No',
@@ -309,6 +350,7 @@ export default function CustomLabRequestPage() {
           <h1 className="text-3xl font-bold text-foreground">Custom Lab Requests</h1>
           <p className="text-muted-foreground">
             Track custom lab requests and their status
+            {(() => { const staleCount = customLabData.filter(isItemStale).length; return staleCount > 0 ? (<span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium"><AlertTriangle className="h-3.5 w-3.5" />{staleCount} stale</span>) : null; })()}
           </p>
         </div>
         
@@ -323,8 +365,8 @@ export default function CustomLabRequestPage() {
           </Button>
           {role === 'admin' && (
             <Button size="sm" onClick={() => { 
-              setEditingCustomLab({ sr: 0, eventId: '', trackTitle: '', sponsor: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' }); 
-              setCustomLabForm({ sr: 0, eventId: '', trackTitle: '', sponsor: '', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' });
+              setEditingCustomLab({ sr: 0, eventId: '', trackTitle: '', sponsor: '', phase: 'Under assessment', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' }); 
+              setCustomLabForm({ sr: 0, eventId: '', trackTitle: '', sponsor: '', phase: 'Under assessment', frequency: 'One Time', moveToRegularCatalog: 'TBD', holLabRequested: 'No', notes: '' });
               setIsCustomLabDialogOpen(true); 
             }}>
               <Plus className="h-4 w-4" />
@@ -368,6 +410,7 @@ export default function CustomLabRequestPage() {
                     <TableHead className="w-32">Event Date</TableHead>
                     <TableHead className="min-w-[200px]">Track Title</TableHead>
                     <TableHead className="w-48">Sponsor</TableHead>
+                    <TableHead className="w-36">Phase</TableHead>
                     <TableHead className="w-32">HOL Lab Requested</TableHead>
                     <TableHead className="w-32">Frequency</TableHead>
                     <TableHead className="w-48">Move to Regular Catalog</TableHead>
@@ -378,7 +421,7 @@ export default function CustomLabRequestPage() {
                   {filteredCustomLabData.map((item, index) => (
                     <TableRow 
                       key={`${item.id || item.sr}-${index}`}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className={`cursor-pointer hover:bg-muted/50 ${isItemStale(item) ? 'border-l-4 border-l-amber-400 bg-amber-50/40 dark:bg-amber-900/10' : ''}`}
                       onClick={() => {
                         setSelectedItem(item);
                         setIsNotesDialogOpen(true);
@@ -399,6 +442,15 @@ export default function CustomLabRequestPage() {
                               : "bg-blue-500/10 text-blue-500 border-blue-500 whitespace-nowrap"
                           }>
                             {item.sponsor}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.phase ? (
+                          <Badge variant="default" className={phaseBadge(item.phase)}>
+                            {item.phase}
                           </Badge>
                         ) : (
                           <span className="text-gray-500">-</span>
@@ -500,6 +552,22 @@ export default function CustomLabRequestPage() {
                     <SelectItem value="Program Sponsored - Security">Program Sponsored - Security</SelectItem>
                     <SelectItem value="Spektra Sponsored">Spektra Sponsored</SelectItem>
                     <SelectItem value="Third Party">Third Party</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cl-phase" className="text-right">Phase</Label>
+                <Select value={customLabForm.phase || 'Under assessment'} onValueChange={(value) => setCustomLabForm({ ...customLabForm, phase: value })}>
+                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select phase" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Under assessment">Under assessment</SelectItem>
+                    <SelectItem value="In-Development">In-Development</SelectItem>
+                    <SelectItem value="Testing">Testing</SelectItem>
+                    <SelectItem value="Release-Ready">Release-Ready</SelectItem>
+                    <SelectItem value="Released">Released</SelectItem>
+                    <SelectItem value="Backlog">Backlog</SelectItem>
+                    <SelectItem value="On-Hold">On-Hold</SelectItem>
+                    <SelectItem value="Blocked">Blocked</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -661,6 +729,14 @@ export default function CustomLabRequestPage() {
                         : "bg-blue-500/10 text-blue-500 border-blue-500"
                     }>
                       {selectedItem.sponsor}
+                    </Badge>
+                  </div>
+                )}
+                {selectedItem?.phase && (
+                  <div className="flex items-center gap-2">
+                    <Label className="font-semibold">Phase:</Label>
+                    <Badge variant="default" className={phaseBadge(selectedItem.phase)}>
+                      {selectedItem.phase}
                     </Badge>
                   </div>
                 )}

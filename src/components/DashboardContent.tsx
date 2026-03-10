@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ExternalLink,
   Layers,
+  AlertTriangle,
 } from "lucide-react"
 import api from '@/lib/api'
 import metricsService from '@/lib/services/metricsService'
@@ -111,6 +112,9 @@ export function DashboardContent() {
   })
   const [recentBacklogItems, setRecentBacklogItems] = useState<any[]>([])
 
+  // Stale counts
+  const [staleCounts, setStaleCounts] = useState({ roadmap: 0, customLab: 0 })
+
   // Localized tracks
   const [localizedCounts, setLocalizedCounts] = useState<{ total: number; byLanguage: { name: string; count: number }[] }>({
     total: 0, byLanguage: []
@@ -180,6 +184,27 @@ export function DashboardContent() {
         setCustomLabStats({ total: customLabs.length, oneTime, recurring, holRequested, moveToCatalog })
         setRecentCustomLabs(customLabs.slice(0, 5))
 
+        // === STALE COUNTS ===
+        const STALE_DAYS = 7
+        const computeStale = (items: any[]) => {
+          return items.filter((item: any) => {
+            const phase = (item.phase || '').toLowerCase()
+            if (phase === 'released' || phase === 'completed') return false
+            let lastDate: Date | null = null
+            if (Array.isArray(item.activityLog) && item.activityLog.length > 0) {
+              const newest = item.activityLog[0]
+              if (newest?.date) lastDate = new Date(newest.date)
+            }
+            if (!lastDate && item.notes) {
+              const m = item.notes.match(/^(\d{4}\/\d{2}\/\d{2})/)
+              if (m) lastDate = new Date(m[1].replace(/\//g, '-'))
+            }
+            const daysSince = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : 999
+            return daysSince >= STALE_DAYS
+          }).length
+        }
+        setStaleCounts({ roadmap: computeStale(roadmapItemsList), customLab: computeStale(customLabs) })
+
         // === LABS BACKLOG ===
         const backlogItems = catalog.filter((item: any) => item.type === 'labsBacklog')
         const requestTypeCounts: Record<string, number> = {}
@@ -230,7 +255,7 @@ export function DashboardContent() {
           if (lastUpdatedResponse.data?.lastUpdated) {
             serverLastUpdated = new Date(lastUpdatedResponse.data.lastUpdated).getTime()
           }
-        } catch { serverLastUpdated = Date.now() }
+        } catch { serverLastUpdated = null }
 
         let next = { activeParticipants, completedPracticeLabs, tracksHealthPercentage, lastUpdated: serverLastUpdated }
         try {
@@ -371,11 +396,13 @@ export function DashboardContent() {
                 <span className="text-sm font-medium">Last Updated</span>
               </div>
               <div className="text-slate-200 text-base font-mono bg-black/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10">
-                {new Date(liveMetrics.lastUpdated || Date.now()).toLocaleDateString('en-US', {
-                  month: 'short', day: 'numeric', year: 'numeric'
-                })} • {new Date(liveMetrics.lastUpdated || Date.now()).toLocaleTimeString('en-US', {
-                  hour: '2-digit', minute: '2-digit'
-                })}
+                {liveMetrics.lastUpdated
+                  ? `${new Date(liveMetrics.lastUpdated).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric'
+                    })} • ${new Date(liveMetrics.lastUpdated).toLocaleTimeString('en-US', {
+                      hour: '2-digit', minute: '2-digit'
+                    })}`
+                  : '—'}
               </div>
             </div>
           </div>

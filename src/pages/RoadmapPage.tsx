@@ -111,6 +111,26 @@ const parseApprovalMonth = (approvalDate: string | undefined): string => {
   return '';
 };
 
+const STALE_DAYS = 7;
+/** Check if an item has had no activity log update in STALE_DAYS */
+function isItemStale(item: RoadmapItem): boolean {
+  const phase = (item.phase || '').toLowerCase();
+  if (phase === 'released' || phase === 'completed') return false;
+  let lastDate: Date | null = null;
+  if (Array.isArray(item.activityLog) && item.activityLog.length > 0) {
+    const newest = item.activityLog[0];
+    if (newest?.date) lastDate = new Date(newest.date);
+  }
+  if (!lastDate && item.notes) {
+    const m = item.notes.match(/^(\d{4}\/\d{2}\/\d{2})/);
+    if (m) lastDate = new Date(m[1].replace(/\//g, '-'));
+  }
+  const daysSince = lastDate
+    ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 999;
+  return daysSince >= STALE_DAYS;
+}
+
 export default function RoadmapPage() {
   const [searchParams] = useSearchParams();
   const initialPhaseFilter = searchParams.get('phase') || 'all';
@@ -504,6 +524,7 @@ export default function RoadmapPage() {
           <h1 className="text-3xl font-bold text-foreground">Ongoing Developments & Release Roadmap</h1>
           <p className="text-muted-foreground">
             Track the progress of ongoing developments and upcoming releases
+            {(() => { const staleCount = roadmapData.filter(isItemStale).length; return staleCount > 0 ? (<span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium"><AlertTriangle className="h-3.5 w-3.5" />{staleCount} stale</span>) : null; })()}
           </p>
         </div>
         <div className="flex justify-end">
@@ -627,7 +648,7 @@ export default function RoadmapPage() {
                     {filteredRoadmapData.map((track) => (
                       <TableRow 
                         key={track.id || track.sr}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className={`cursor-pointer hover:bg-muted/50 ${isItemStale(track) ? 'border-l-4 border-l-amber-400 bg-amber-50/40 dark:bg-amber-900/10' : ''}`}
                         onClick={() => {
                           setSelectedItem(track);
                           setIsNotesDialogOpen(true);
