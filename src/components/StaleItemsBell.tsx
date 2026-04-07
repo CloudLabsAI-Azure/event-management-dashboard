@@ -69,7 +69,7 @@ export function StaleItemsBell() {
       const stale: StaleItem[] = []
 
       for (const item of items) {
-        if (!["roadmapItem", "customLabRequest"].includes(item.type)) continue
+        if (item.type !== "roadmapItem") continue
 
         const phase = (item.phase || "").toLowerCase()
         const status = (item.status || "").toLowerCase()
