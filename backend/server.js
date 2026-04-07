@@ -1688,9 +1688,24 @@ app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
       return res.status(400).json({ error: 'Validation failed', message: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
     }
   } else if (resource === 'catalog' || resource === 'tracks') {
-    const { trackName, trackTitle } = req.body || {};
-    if (!trackName && !trackTitle) {
-      return res.status(400).json({ error: 'Validation failed', message: 'Track name is required' });
+    const itemType = req.body?.type;
+    // Type-specific validation: pdfCatalog needs title, generalAnnouncement needs title+message, others need trackName
+    if (itemType === 'pdfCatalog') {
+      if (!req.body.title || String(req.body.title).trim() === '') {
+        return res.status(400).json({ error: 'Validation failed', message: 'Title is required' });
+      }
+    } else if (itemType === 'generalAnnouncement') {
+      if (!req.body.title || String(req.body.title).trim() === '') {
+        return res.status(400).json({ error: 'Validation failed', message: 'Title is required' });
+      }
+      if (!req.body.message || String(req.body.message).trim() === '') {
+        return res.status(400).json({ error: 'Validation failed', message: 'Message is required' });
+      }
+    } else {
+      const { trackName, trackTitle } = req.body || {};
+      if (!trackName && !trackTitle) {
+        return res.status(400).json({ error: 'Validation failed', message: 'Track name is required' });
+      }
     }
     // Sanitize date fields
     const dateFields = ['lastTestDate', 'eventDate', 'sessionDate', 'approvalDate'];
