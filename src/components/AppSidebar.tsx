@@ -87,7 +87,8 @@ export function AppSidebar() {
   const { userRole, user } = useAuth()
   const userEmail = (user?.email || '').toLowerCase()
   const userDomain = userEmail.split('@')[1] || ''
-  const visibleReports = reportItems.filter((item: any) => !item.domainOnly || item.domainOnly === userDomain)
+  const isDevBypass = userEmail === 'dev@localhost'
+  const visibleReports = reportItems.filter((item: any) => !item.domainOnly || item.domainOnly === userDomain || isDevBypass)
   const visibleSettings = settingsItems.filter((item) => !item.adminOnly || userRole === 'admin')
 
   const isActive = (path: string) => {

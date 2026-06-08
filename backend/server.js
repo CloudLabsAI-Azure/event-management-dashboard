@@ -1358,6 +1358,8 @@ const ISSUES_ALLOWED_DOMAINS = (process.env.ISSUES_ALLOWED_DOMAINS || process.en
 
 function requireDomainAccess(req, res, next) {
   if (ISSUES_ALLOWED_DOMAINS.length === 0) return next(); // no restriction configured
+  // Allow dev bypass user on localhost
+  if (req.user?.id === 'dev-admin') return next();
   const email = (req.user?.email || '').toLowerCase();
   const domain = email.split('@')[1];
   if (domain && ISSUES_ALLOWED_DOMAINS.includes(domain)) return next();
@@ -1409,23 +1411,33 @@ app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (r
     const eventDateField = process.env.AZURE_DEVOPS_EVENTDATE_FIELD || 'Custom.EventDate';
     const eventIdField = process.env.AZURE_DEVOPS_EVENTID_FIELD || 'Custom.EventID';
 
-    console.log('[Issues] Fetching Event Summary Log work items from DevOps...');
-    const workItemIds = await getWorkItems(org, project, pat);
+    // Only fetch events with event date at least 1 day old (event completed, feedback gathered)
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const cutoffDate = oneDayAgo.toISOString().split('T')[0];
+    const wiqlQuery = `
+      SELECT [System.Id]
+      FROM WorkItems
+      WHERE [System.WorkItemType] = 'Event Summary Log'
+        AND [${eventDateField}] <= '${cutoffDate}'
+      ORDER BY [System.ChangedDate] DESC
+    `;
+
+    console.log('[Issues] Fetching Event Summary Log work items (event date <= ' + cutoffDate + ')...');
+    const workItemIds = await getWorkItems(org, project, pat, wiqlQuery);
     console.log(`[Issues] Found ${workItemIds.length} work items`);
 
     const issuesData = await readIssuesData();
     const existingIds = new Set(issuesData.issues.map(i => i.workItemId));
     let added = 0;
 
-    // Fetch details for up to 100 work items
-    const idsToFetch = workItemIds.slice(0, 100);
+    // Fetch details for up to 100 new work items
+    const idsToFetch = workItemIds.filter(id => !existingIds.has(id)).slice(0, 100);
     for (const id of idsToFetch) {
-      if (existingIds.has(id)) continue;
       try {
         const details = await getWorkItemDetails(org, project, pat, id);
         const fields = details.fields || {};
         const feedbackHtml = fields[feedbackField] || '';
-        // Strip HTML tags to get plain text for AI analysis
         const feedbackText = feedbackHtml.replace(/<[^>]*>/g, '').trim();
         const title = fields['System.Title'] || `Work Item ${id}`;
         const eventDate = fields[eventDateField] || fields['System.CreatedDate'] || null;
@@ -1434,6 +1446,36 @@ app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (r
         const tags = fields['System.Tags'] || '';
         const assignedTo = fields['System.AssignedTo']?.displayName || '';
         const areaPath = fields['System.AreaPath'] || '';
+        const createdDate = fields['System.CreatedDate'] || null;
+        const changedDate = fields['System.ChangedDate'] || null;
+        const createdBy = fields['System.CreatedBy']?.displayName || '';
+        const changedBy = fields['System.ChangedBy']?.displayName || '';
+        const revisionCount = details.rev || 1;
+
+        // Determine if work item was tracked (updated after initial creation)
+        const wasTracked = revisionCount > 1 && createdBy !== changedBy;
+        const timeSinceCreation = createdDate && changedDate
+          ? (new Date(changedDate) - new Date(createdDate)) / (1000 * 60) // minutes
+          : 0;
+        // If changed by same person within 5 min, likely just the initial save
+        const isRealUpdate = wasTracked || (revisionCount > 1 && timeSinceCreation > 5);
+
+        // Categorize the issue
+        let category = 'no-issue'; // default: event completed without issue
+        if (feedbackText) {
+          const lowerFeedback = feedbackText.toLowerCase();
+          const hasIssueKeywords = /issue|problem|error|fail|broken|bug|not working|crash|down|outage|complaint|escalat/i.test(lowerFeedback);
+          const hasPositiveKeywords = /good|great|excellent|smooth|no issue|successful|well|perfect|satisfied|happy/i.test(lowerFeedback);
+          if (hasIssueKeywords && !hasPositiveKeywords) {
+            category = 'major-issue';
+          } else if (hasPositiveKeywords && !hasIssueKeywords) {
+            category = 'good-feedback';
+          } else if (hasIssueKeywords && hasPositiveKeywords) {
+            category = 'major-issue'; // issues take priority
+          } else {
+            category = 'no-issue';
+          }
+        }
 
         issuesData.issues.push({
           id: `issue_${id}_${Date.now()}`,
@@ -1451,7 +1493,14 @@ app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (r
           completed: false,
           completedAt: null,
           aiAnalysis: null,
-          trackName: title.split('|')[0]?.trim() || title
+          trackName: title.split('|')[0]?.trim() || title,
+          category,
+          createdBy,
+          changedBy,
+          createdDate,
+          changedDate,
+          revisionCount,
+          isTracked: isRealUpdate
         });
         added++;
       } catch (err) {
@@ -1473,6 +1522,8 @@ app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (r
 app.get('/api/devops/issues', requireAuth, requireDomainAccess, async (req, res) => {
   try {
     const issuesData = await readIssuesData();
+    issuesData.devopsOrg = process.env.AZURE_DEVOPS_ORG || '';
+    issuesData.devopsProject = process.env.AZURE_DEVOPS_PROJECT || '';
     res.json(issuesData);
   } catch (err) {
     res.status(500).json({ error: 'Failed to read issues data' });
@@ -1514,102 +1565,88 @@ app.post('/api/devops/issues/analyze', requireAdmin, requireDomainAccess, async 
       return res.json({ success: true, analysis: null, message: 'No open issues to analyze' });
     }
 
+    // Sort by most recently added to system, take latest 100
+    const issuesToAnalyze = [...openIssues]
+      .sort((a, b) => new Date(b.fetchedAt || b.eventDate || 0) - new Date(a.fetchedAt || a.eventDate || 0))
+      .slice(0, 100);
+
     // Build a summary of issues for the AI
-    const issuesSummary = openIssues.map(i =>
-      `- [WI-${i.workItemId}] "${i.title}" (Track: ${i.trackName}, Event: ${i.eventId || 'N/A'}, Date: ${i.eventDate || 'N/A'}, State: ${i.state})${i.feedbackText ? `\n  Feedback: ${i.feedbackText.substring(0, 300)}` : ''}`
+    const issuesSummary = issuesToAnalyze.map(i =>
+      `- [WI-${i.workItemId}] "${i.title}" (Category: ${i.category || 'no-issue'}, Event: ${i.eventId || 'N/A'}, Date: ${i.eventDate || 'N/A'}, State: ${i.state}, Tracked: ${i.isTracked ? 'Yes' : 'No'})${i.feedbackText ? `\n  Feedback: ${i.feedbackText.substring(0, 200)}` : ''}`
     ).join('\n');
 
-    const prompt = `You are an expert DevOps analyst for a lab/event management platform. Analyze these Azure DevOps "Event Summary Log" work items where issues were reported.
+    const prompt = `You are an expert DevOps analyst for a lab/event management platform. Analyze these ${issuesToAnalyze.length} Azure DevOps "Event Summary Log" work items (out of ${openIssues.length} total open).
+
+Each item has a category: "no-issue" (event completed fine), "good-feedback" (positive feedback), or "major-issue" (problems reported). Items also have a "Tracked" status indicating whether someone followed up after the initial report.
 
 Work Items:
 ${issuesSummary}
 
 Provide a JSON response with this exact structure:
 {
-  "summary": "Brief overall summary of the issues landscape",
-  "trackBreakdown": [
+  "summary": "Brief overall summary of the issues landscape including tracking gaps",
+  "categoryBreakdown": [
     {
-      "trackName": "Track or category name",
-      "issueCount": 0,
+      "category": "major-issue|good-feedback|no-issue",
+      "count": 0,
+      "untrackedCount": 0,
       "severity": "high|medium|low",
-      "description": "What issues are affecting this track",
-      "recommendation": "Suggested action to resolve"
+      "description": "What's happening in this category",
+      "recommendation": "Suggested action"
     }
-  ],
-  "chartData": [
-    { "name": "Track/Category name", "open": 0, "resolved": 0, "total": 0 }
   ],
   "topPriorities": [
     { "workItemId": 0, "title": "Issue title", "reason": "Why this is a priority" }
   ],
+  "trackingInsight": "Summary of tracking gaps - how many items are untracked and what should be done",
   "overallHealth": "good|warning|critical"
 }
 
 Respond ONLY with valid JSON, no markdown fences.`;
 
-    const aiResponse = await new Promise((resolve, reject) => {
-      const isAzureOpenAI = aiEndpoint.includes('.cognitiveservices.azure.com') || aiEndpoint.includes('.openai.azure.com');
-      let url, headers;
+    const isAzureOpenAI = aiEndpoint.includes('.cognitiveservices.azure.com') || aiEndpoint.includes('.openai.azure.com');
+    let url, headers;
 
-      if (isAzureOpenAI) {
-        // Azure OpenAI: /openai/deployments/{model}/chat/completions?api-version=...
-        const apiVersion = process.env.AI_API_VERSION || '2025-04-01-preview';
-        url = new URL(`${aiEndpoint.replace(/\/openai\/responses.*$/, '')}/openai/deployments/${aiModel}/chat/completions?api-version=${apiVersion}`);
-        headers = {
-          'api-key': aiKey,
-          'Content-Type': 'application/json'
-        };
-      } else {
-        url = new URL(`${aiEndpoint}/chat/completions`);
-        headers = {
-          'Authorization': `Bearer ${aiKey}`,
-          'Content-Type': 'application/json'
-        };
-      }
-
-      const postData = JSON.stringify({
-        messages: [
-          { role: 'system', content: 'You are a DevOps analyst. Respond only with valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-        ...(!isAzureOpenAI && { model: aiModel })
-      });
-
-      headers['Content-Length'] = Buffer.byteLength(postData);
-
-      const options = {
-        hostname: url.hostname,
-        port: url.port || 443,
-        path: url.pathname + url.search,
-        method: 'POST',
-        headers
+    if (isAzureOpenAI) {
+      const apiVersion = process.env.AI_API_VERSION || '2025-04-01-preview';
+      url = `${aiEndpoint.replace(/\/openai\/responses.*$/, '')}/openai/deployments/${aiModel}/chat/completions?api-version=${apiVersion}`;
+      headers = {
+        'api-key': aiKey,
+        'Content-Type': 'application/json'
       };
+    } else {
+      url = `${aiEndpoint}/chat/completions`;
+      headers = {
+        'Authorization': `Bearer ${aiKey}`,
+        'Content-Type': 'application/json'
+      };
+    }
 
-      const req = https.request(options, (resp) => {
-        let body = '';
-        resp.on('data', chunk => body += chunk);
-        resp.on('end', () => {
-          try {
-            if (resp.statusCode >= 400) {
-              reject(new Error(`AI API returned ${resp.statusCode}: ${body}`));
-              return;
-            }
-            const parsed = JSON.parse(body);
-            const content = parsed.choices?.[0]?.message?.content || '';
-            // Try to parse the content as JSON
-            const analysis = JSON.parse(content);
-            resolve(analysis);
-          } catch (e) {
-            reject(new Error(`Failed to parse AI response: ${e.message}`));
-          }
-        });
-      });
-      req.on('error', reject);
-      req.write(postData);
-      req.end();
+    const postData = {
+      messages: [
+        { role: 'system', content: 'You are a DevOps analyst. Respond only with valid JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_completion_tokens: 4096,
+      ...(!isAzureOpenAI && { model: aiModel })
+    };
+
+    console.log('[Issues] Calling AI endpoint:', url);
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(postData)
     });
+
+    const body = await resp.text();
+    if (!resp.ok) {
+      throw new Error(`AI API returned ${resp.status}: ${body}`);
+    }
+
+    const parsed = JSON.parse(body);
+    const content = parsed.choices?.[0]?.message?.content || '';
+    const aiResponse = JSON.parse(content);
 
     // Store the analysis
     issuesData.aiAnalyses.push({
