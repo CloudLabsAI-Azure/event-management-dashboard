@@ -16,12 +16,15 @@ function parseContainerUrl(url) {
 
 const { baseUrl, sasToken } = parseContainerUrl(BLOB_CONTAINER_URL);
 
-// Create BlobServiceClient for audit.json
-const blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
-const containerName = baseUrl.split('/').pop();
-const containerClient = blobServiceClient.getContainerClient(containerName);
-const auditBlobClient = containerClient.getBlobClient(AUDIT_BLOB_NAME);
-const auditBlockBlobClient = auditBlobClient.getBlockBlobClient();
+// Only initialize blob clients if a valid URL is configured
+let blobServiceClient, containerClient, auditBlobClient, auditBlockBlobClient, containerName;
+if (baseUrl) {
+  blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
+  containerName = baseUrl.split('/').pop();
+  containerClient = blobServiceClient.getContainerClient(containerName);
+  auditBlobClient = containerClient.getBlobClient(AUDIT_BLOB_NAME);
+  auditBlockBlobClient = auditBlobClient.getBlockBlobClient();
+}
 
 /**
  * Helper function to convert stream to buffer

@@ -20,8 +20,8 @@ import bcrypt from 'bcryptjs';
 import https from 'https';
 
 // Dynamic import for modules that need env vars
-const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError } = await import('./blobStorageService.js');
-const { processEventSummaryLogs, downloadImage } = await import('./azureDevOpsService.js');
+const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError, readJsonBlob, writeJsonBlob } = await import('./blobStorageService.js');
+const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
@@ -1346,6 +1346,288 @@ app.post('/api/devops/fix-titles', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('❌ Error fixing DevOps titles:', err.message);
     res.status(500).json({ error: 'Failed to fix titles', details: err.message });
+  }
+});
+
+// =====================
+// DevOps Issues Tracker — separate data file
+// =====================
+const ISSUES_DATA_PATH = path.join(__dirname, 'issues-data.json');
+const DEVOPS_BLOB_NAME = 'devops.json';
+const ISSUES_ALLOWED_DOMAINS = (process.env.ISSUES_ALLOWED_DOMAINS || process.env.ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+
+function requireDomainAccess(req, res, next) {
+  if (ISSUES_ALLOWED_DOMAINS.length === 0) return next(); // no restriction configured
+  const email = (req.user?.email || '').toLowerCase();
+  const domain = email.split('@')[1];
+  if (domain && ISSUES_ALLOWED_DOMAINS.includes(domain)) return next();
+  return res.status(403).json({ error: 'Access restricted to authorized domains' });
+}
+
+const DEFAULT_ISSUES_DATA = { issues: [], lastFetched: null, aiAnalyses: [] };
+
+async function readIssuesData() {
+  if (STORAGE_MODE === 'blob') {
+    try {
+      const { data } = await readJsonBlob(DEVOPS_BLOB_NAME);
+      return data || { ...DEFAULT_ISSUES_DATA };
+    } catch (e) {
+      console.error('Error reading devops.json from blob:', e.message);
+      return { ...DEFAULT_ISSUES_DATA };
+    }
+  }
+  // local fallback
+  try {
+    if (fs.existsSync(ISSUES_DATA_PATH)) {
+      return JSON.parse(fs.readFileSync(ISSUES_DATA_PATH, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Error reading issues-data.json:', e.message);
+  }
+  return { ...DEFAULT_ISSUES_DATA };
+}
+
+async function writeIssuesData(data) {
+  if (STORAGE_MODE === 'blob') {
+    await writeJsonBlob(DEVOPS_BLOB_NAME, data);
+    return;
+  }
+  fs.writeFileSync(ISSUES_DATA_PATH, JSON.stringify(data, null, 2));
+}
+
+// Fetch work items from DevOps and store as issues
+app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (req, res) => {
+  try {
+    const org = process.env.AZURE_DEVOPS_ORG;
+    const project = process.env.AZURE_DEVOPS_PROJECT;
+    const pat = process.env.AZURE_DEVOPS_PAT;
+    if (!org || !project || !pat) {
+      return res.status(400).json({ error: 'DevOps configuration missing (AZURE_DEVOPS_ORG, AZURE_DEVOPS_PROJECT, AZURE_DEVOPS_PAT)' });
+    }
+
+    const feedbackField = process.env.AZURE_DEVOPS_FEEDBACK_FIELD || 'Custom.Feedback';
+    const eventDateField = process.env.AZURE_DEVOPS_EVENTDATE_FIELD || 'Custom.EventDate';
+    const eventIdField = process.env.AZURE_DEVOPS_EVENTID_FIELD || 'Custom.EventID';
+
+    console.log('[Issues] Fetching Event Summary Log work items from DevOps...');
+    const workItemIds = await getWorkItems(org, project, pat);
+    console.log(`[Issues] Found ${workItemIds.length} work items`);
+
+    const issuesData = await readIssuesData();
+    const existingIds = new Set(issuesData.issues.map(i => i.workItemId));
+    let added = 0;
+
+    // Fetch details for up to 100 work items
+    const idsToFetch = workItemIds.slice(0, 100);
+    for (const id of idsToFetch) {
+      if (existingIds.has(id)) continue;
+      try {
+        const details = await getWorkItemDetails(org, project, pat, id);
+        const fields = details.fields || {};
+        const feedbackHtml = fields[feedbackField] || '';
+        // Strip HTML tags to get plain text for AI analysis
+        const feedbackText = feedbackHtml.replace(/<[^>]*>/g, '').trim();
+        const title = fields['System.Title'] || `Work Item ${id}`;
+        const eventDate = fields[eventDateField] || fields['System.CreatedDate'] || null;
+        const eventId = fields[eventIdField] || '';
+        const state = fields['System.State'] || 'Unknown';
+        const tags = fields['System.Tags'] || '';
+        const assignedTo = fields['System.AssignedTo']?.displayName || '';
+        const areaPath = fields['System.AreaPath'] || '';
+
+        issuesData.issues.push({
+          id: `issue_${id}_${Date.now()}`,
+          workItemId: id,
+          title,
+          eventId,
+          eventDate,
+          state,
+          tags,
+          assignedTo,
+          areaPath,
+          feedbackText: feedbackText.substring(0, 2000),
+          feedbackHtml: feedbackHtml.substring(0, 5000),
+          fetchedAt: new Date().toISOString(),
+          completed: false,
+          completedAt: null,
+          aiAnalysis: null,
+          trackName: title.split('|')[0]?.trim() || title
+        });
+        added++;
+      } catch (err) {
+        console.error(`[Issues] Failed to fetch WI ${id}:`, err.message);
+      }
+    }
+
+    issuesData.lastFetched = new Date().toISOString();
+    await writeIssuesData(issuesData);
+
+    res.json({ success: true, total: issuesData.issues.length, added, message: `Fetched ${added} new issues` });
+  } catch (err) {
+    console.error('[Issues] Fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch issues', details: err.message });
+  }
+});
+
+// Get all issues
+app.get('/api/devops/issues', requireAuth, requireDomainAccess, async (req, res) => {
+  try {
+    const issuesData = await readIssuesData();
+    res.json(issuesData);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read issues data' });
+  }
+});
+
+// Mark issue as completed / uncompleted
+app.patch('/api/devops/issues/:id/complete', requireAuth, requireDomainAccess, async (req, res) => {
+  try {
+    const issuesData = await readIssuesData();
+    const issue = issuesData.issues.find(i => i.id === req.params.id);
+    if (!issue) return res.status(404).json({ error: 'Issue not found' });
+
+    issue.completed = !issue.completed;
+    issue.completedAt = issue.completed ? new Date().toISOString() : null;
+    await writeIssuesData(issuesData);
+
+    res.json({ success: true, issue });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update issue' });
+  }
+});
+
+// AI analysis of issues using GitHub Models (GPT-4o)
+app.post('/api/devops/issues/analyze', requireAdmin, requireDomainAccess, async (req, res) => {
+  try {
+    const aiEndpoint = process.env.AI_ENDPOINT || 'https://models.inference.ai.azure.com';
+    const aiKey = process.env.AI_API_KEY || process.env.GITHUB_TOKEN;
+    const aiModel = process.env.AI_MODEL || 'gpt-4o';
+
+    if (!aiKey) {
+      return res.status(400).json({ error: 'AI_API_KEY or GITHUB_TOKEN environment variable is required for AI analysis' });
+    }
+
+    const issuesData = await readIssuesData();
+    const openIssues = issuesData.issues.filter(i => !i.completed);
+
+    if (openIssues.length === 0) {
+      return res.json({ success: true, analysis: null, message: 'No open issues to analyze' });
+    }
+
+    // Build a summary of issues for the AI
+    const issuesSummary = openIssues.map(i =>
+      `- [WI-${i.workItemId}] "${i.title}" (Track: ${i.trackName}, Event: ${i.eventId || 'N/A'}, Date: ${i.eventDate || 'N/A'}, State: ${i.state})${i.feedbackText ? `\n  Feedback: ${i.feedbackText.substring(0, 300)}` : ''}`
+    ).join('\n');
+
+    const prompt = `You are an expert DevOps analyst for a lab/event management platform. Analyze these Azure DevOps "Event Summary Log" work items where issues were reported.
+
+Work Items:
+${issuesSummary}
+
+Provide a JSON response with this exact structure:
+{
+  "summary": "Brief overall summary of the issues landscape",
+  "trackBreakdown": [
+    {
+      "trackName": "Track or category name",
+      "issueCount": 0,
+      "severity": "high|medium|low",
+      "description": "What issues are affecting this track",
+      "recommendation": "Suggested action to resolve"
+    }
+  ],
+  "chartData": [
+    { "name": "Track/Category name", "open": 0, "resolved": 0, "total": 0 }
+  ],
+  "topPriorities": [
+    { "workItemId": 0, "title": "Issue title", "reason": "Why this is a priority" }
+  ],
+  "overallHealth": "good|warning|critical"
+}
+
+Respond ONLY with valid JSON, no markdown fences.`;
+
+    const aiResponse = await new Promise((resolve, reject) => {
+      const isAzureOpenAI = aiEndpoint.includes('.cognitiveservices.azure.com') || aiEndpoint.includes('.openai.azure.com');
+      let url, headers;
+
+      if (isAzureOpenAI) {
+        // Azure OpenAI: /openai/deployments/{model}/chat/completions?api-version=...
+        const apiVersion = process.env.AI_API_VERSION || '2025-04-01-preview';
+        url = new URL(`${aiEndpoint.replace(/\/openai\/responses.*$/, '')}/openai/deployments/${aiModel}/chat/completions?api-version=${apiVersion}`);
+        headers = {
+          'api-key': aiKey,
+          'Content-Type': 'application/json'
+        };
+      } else {
+        url = new URL(`${aiEndpoint}/chat/completions`);
+        headers = {
+          'Authorization': `Bearer ${aiKey}`,
+          'Content-Type': 'application/json'
+        };
+      }
+
+      const postData = JSON.stringify({
+        messages: [
+          { role: 'system', content: 'You are a DevOps analyst. Respond only with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+        ...(!isAzureOpenAI && { model: aiModel })
+      });
+
+      headers['Content-Length'] = Buffer.byteLength(postData);
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: url.pathname + url.search,
+        method: 'POST',
+        headers
+      };
+
+      const req = https.request(options, (resp) => {
+        let body = '';
+        resp.on('data', chunk => body += chunk);
+        resp.on('end', () => {
+          try {
+            if (resp.statusCode >= 400) {
+              reject(new Error(`AI API returned ${resp.statusCode}: ${body}`));
+              return;
+            }
+            const parsed = JSON.parse(body);
+            const content = parsed.choices?.[0]?.message?.content || '';
+            // Try to parse the content as JSON
+            const analysis = JSON.parse(content);
+            resolve(analysis);
+          } catch (e) {
+            reject(new Error(`Failed to parse AI response: ${e.message}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(postData);
+      req.end();
+    });
+
+    // Store the analysis
+    issuesData.aiAnalyses.push({
+      id: `analysis_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      issueCount: openIssues.length,
+      analysis: aiResponse
+    });
+    // Keep only last 10 analyses
+    if (issuesData.aiAnalyses.length > 10) {
+      issuesData.aiAnalyses = issuesData.aiAnalyses.slice(-10);
+    }
+    await writeIssuesData(issuesData);
+
+    res.json({ success: true, analysis: aiResponse });
+  } catch (err) {
+    console.error('[Issues] AI analysis error:', err.message);
+    res.status(500).json({ error: 'AI analysis failed', details: err.message });
   }
 });
 

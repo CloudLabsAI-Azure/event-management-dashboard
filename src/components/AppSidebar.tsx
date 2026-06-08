@@ -18,6 +18,7 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
+  BrainCircuit,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { useAuth } from "./AuthProvider"
@@ -70,6 +71,7 @@ const reportItems: MenuItem[] = [
   { title: "Train the Trainer", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Announcements", url: "/dashboard/announcements", icon: Megaphone },
   { title: "Participant Feedback", url: "/dashboard/participant-feedback", icon: MessageSquare },
+  { title: "DevOps Issues", url: "/dashboard/devops-issues", icon: BrainCircuit, domainOnly: "spektrasystems.com" },
 ]
 
 const settingsItems = [
@@ -82,7 +84,10 @@ export function AppSidebar() {
   const location = useLocation()
   const currentPath = location.pathname
   const collapsed = state === "collapsed"
-  const { userRole } = useAuth()
+  const { userRole, user } = useAuth()
+  const userEmail = (user?.email || '').toLowerCase()
+  const userDomain = userEmail.split('@')[1] || ''
+  const visibleReports = reportItems.filter((item: any) => !item.domainOnly || item.domainOnly === userDomain)
   const visibleSettings = settingsItems.filter((item) => !item.adminOnly || userRole === 'admin')
 
   const isActive = (path: string) => {
@@ -124,7 +129,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {reportItems.map((item) => (
+              {visibleReports.map((item) => (
                 item.children ? (
                   <Collapsible key={item.title} defaultOpen={item.children.some(child => isActive(child.url))} className="group/collapsible">
                     <SidebarMenuItem>

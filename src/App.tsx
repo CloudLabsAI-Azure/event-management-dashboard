@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import LocalDevBypass from "./pages/LocalDevBypass";
 import AuditLogPage from "./pages/AuditLog";
 import LabsBacklogPage from "./pages/LabsBacklogPage";
+import DevOpsIssuesPage from "./pages/DevOpsIssuesPage";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => {
                   <Route path="participant-feedback" element={<ParticipantFeedbackPage />} />
                   <Route path="announcements" element={<Announcements />} />
                   <Route path="ttt" element={<TTT />} />
+                  <Route path="devops-issues" element={<DevOpsIssuesPage />} />
                   <Route path="audit-log" element={<AuditLogPage />} />
                   {/* Access denied dedicated route (component added separately) */}
                   <Route path="access-denied" element={<div className="p-6 text-sm">Access denied</div>} />

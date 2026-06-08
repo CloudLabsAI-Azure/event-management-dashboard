@@ -33,13 +33,46 @@ function parseContainerUrl(url) {
 
 const { baseUrl, sasToken } = parseContainerUrl(BLOB_CONTAINER_URL);
 
-// Create BlobServiceClient - this creates paths under container/containerName/... 
-// which matches the existing structure: mseventscatalogcontainer/mseventscatalogcontainer/data.json
-const blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
-const containerName = baseUrl.split('/').pop();
-const containerClient = blobServiceClient.getContainerClient(containerName);
-const blobClient = containerClient.getBlobClient(BLOB_NAME);
-const blockBlobClient = blobClient.getBlockBlobClient();
+// Only initialize blob clients if a valid URL is configured
+let blobServiceClient, containerClient, blobClient, blockBlobClient, containerName;
+if (baseUrl) {
+  blobServiceClient = new BlobServiceClient(`${baseUrl}?${sasToken}`);
+  containerName = baseUrl.split('/').pop();
+  containerClient = blobServiceClient.getContainerClient(containerName);
+  blobClient = containerClient.getBlobClient(BLOB_NAME);
+  blockBlobClient = blobClient.getBlockBlobClient();
+}
+
+/**
+ * Read any JSON blob by name from the container
+ */
+export async function readJsonBlob(blobName) {
+  if (!containerClient) return { data: null, etag: null };
+  try {
+    const client = containerClient.getBlobClient(blobName);
+    const exists = await client.exists();
+    if (!exists) return { data: null, etag: null };
+    const resp = await client.getBlockBlobClient().download();
+    const buf = await streamToBuffer(resp.readableStreamBody);
+    return { data: JSON.parse(buf.toString('utf8')), etag: resp.etag || null };
+  } catch (e) {
+    console.error(`Error reading blob ${blobName}:`, e.message);
+    return { data: null, etag: null };
+  }
+}
+
+/**
+ * Write any JSON blob by name to the container
+ */
+export async function writeJsonBlob(blobName, data) {
+  if (!containerClient) throw new Error('Blob storage not configured');
+  const content = JSON.stringify(data, null, 2);
+  const client = containerClient.getBlockBlobClient(blobName);
+  await client.upload(content, Buffer.byteLength(content), {
+    blobHTTPHeaders: { blobContentType: 'application/json' },
+    overwrite: true
+  });
+}
 
 /**
  * Read data from Azure Blob Storage

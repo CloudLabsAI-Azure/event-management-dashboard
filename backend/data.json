@@ -1,0 +1,16 @@
+{
+  "tokens": [],
+  "users": [
+    {
+      "id": "admin",
+      "username": "admin",
+      "email": "admin@example.com",
+      "password": "$2a$08$.FIRu8Bj2dHPDv6b9.e4MegabJcOItIFq40lSqE65lmWx3eO10TMS",
+      "role": "admin"
+    }
+  ],
+  "_metadata": {
+    "lastUpdated": "2026-06-08T16:56:37.599Z",
+    "lastModifiedBy": "system"
+  }
+}
