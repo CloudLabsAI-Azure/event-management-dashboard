@@ -42,6 +42,7 @@ const DATA_PATH = path.join(__dirname, 'data.json');
 
 // Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
 const STORAGE_MODE = process.env.STORAGE_MODE || 'blob';
+const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
 
 // =====================
 // Concurrency-Safe Data Access
@@ -671,7 +672,26 @@ app.post('/api/validate-b2c-user', async (req, res) => {
         u && u.email && u.email.toLowerCase() === email.toLowerCase()
       );
       
-      if (user) {
+      let resolvedUser = user;
+
+      // Auto-provision users from allowed domains
+      if (!resolvedUser && ALLOWED_DOMAINS.length > 0) {
+        const domain = email.toLowerCase().split('@')[1];
+        if (domain && ALLOWED_DOMAINS.includes(domain)) {
+          const newUser = {
+            id: `u_${Date.now()}`,
+            username: email.toLowerCase().split('@')[0],
+            email: email.toLowerCase(),
+            role: 'user'
+          };
+          if (!Array.isArray(data.users)) data.users = [];
+          data.users.push(newUser);
+          resolvedUser = newUser;
+          console.log(`[Auth] Auto-provisioned user from allowed domain: ${email}`);
+        }
+      }
+
+      if (resolvedUser) {
         // Generate a session token for the validated B2C user
         const token = crypto.randomBytes(24).toString('hex');
         const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
@@ -680,9 +700,9 @@ app.post('/api/validate-b2c-user', async (req, res) => {
         if (!Array.isArray(data.tokens)) data.tokens = [];
         data.tokens.push({ 
           token, 
-          userId: user.id,
-          email: user.email,
-          role: user.role || 'user', 
+          userId: resolvedUser.id,
+          email: resolvedUser.email,
+          role: resolvedUser.role || 'user', 
           expiresAt,
           source: 'b2c' // Mark as B2C authenticated
         });
@@ -693,13 +713,13 @@ app.post('/api/validate-b2c-user', async (req, res) => {
           body: {
             success: true, 
             user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              role: user.role || 'user'
+              id: resolvedUser.id,
+              username: resolvedUser.username,
+              email: resolvedUser.email,
+              role: resolvedUser.role || 'user'
             },
             token,
-            role: user.role || 'user'
+            role: resolvedUser.role || 'user'
           }
         };
       }
