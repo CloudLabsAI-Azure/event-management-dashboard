@@ -1464,14 +1464,21 @@ app.post('/api/devops/issues/fetch', requireAdmin, requireDomainAccess, async (r
         let category = 'no-issue'; // default: event completed without issue
         if (feedbackText) {
           const lowerFeedback = feedbackText.toLowerCase();
-          const hasIssueKeywords = /issue|problem|error|fail|broken|bug|not working|crash|down|outage|complaint|escalat/i.test(lowerFeedback);
-          const hasPositiveKeywords = /good|great|excellent|smooth|no issue|successful|well|perfect|satisfied|happy/i.test(lowerFeedback);
+          // Strip negation phrases so "no issues" / "no problems" don't trigger issue keywords
+          const neutralized = lowerFeedback
+            .replace(/no\s+(issues?|problems?|errors?|complaints?|outages?)/gi, '')
+            .replace(/without\s+(any\s+)?(issues?|problems?|errors?)/gi, '')
+            .replace(/issues?\s+were\s+(not|never)\s+/gi, '')
+            .replace(/(not|never)\s+(any\s+)?(issues?|problems?|errors?)/gi, '')
+            .replace(/zero\s+(issues?|problems?|errors?)/gi, '');
+          const hasIssueKeywords = /issue|problem|error|fail|broken|bug|not working|crash|down|outage|complaint|escalat/i.test(neutralized);
+          const hasPositiveKeywords = /good|great|excellent|smooth|no issue|successful|well|perfect|satisfied|happy|no.{0,5}(issues?|problems?)|without.{0,5}issue/i.test(lowerFeedback);
           if (hasIssueKeywords && !hasPositiveKeywords) {
             category = 'major-issue';
-          } else if (hasPositiveKeywords && !hasIssueKeywords) {
+          } else if (hasPositiveKeywords) {
             category = 'good-feedback';
-          } else if (hasIssueKeywords && hasPositiveKeywords) {
-            category = 'major-issue'; // issues take priority
+          } else if (hasIssueKeywords) {
+            category = 'major-issue';
           } else {
             category = 'no-issue';
           }
@@ -1570,14 +1577,24 @@ app.post('/api/devops/issues/analyze', requireAdmin, requireDomainAccess, async 
       .sort((a, b) => new Date(b.fetchedAt || b.eventDate || 0) - new Date(a.fetchedAt || a.eventDate || 0))
       .slice(0, 100);
 
-    // Build a summary of issues for the AI
+    // Build a summary of issues for the AI — include full feedback text for accurate classification
     const issuesSummary = issuesToAnalyze.map(i =>
-      `- [WI-${i.workItemId}] "${i.title}" (Category: ${i.category || 'no-issue'}, Event: ${i.eventId || 'N/A'}, Date: ${i.eventDate || 'N/A'}, State: ${i.state}, Tracked: ${i.isTracked ? 'Yes' : 'No'})${i.feedbackText ? `\n  Feedback: ${i.feedbackText.substring(0, 200)}` : ''}`
+      `- [WI-${i.workItemId}] "${i.title}" (Event: ${i.eventId || 'N/A'}, Date: ${i.eventDate || 'N/A'}, State: ${i.state}, Tracked: ${i.isTracked ? 'Yes' : 'No'})${i.feedbackText ? `\n  Feedback: "${i.feedbackText.substring(0, 500)}"` : '\n  Feedback: (none)'}`
     ).join('\n');
 
     const prompt = `You are an expert DevOps analyst for a lab/event management platform. Analyze these ${issuesToAnalyze.length} Azure DevOps "Event Summary Log" work items (out of ${openIssues.length} total open).
 
-Each item has a category: "no-issue" (event completed fine), "good-feedback" (positive feedback), or "major-issue" (problems reported). Items also have a "Tracked" status indicating whether someone followed up after the initial report.
+CRITICAL: You must classify each work item into one of three categories by carefully reading the FEEDBACK text:
+- "no-issue": The event completed without notable feedback (no feedback text, or neutral/generic statements).
+- "good-feedback": Positive feedback — phrases like "no issues observed", "everything went well", "smooth", "successful", "great experience", "satisfied". Note: "No issues" is POSITIVE, not negative.
+- "major-issue": Actual problems were reported — errors, failures, bugs, complaints, outages, escalations, things that broke or didn't work.
+
+PAY CLOSE ATTENTION to context and negation. For example:
+- "No issues were observed" → good-feedback (NOT major-issue)
+- "The lab had issues with connectivity" → major-issue
+- "No problems at all, great session" → good-feedback
+
+Items also have a "Tracked" status indicating whether someone followed up after the initial report.
 
 Work Items:
 ${issuesSummary}
@@ -1595,12 +1612,20 @@ Provide a JSON response with this exact structure:
       "recommendation": "Suggested action"
     }
   ],
+  "reclassified": [
+    { "workItemId": 0, "newCategory": "good-feedback|major-issue|no-issue" }
+  ],
   "topPriorities": [
-    { "workItemId": 0, "title": "Issue title", "reason": "Why this is a priority" }
+    { "workItemId": 0, "title": "Issue title", "reason": "Why this is a priority — must be items with REAL problems only" }
   ],
   "trackingInsight": "Summary of tracking gaps - how many items are untracked and what should be done",
   "overallHealth": "good|warning|critical"
 }
+
+IMPORTANT:
+- The "reclassified" array should list EVERY work item with the correct category as determined by reading its feedback.
+- "topPriorities" should ONLY include items that have genuine problems (major-issue category). Do NOT list items where feedback says "no issues" or is positive.
+- The "categoryBreakdown" counts should reflect YOUR corrected classifications, not the original ones.
 
 Respond ONLY with valid JSON, no markdown fences.`;
 
@@ -1647,6 +1672,22 @@ Respond ONLY with valid JSON, no markdown fences.`;
     const parsed = JSON.parse(body);
     const content = parsed.choices?.[0]?.message?.content || '';
     const aiResponse = JSON.parse(content);
+
+    // Apply AI reclassifications back to stored issues
+    if (aiResponse.reclassified?.length > 0) {
+      const reclassMap = new Map(aiResponse.reclassified.map(r => [r.workItemId, r.newCategory]));
+      let reclassCount = 0;
+      for (const issue of issuesData.issues) {
+        const newCat = reclassMap.get(issue.workItemId);
+        if (newCat && ['no-issue', 'good-feedback', 'major-issue'].includes(newCat) && newCat !== issue.category) {
+          issue.category = newCat;
+          reclassCount++;
+        }
+      }
+      if (reclassCount > 0) {
+        console.log(`[Issues] AI reclassified ${reclassCount} items`);
+      }
+    }
 
     // Store the analysis
     issuesData.aiAnalyses.push({

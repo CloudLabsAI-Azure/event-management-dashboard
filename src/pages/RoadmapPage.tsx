@@ -44,6 +44,7 @@ interface RoadmapItem {
   activityLog?: ActivityLogEntry[];
   isUpgrade?: boolean;
   needsAttention?: boolean;
+  finalizedTrackName?: string;
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -150,7 +151,8 @@ export default function RoadmapPage() {
     labType: "",
     progressDeck: "",
     notes: "",
-    isUpgrade: false
+    isUpgrade: false,
+    finalizedTrackName: ""
   })
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -232,7 +234,8 @@ export default function RoadmapPage() {
           notes: r.notes || '',
           activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
           isUpgrade: r.isUpgrade || false,
-          needsAttention: r.needsAttention || false
+          needsAttention: r.needsAttention || false,
+          finalizedTrackName: r.finalizedTrackName || ''
         }))
         setRoadmapData(mapped)
 
@@ -407,6 +410,7 @@ export default function RoadmapPage() {
       return {
         'Event ID': item.eventId || '',
         'Track Title': item.trackTitle || '',
+        'Finalized Track Name': item.finalizedTrackName || '',
         'Type': item.labType || '',
         'Phase': item.phase || '',
         'Sponsored by': item.programType || '',
@@ -426,6 +430,7 @@ export default function RoadmapPage() {
     ws['!cols'] = [
       { wch: 15 },  // Event ID
       { wch: 50 },  // Track Title
+      { wch: 50 },  // Finalized Track Name
       { wch: 20 },  // Type
       { wch: 15 },  // Phase
       { wch: 25 },  // Sponsored by
@@ -595,6 +600,7 @@ export default function RoadmapPage() {
                     <TableRow>
                       <TableHead className="w-32">Event ID</TableHead>
                       <TableHead className="min-w-[250px]">Track Title</TableHead>
+                      <TableHead className="min-w-[200px]">Finalized Track Name</TableHead>
                       <TableHead className="w-36">Type</TableHead>
                       <TableHead className="w-48">
                         <div className="flex flex-col gap-1">
@@ -657,6 +663,9 @@ export default function RoadmapPage() {
                         <TableCell className="font-mono text-sm">{track.eventId || 'TBD'}</TableCell>
                         <TableCell className="font-medium">
                           {track.trackTitle}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {track.finalizedTrackName || <span className="text-gray-400">—</span>}
                         </TableCell>
                         <TableCell>
                           {track.labType ? (
@@ -797,6 +806,10 @@ export default function RoadmapPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="trackTitle" className="text-right">Track Title</Label>
                 <Input id="trackTitle" value={editForm.trackTitle} onChange={(e) => setEditForm({ ...editForm, trackTitle: e.target.value })} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="finalizedTrackName" className="text-right">Finalized Track Name</Label>
+                <Input id="finalizedTrackName" value={editForm.finalizedTrackName || ''} onChange={(e) => setEditForm({ ...editForm, finalizedTrackName: e.target.value })} className="col-span-3" placeholder="Final/official track name" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="labType" className="text-right">Type</Label>
