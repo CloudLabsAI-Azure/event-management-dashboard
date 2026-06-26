@@ -160,13 +160,13 @@ export default function CatalogReadoutPage() {
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <Card className="glass-card">
             <CardHeader className="pb-2">
-              <CardDescription>Top 25 — updated</CardDescription>
+              <CardDescription>Top 25 refreshed</CardDescription>
               <CardTitle className="text-3xl">
                 {top25Done}
                 <span className="text-base text-muted-foreground">/{top25Updates.length}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-xs text-muted-foreground">Decks done post-build</CardContent>
+            <CardContent className="text-xs text-muted-foreground">Decks updated post-build</CardContent>
           </Card>
           <Card className="glass-card">
             <CardHeader className="pb-2">
@@ -222,10 +222,10 @@ export default function CatalogReadoutPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  New Top 25 — updates completed post-build
+                  Top 25 — post-build updates
                 </CardTitle>
                 <CardDescription>
-                  Post-build refreshes across the Top 25 workshop set ({filteredTop25.length} shown)
+                  Post-build refreshes across the Top 25 workshop set · {filteredTop25.length} shown
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -240,7 +240,7 @@ export default function CatalogReadoutPage() {
                   Additional 15 labs — reviewed and validated
                 </CardTitle>
                 <CardDescription>
-                  Validated post-Microsoft Build ({filteredAdditional.length} shown)
+                  Reviewed and validated after Microsoft Build · {filteredAdditional.length} shown
                 </CardDescription>
               </CardHeader>
               <CardContent>

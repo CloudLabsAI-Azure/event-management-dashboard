@@ -29,7 +29,7 @@ export interface NewProposal {
 
 export const readoutMeta = {
   title: "Catalog Review FY27",
-  subtitle: "Lab and deck updates · FY27 retirements · New catalog proposals · Refreshed Top 25",
+  subtitle: "Lab & deck updates · FY27 retirements · new catalog proposals · refreshed Top 25",
   version: "1.0",
   date: "25 Jun 2026",
   owner: "Event-Support@spektrasystems.com",
@@ -308,7 +308,7 @@ export const retirementSummary = {
   fy26Removed: 19,
   fy27Pending: 3,
   note:
-    "22 tracks removed in total — 19 in FY26 and 3 in FY27. 3 tracks pending approval — please route to the catalog team to retire on schedule.",
+    "22 tracks retired in total — 19 in FY26 and 3 in FY27. The 3 FY27 tracks are pending catalog-team approval to retire on schedule.",
 };
 
 // ── Section 3: New catalog items proposed for FY27 ──────────────────────────
