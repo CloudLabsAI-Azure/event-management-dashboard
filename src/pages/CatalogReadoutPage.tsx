@@ -274,12 +274,16 @@ export default function CatalogReadoutPage() {
                         <TableRow key={idx}>
                           <TableCell className="font-medium align-top">{track.title}</TableCell>
                           <TableCell className="text-muted-foreground align-top text-sm">
-                            {track.reason}
+                            {track.reason || <span className="text-gray-400">—</span>}
                           </TableCell>
                           <TableCell className="align-top">
                             <Badge
                               variant="outline"
-                              className="bg-orange-500/10 text-orange-600 border-orange-500 whitespace-nowrap"
+                              className={
+                                track.bucket === "FY27 — pending removal"
+                                  ? "bg-orange-500/10 text-orange-600 border-orange-500 whitespace-nowrap"
+                                  : "bg-gray-500/10 text-gray-500 border-gray-400 whitespace-nowrap"
+                              }
                             >
                               <Flag className="h-3 w-3 mr-1" />
                               {track.bucket}

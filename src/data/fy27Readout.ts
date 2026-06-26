@@ -280,14 +280,34 @@ export const retirements: RetiredTrack[] = [
     reason: "Dev Box service deprecated.",
     bucket: "FY27 — pending removal",
   },
+  // FY26 — already removed from the RMP
+  { title: "Citrix To AVD Migration", reason: "", bucket: "FY26 — already removed" },
+  { title: "Building a resilient IaaS architecture", reason: "", bucket: "FY26 — already removed" },
+  { title: "Expanding Azure Virtual WAN To Support Your Global Network", reason: "", bucket: "FY26 — already removed" },
+  { title: "Nerdio Manager For MSP", reason: "", bucket: "FY26 — already removed" },
+  { title: "Azure Well-Architected Resiliency Gaps Remediation", reason: "", bucket: "FY26 — already removed" },
+  { title: "Empower Knowledge Workers Using Azure OpenAI With MS Teams And Azure Bot Service", reason: "", bucket: "FY26 — already removed" },
+  { title: "Call Center Data Analysis Using Azure AI Services And Azure OpenAI", reason: "", bucket: "FY26 — already removed" },
+  { title: "Cloud Native Applications", reason: "", bucket: "FY26 — already removed" },
+  { title: "Real-Time Analytics With Synapse", reason: "", bucket: "FY26 — already removed" },
+  { title: "Create And Run Data Pipeline With Data Factory", reason: "", bucket: "FY26 — already removed" },
+  { title: "Advanced Azure Networking With Azure Virtual WAN", reason: "", bucket: "FY26 — already removed" },
+  { title: "Building the business migration case with Linux and OSS DB to Azure", reason: "", bucket: "FY26 — already removed" },
+  { title: "Scalable Cloud Networking With Azure Virtual WAN", reason: "", bucket: "FY26 — already removed" },
+  { title: "Migrate Windows Servers To Azure", reason: "", bucket: "FY26 — already removed" },
+  { title: "Low Code Development With Power Apps & Power Automate", reason: "", bucket: "FY26 — already removed" },
+  { title: "Power BI Embedded Hands On Lab", reason: "", bucket: "FY26 — already removed" },
+  { title: "Azure OpenAI + NLP Using ChatGPT On SQL Engine", reason: "", bucket: "FY26 — already removed" },
+  { title: "Governance with Power Platform", reason: "", bucket: "FY26 — already removed" },
+  { title: "Migrating DB From Single Server To Flexible Postgres SQL Server", reason: "", bucket: "FY26 — already removed" },
 ];
 
 export const retirementSummary = {
-  totalRemoved: 20,
-  fy26Removed: 17,
+  totalRemoved: 22,
+  fy26Removed: 19,
   fy27Pending: 3,
   note:
-    "20 tracks removed in total — 17 in FY26 and 3 in FY27. 3 tracks pending approval — please route to the catalog team to retire on schedule.",
+    "22 tracks removed in total — 19 in FY26 and 3 in FY27. 3 tracks pending approval — please route to the catalog team to retire on schedule.",
 };
 
 // ── Section 3: New catalog items proposed for FY27 ──────────────────────────
@@ -347,7 +367,7 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Retirements confirmed",
     detail:
-      "20 tracks have been retired — 17 in FY26 and 3 in FY27; 3 remain pending catalog-team approval to retire on schedule.",
+      "22 tracks have been retired — 19 in FY26 and 3 in FY27; 3 remain pending catalog-team approval to retire on schedule.",
   },
   {
     title: "New proposals ready",
