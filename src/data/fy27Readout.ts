@@ -17,6 +17,7 @@ export interface RetiredTrack {
   title: string;
   reason: string;
   bucket: RetirementBucket;
+  replacement?: string;
 }
 
 export interface NewProposal {
@@ -281,25 +282,25 @@ export const retirements: RetiredTrack[] = [
     bucket: "FY27 — pending removal",
   },
   // FY26 — already removed from the RMP
-  { title: "Citrix To AVD Migration", reason: "", bucket: "FY26 — already removed" },
-  { title: "Building a resilient IaaS architecture", reason: "", bucket: "FY26 — already removed" },
-  { title: "Expanding Azure Virtual WAN To Support Your Global Network", reason: "", bucket: "FY26 — already removed" },
-  { title: "Nerdio Manager For MSP", reason: "", bucket: "FY26 — already removed" },
-  { title: "Azure Well-Architected Resiliency Gaps Remediation", reason: "", bucket: "FY26 — already removed" },
-  { title: "Empower Knowledge Workers Using Azure OpenAI With MS Teams And Azure Bot Service", reason: "", bucket: "FY26 — already removed" },
-  { title: "Call Center Data Analysis Using Azure AI Services And Azure OpenAI", reason: "", bucket: "FY26 — already removed" },
-  { title: "Cloud Native Applications", reason: "", bucket: "FY26 — already removed" },
-  { title: "Real-Time Analytics With Synapse", reason: "", bucket: "FY26 — already removed" },
-  { title: "Create And Run Data Pipeline With Data Factory", reason: "", bucket: "FY26 — already removed" },
-  { title: "Advanced Azure Networking With Azure Virtual WAN", reason: "", bucket: "FY26 — already removed" },
-  { title: "Building the business migration case with Linux and OSS DB to Azure", reason: "", bucket: "FY26 — already removed" },
-  { title: "Scalable Cloud Networking With Azure Virtual WAN", reason: "", bucket: "FY26 — already removed" },
-  { title: "Migrate Windows Servers To Azure", reason: "", bucket: "FY26 — already removed" },
-  { title: "Low Code Development With Power Apps & Power Automate", reason: "", bucket: "FY26 — already removed" },
-  { title: "Power BI Embedded Hands On Lab", reason: "", bucket: "FY26 — already removed" },
-  { title: "Azure OpenAI + NLP Using ChatGPT On SQL Engine", reason: "", bucket: "FY26 — already removed" },
-  { title: "Governance with Power Platform", reason: "", bucket: "FY26 — already removed" },
-  { title: "Migrating DB From Single Server To Flexible Postgres SQL Server", reason: "", bucket: "FY26 — already removed" },
+  { title: "Citrix To AVD Migration", reason: "Outdated content", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Building a resilient IaaS architecture", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Azure Landing Zone" },
+  { title: "Expanding Azure Virtual WAN To Support Your Global Network", reason: "Outdated content and scripts", bucket: "FY26 — already removed", replacement: "Azure Landing Zone" },
+  { title: "Nerdio Manager For MSP", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Azure Well-Architected Resiliency Gaps Remediation", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Azure Landing Zone" },
+  { title: "Empower Knowledge Workers Using Azure OpenAI With MS Teams And Azure Bot Service", reason: "Outdated codebase and content", bucket: "FY26 — already removed", replacement: "Can suggest agent-based labs" },
+  { title: "Call Center Data Analysis Using Azure AI Services And Azure OpenAI", reason: "Can be added as a use case for AI Foundry labs", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Cloud Native Applications", reason: "Same content as Cloud Native Application Architecture", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Real-Time Analytics With Synapse", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Fabric-based labs" },
+  { title: "Create And Run Data Pipeline With Data Factory", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Work With Data Lake And Data Factory Pipelines In Microsoft Fabric" },
+  { title: "Advanced Azure Networking With Azure Virtual WAN", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Azure Landing Zone" },
+  { title: "Building the business migration case with Linux and OSS DB to Azure", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "Migrate Linux Servers To Azure" },
+  { title: "Scalable Cloud Networking With Azure Virtual WAN", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Migrate Windows Servers To Azure", reason: "Similar content to Discover And Assess On-prem Windows & SQL Servers", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Low Code Development With Power Apps & Power Automate", reason: "Similar content to Build, Deploy And Scale Power Apps", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Power BI Embedded Hands On Lab", reason: "Similar content to FAIAD - New content", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Azure OpenAI + NLP Using ChatGPT On SQL Engine", reason: "Similar content to Get Started With OpenAI And Build Natural Language Solution", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Governance with Power Platform", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "" },
+  { title: "Migrating DB From Single Server To Flexible Postgres SQL Server", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "" },
 ];
 
 export const retirementSummary = {

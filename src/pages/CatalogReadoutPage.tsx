@@ -264,8 +264,8 @@ export default function CatalogReadoutPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="min-w-[320px]">Track title</TableHead>
-                        <TableHead className="min-w-[280px]">Reason</TableHead>
+                        <TableHead className="min-w-[300px]">Track title</TableHead>
+                        <TableHead className="min-w-[220px]">Reason</TableHead>
                         <TableHead className="w-44">Status</TableHead>
                       </TableRow>
                     </TableHeader>
