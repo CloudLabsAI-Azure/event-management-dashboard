@@ -69,7 +69,7 @@ const reportItems: MenuItem[] = [
     ]
   },
   { title: "Localized Tracks", url: "/dashboard/localized-tracks", icon: Globe },
-  { title: "Catalog Readout", url: "/dashboard/catalog-readout", icon: ClipboardList, domainOnly: "spektrasystems.com" },
+  { title: "Catalog Review FY27", url: "/dashboard/catalog-readout", icon: ClipboardList, domainOnly: "spektrasystems.com" },
   { title: "Train the Trainer", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Announcements", url: "/dashboard/announcements", icon: Megaphone },
   { title: "Participant Feedback", url: "/dashboard/participant-feedback", icon: MessageSquare },

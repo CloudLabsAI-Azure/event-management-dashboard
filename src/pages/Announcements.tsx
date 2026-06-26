@@ -426,7 +426,7 @@ export default function Announcements() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-foreground">FY27 Catalog Readout is live</h3>
+                    <h3 className="font-semibold text-foreground">Catalog Review FY27 is live</h3>
                     <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500 text-[10px]">New</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">

@@ -28,7 +28,7 @@ export interface NewProposal {
 }
 
 export const readoutMeta = {
-  title: "FY27 Catalog Readout",
+  title: "Catalog Review FY27",
   subtitle: "Lab and deck updates · FY27 retirements · New catalog proposals · Refreshed Top 25",
   version: "1.0",
   date: "25 Jun 2026",
