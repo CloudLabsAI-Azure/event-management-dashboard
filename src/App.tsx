@@ -14,6 +14,7 @@ import UsersPage from "./pages/Users";
 import CatalogHealth from "./pages/CatalogHealth";
 import Top25Tracks from "./pages/Top25Tracks";
 import RoadmapPage from "./pages/RoadmapPage";
+import CatalogReadoutPage from "./pages/CatalogReadoutPage";
 import LabMaintenancePage from "./pages/LabMaintenancePage";
 import CustomLabRequestPage from "./pages/CustomLabRequestPage";
 import LocalizedTracksPage from "./pages/LocalizedTracksPage";
@@ -98,6 +99,7 @@ const App = () => {
                   <Route path="catalog-health" element={<CatalogHealth />} />
                   <Route path="top25-tracks" element={<Top25Tracks />} />
                   <Route path="roadmap" element={<RoadmapPage />} />
+                  <Route path="catalog-readout" element={<CatalogReadoutPage />} />
                   <Route path="lab-maintenance" element={<LabMaintenancePage />} />
                   <Route path="custom-lab-request" element={<CustomLabRequestPage />} />
                   <Route path="labs-backlog" element={<LabsBacklogPage />} />

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Megaphone, FileText, Trash2, Plus, Edit, Download } from "lucide-react"
+import { Megaphone, FileText, Trash2, Plus, Edit, Download, ClipboardList, ArrowRight } from "lucide-react"
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { useAuth } from '@/components/AuthProvider'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
@@ -42,8 +43,11 @@ interface GeneralAnnouncement {
 }
 
 export default function Announcements() {
-  const { userRole: role } = useAuth()
+  const { userRole: role, user } = useAuth()
   const { toast } = useToast()
+  const userEmail = (user?.email || '').toLowerCase()
+  const userDomain = userEmail.split('@')[1] || ''
+  const canSeeReadout = userDomain === 'spektrasystems.com' || userEmail === 'dev@localhost'
   
   // PDF Catalogs State
   const [pdfCatalogs, setPdfCatalogs] = useState<PDFCatalog[]>([])
@@ -412,7 +416,28 @@ export default function Announcements() {
           </p>
         </div>
 
-        {/* General Announcements Section */}
+        {/* FY27 Catalog Readout spotlight — Spektra users only */}
+        {canSeeReadout && (
+          <Link to="/dashboard/catalog-readout" className="block">
+            <Card className="glass-card border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors">
+              <CardContent className="flex items-center gap-4 py-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <ClipboardList className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-foreground">FY27 Catalog Readout is live</h3>
+                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500 text-[10px]">New</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Lab &amp; deck updates, FY27 retirements, new catalog proposals and the refreshed Top 25.
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-primary shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
+        )}
         <Card className="glass-card border-primary/20">
           <CardHeader>
             <div className="flex items-center justify-between">
