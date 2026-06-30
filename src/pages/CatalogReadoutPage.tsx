@@ -20,7 +20,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertTriangle,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -30,7 +29,6 @@ import {
   Trash2,
   Flag,
 } from "lucide-react";
-import { useAuth } from "@/components/AuthProvider";
 import {
   additionalLabs,
   closurePoints,
@@ -102,11 +100,6 @@ function LabUpdatesTable({ rows }: { rows: LabUpdate[] }) {
 }
 
 export default function CatalogReadoutPage() {
-  const { user } = useAuth();
-  const userEmail = (user?.email || "").toLowerCase();
-  const userDomain = userEmail.split("@")[1] || "";
-  const hasAccess = userDomain === "spektrasystems.com" || userEmail === "dev@localhost";
-
   const [search, setSearch] = useState("");
 
   const q = search.trim().toLowerCase();
@@ -123,20 +116,6 @@ export default function CatalogReadoutPage() {
 
   const top25Done = top25Updates.filter((l) => l.status === "Done").length;
   const additionalDone = additionalLabs.filter((l) => l.status === "Done").length;
-
-  if (!hasAccess) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <AlertTriangle className="h-16 w-16 text-muted-foreground/40 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Access Restricted</h2>
-          <p className="text-muted-foreground">
-            This page is only available to authorized domain users.
-          </p>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>

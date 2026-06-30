@@ -43,11 +43,8 @@ interface GeneralAnnouncement {
 }
 
 export default function Announcements() {
-  const { userRole: role, user } = useAuth()
+  const { userRole: role } = useAuth()
   const { toast } = useToast()
-  const userEmail = (user?.email || '').toLowerCase()
-  const userDomain = userEmail.split('@')[1] || ''
-  const canSeeReadout = userDomain === 'spektrasystems.com' || userEmail === 'dev@localhost'
   
   // PDF Catalogs State
   const [pdfCatalogs, setPdfCatalogs] = useState<PDFCatalog[]>([])
@@ -416,9 +413,8 @@ export default function Announcements() {
           </p>
         </div>
 
-        {/* FY27 Catalog Readout spotlight — Spektra users only */}
-        {canSeeReadout && (
-          <Link to="/dashboard/catalog-readout" className="block">
+        {/* FY27 Catalog Review spotlight */}
+        <Link to="/dashboard/catalog-readout" className="block">
             <Card className="glass-card border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors">
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -437,7 +433,6 @@ export default function Announcements() {
               </CardContent>
             </Card>
           </Link>
-        )}
         <Card className="glass-card border-primary/20">
           <CardHeader>
             <div className="flex items-center justify-between">
