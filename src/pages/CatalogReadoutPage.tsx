@@ -122,12 +122,7 @@ export default function CatalogReadoutPage() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-3xl font-bold text-foreground">{readoutMeta.title}</h1>
-            <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500 text-[10px]">
-              {readoutMeta.classification}
-            </Badge>
-          </div>
+          <h1 className="text-3xl font-bold text-foreground">{readoutMeta.title}</h1>
           <p className="text-muted-foreground">{readoutMeta.subtitle}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Version {readoutMeta.version} · {readoutMeta.date} · Owner: {readoutMeta.owner} ·
