@@ -90,7 +90,7 @@ export function RootRedirect() {
             MS Innovation Event Management Portal
           </CardTitle>
           <CardDescription className="text-slate-600 dark:text-slate-400">
-            Please login or signup to continue
+            Please login to continue
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -105,7 +105,7 @@ export function RootRedirect() {
               className="w-full"
               disabled={inProgress !== "none"}
             >
-              Login or Signup
+              Login
             </Button>
           )}
           {authError && !msalAuthenticated && (

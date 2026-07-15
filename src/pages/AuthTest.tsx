@@ -34,13 +34,13 @@ export default function AuthTest() {
   if (isLoading || inProgress === "login") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">

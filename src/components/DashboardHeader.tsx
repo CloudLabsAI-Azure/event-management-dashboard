@@ -42,10 +42,10 @@ export function DashboardHeader() {
           {msalAuthenticated && (
             <div className="hidden md:flex flex-col items-end leading-tight">
               <span className="text-sm font-medium text-foreground flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-blue-500" /> {displayName}
+                <ShieldCheck className="w-4 h-4 text-primary" /> {displayName}
               </span>
               <span className="text-[11px] text-muted-foreground">{userEmail}</span>
-              <span className="text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 mt-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 w-fit">
+              <span className="text-[10px] uppercase tracking-wide rounded px-1.5 py-0.5 mt-0.5 bg-primary/10 dark:bg-primary/20 text-primary w-fit">
                 {isAuthorized ? userRole : 'PENDING'}
               </span>
             </div>

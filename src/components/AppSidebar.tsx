@@ -115,8 +115,8 @@ export function AppSidebar() {
     >
       <SidebarHeader className="h-16 px-4 border-b border-border/50 flex items-center group-data-[collapsible=icon]:justify-center bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 dark:bg-zinc-900/95 dark:supports-[backdrop-filter]:bg-zinc-900/90">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:gap-0 w-full group-data-[collapsible=icon]:justify-center">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <img src="/logo.png" alt="CloudLabs" className="w-4 h-4" />
+          <div className="w-8 h-8 flex items-center justify-center shrink-0">
+            <img src="/logo.png" alt="CloudLabs" className="w-8 h-8 object-contain" />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden flex-1 min-w-0">
             <h2 className="text-lg font-semibold text-foreground truncate">MS Innovation</h2>

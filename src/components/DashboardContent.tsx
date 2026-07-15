@@ -49,7 +49,7 @@ const ADMIN_URL = "https://admin.cloudevents.ai"
 
 // Recharts color palette
 const CHART_COLORS = {
-  blue: '#3b82f6',
+  blue: '#6256ce',
   emerald: '#10b981',
   amber: '#f59e0b',
   purple: '#8b5cf6',
@@ -373,15 +373,15 @@ export function DashboardContent() {
           backgroundImage: `radial-gradient(circle at 1px 1px, rgb(148 163 184) 1px, transparent 0)`,
           backgroundSize: '40px 40px'
         }}></div>
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/60 via-blue-50/30 to-gray-50/40 dark:from-slate-950/60 dark:via-blue-950/30 dark:to-gray-950/40"></div>
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-100/8 dark:bg-blue-800/5 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/60 via-indigo-50/30 to-gray-50/40 dark:from-slate-950/60 dark:via-indigo-950/30 dark:to-gray-950/40"></div>
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-100/8 dark:bg-indigo-800/5 rounded-full blur-3xl animate-float"></div>
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-slate-100/6 dark:bg-slate-800/4 rounded-full blur-2xl animate-float-delayed"></div>
       </div>
 
       {/* Professional Corporate Title Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 shadow-xl border border-slate-700">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/50 via-slate-950/30 to-indigo-950/50"></div>
-        <div className="absolute -top-6 -right-6 w-32 h-32 bg-blue-800/10 rounded-full blur-2xl animate-float"></div>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-indigo-950 shadow-xl border border-slate-700">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/50 via-slate-950/30 to-indigo-950/50"></div>
+        <div className="absolute -top-6 -right-6 w-32 h-32 bg-indigo-800/10 rounded-full blur-2xl animate-float"></div>
         <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-slate-800/10 rounded-full blur-xl animate-float-delayed"></div>
         <div className="relative z-10 p-10 text-white">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0">
@@ -392,7 +392,7 @@ export function DashboardContent() {
             </div>
             <div className="flex flex-col items-end space-y-2 lg:min-w-0 lg:flex-shrink-0">
               <div className="flex items-center gap-2 text-slate-300 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium">Last Updated</span>
               </div>
               <div className="text-slate-200 text-base font-mono bg-black/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/10">
@@ -413,14 +413,14 @@ export function DashboardContent() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 relative z-10">
         {/* Custom Lab Requests */}
         <div className="group transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 animate-fade-in-up cursor-pointer" style={{ animationDelay: '0.1s' }} onClick={() => navigate('/dashboard/custom-lab-request')}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-orange-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-orange-200/50 dark:border-orange-800/30 p-6 shadow-lg hover:shadow-xl transition-all duration-500">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-200/30 dark:bg-orange-700/20 rounded-full -translate-y-8 translate-x-8"></div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-indigo-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-indigo-200/50 dark:border-indigo-800/30 p-6 card-glow transition-all duration-500">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-200/30 dark:bg-indigo-700/20 rounded-full -translate-y-8 translate-x-8"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-orange-100 to-orange-200/70 dark:from-orange-900/40 dark:to-orange-800/40 text-orange-700 dark:text-orange-300 shadow-sm">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200/70 dark:from-indigo-900/40 dark:to-indigo-800/40 text-indigo-700 dark:text-indigo-300 shadow-sm">
                   <Beaker className="h-5 w-5" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
               </div>
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{customLabStats.total}</p>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Custom Lab Requests</p>
@@ -430,7 +430,7 @@ export function DashboardContent() {
 
         {/* Attended Users */}
         <div className="group transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-indigo-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-indigo-200/50 dark:border-indigo-800/30 p-6 shadow-lg hover:shadow-xl transition-all duration-500">
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-indigo-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-indigo-200/50 dark:border-indigo-800/30 p-6 card-glow transition-all duration-500">
             <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-200/30 dark:bg-indigo-700/20 rounded-full -translate-y-8 translate-x-8"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
@@ -448,11 +448,11 @@ export function DashboardContent() {
 
         {/* Practice Labs */}
         <div className="group transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-emerald-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-emerald-200/50 dark:border-emerald-800/30 p-6 shadow-lg hover:shadow-xl transition-all duration-500">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-200/30 dark:bg-emerald-700/20 rounded-full -translate-y-8 translate-x-8"></div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-indigo-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-indigo-200/50 dark:border-indigo-800/30 p-6 card-glow transition-all duration-500">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-200/30 dark:bg-indigo-700/20 rounded-full -translate-y-8 translate-x-8"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-200/70 dark:from-emerald-900/40 dark:to-emerald-800/40 text-emerald-700 dark:text-emerald-300 shadow-sm">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200/70 dark:from-indigo-900/40 dark:to-indigo-800/40 text-indigo-700 dark:text-indigo-300 shadow-sm">
                   <BookOpen className="h-5 w-5" />
                 </div>
               </div>
@@ -466,14 +466,14 @@ export function DashboardContent() {
 
         {/* Roadmap Total */}
         <div className="group transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 animate-fade-in-up cursor-pointer" style={{ animationDelay: '0.25s' }} onClick={() => navigate('/dashboard/roadmap')}>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-violet-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-violet-200/50 dark:border-violet-800/30 p-6 shadow-lg hover:shadow-xl transition-all duration-500">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 dark:bg-violet-700/20 rounded-full -translate-y-8 translate-x-8"></div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-white to-indigo-50/40 dark:from-slate-800 dark:to-slate-700/50 border border-indigo-200/50 dark:border-indigo-800/30 p-6 card-glow transition-all duration-500">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-200/30 dark:bg-indigo-700/20 rounded-full -translate-y-8 translate-x-8"></div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-100 to-violet-200/70 dark:from-violet-900/40 dark:to-violet-800/40 text-violet-700 dark:text-violet-300 shadow-sm">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200/70 dark:from-indigo-900/40 dark:to-indigo-800/40 text-indigo-700 dark:text-indigo-300 shadow-sm">
                   <MapPin className="h-5 w-5" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
+                <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
               </div>
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{totalRoadmapItems}</p>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Roadmap Items</p>
