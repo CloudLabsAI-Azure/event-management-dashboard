@@ -173,7 +173,7 @@ export default function TTTPage() {
         description: result.baselined
           ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
           : imported > 0
-            ? `${imported} new request${imported === 1 ? '' : 's'} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap).`
+            ? `${imported} new request${imported === 1 ? '' : 's'} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap, ${result.customCount || 0} custom lab).`
             : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
       })
       if (imported > 0) await loadData()

@@ -24,6 +24,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         const parts = []
         if (result.roadmapCount) parts.push(`${result.roadmapCount} roadmap`)
         if (result.tttCount) parts.push(`${result.tttCount} TTT`)
+        if (result.customCount) parts.push(`${result.customCount} custom lab`)
         toast({
           title: "RMP onboarding requests imported",
           description: `${result.imported} new request${result.imported === 1 ? "" : "s"} added${parts.length ? ` (${parts.join(", ")})` : ""}.`,

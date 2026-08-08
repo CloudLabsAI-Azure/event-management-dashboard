@@ -2109,8 +2109,11 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       // First-ever sync = baseline: record every currently-visible request as
       // "seen" WITHOUT importing, so only requests submitted after go-live are
       // auto-created. Avoids flooding the roadmap with historical RMP requests.
-      const isFirstSync = !(data._rmpSync && data._rmpSync.lastSync);
-      if (isFirstSync) {
+      // Also re-baselines when no request IDs were ever recorded (e.g. earlier
+      // syncs ran with the broken empty-string filters and fetched 0 rows).
+      const priorProcessed = (data._rmpSync && data._rmpSync.processedRequestIds) || [];
+      const isFirstSync = !(data._rmpSync && data._rmpSync.lastSync) || priorProcessed.length === 0;
+      if (isFirstSync && requests.length > 0) {
         baselined = true;
         data._rmpSync = data._rmpSync || {};
         data._rmpSync.processedRequestIds = [
@@ -2128,7 +2131,8 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       let nextSr = data.catalog.length > 0 ? Math.max(...data.catalog.map((t) => Number(t.sr || 0))) + 1 : 1;
       for (const r of fresh) {
         if (liveIds.has(r.requestUniqueName)) continue; // re-check against fresh data
-        const item = mapRequestToCatalogItem(r); // TTT requests → tttSession, others → roadmapItem
+        const item = mapRequestToCatalogItem(r); // route by EventFormat; null = format not imported
+        if (!item) continue;
         item.sr = nextSr++;
         data.catalog.push(item);
         liveIds.add(r.requestUniqueName);
@@ -2155,9 +2159,10 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
     }
 
     const tttCount = created.filter((i) => i.type === 'tttSession').length;
-    const roadmapCount = created.length - tttCount;
-    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT)${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
-    return { fetched: requests.length, imported: created.length, roadmapCount, tttCount, baselined, items: created };
+    const customCount = created.filter((i) => i.type === 'customLabRequest').length;
+    const roadmapCount = created.length - tttCount - customCount;
+    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT, ${customCount} custom)${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
+    return { fetched: requests.length, imported: created.length, roadmapCount, tttCount, customCount, baselined, items: created };
   } finally {
     _rmpSyncRunning = false;
   }

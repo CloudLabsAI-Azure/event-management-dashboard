@@ -356,7 +356,7 @@ export default function RoadmapPage() {
       const result = await triggerRmpSync(msalInstance)
       const imported = result.imported || 0
       const breakdown = imported > 0
-        ? ` (${[result.roadmapCount ? `${result.roadmapCount} roadmap` : '', result.tttCount ? `${result.tttCount} TTT` : ''].filter(Boolean).join(', ')})`
+        ? ` (${[result.roadmapCount ? `${result.roadmapCount} roadmap` : '', result.tttCount ? `${result.tttCount} TTT` : '', result.customCount ? `${result.customCount} custom lab` : ''].filter(Boolean).join(', ')})`
         : ''
       toast({
         title: 'RMP sync complete',

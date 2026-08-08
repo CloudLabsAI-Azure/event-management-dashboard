@@ -25,9 +25,11 @@ const STATUS_MAP = {
   ApprovedActionRequired: 3,
   Rejected: 4,
   Cancelled: 5,
+  Canceled: 5, // live API uses single-L spelling
   'In Progress': 6,
   InProgress: 6,
   Pending: 7,
+  PendingActionRequired: 7,
   Completed: 8,
 };
 
@@ -106,24 +108,31 @@ async function rmpFetch(path, { method = 'GET', body, token }) {
  * Gotcha G6: empty result / no account visibility = HTTP 500 "No event found." → return [].
  */
 async function getMyEventsPage(token, pageNumber, pageSize = RMP_PAGE_SIZE) {
+  // IMPORTANT: unused filters must be null, not '' — the live RMP API treats
+  // empty strings as non-matching filters and returns zero rows (verified
+  // against the admin portal's own requests).
   const body = {
     PageNumber: pageNumber,
     PageSize: pageSize,
-    SearchRequest: '',
-    RequestorName: '',
-    SearchTitle: '',
-    SearchEventPM: '',
+    SearchRequest: null,
+    RequestorName: null,
+    SearchTitle: null,
+    SearchEventPM: null,
     IsPrivate: null,
-    RequestStartDate: '',
-    RequestEndDate: '',
-    ScheduleStartDate: '',
-    ScheduleEndDate: '',
-    EventType: '',
-    Status: RMP_STATUS_FILTER,
-    EventFormat: '',
-    TrackUniqueNames: '',
-    BudgetStatus: '',
-    FulfilmentStatus: '',
+    RequestStartDate: null,
+    RequestEndDate: null,
+    ScheduleStartDate: null,
+    ScheduleEndDate: null,
+    EventType: null,
+    Status: RMP_STATUS_FILTER || null,
+    EventFormat: null,
+    TrackUniqueNames: null,
+    BudgetStatus: null,
+    FulfilmentStatus: null,
+    RequestorEmail: null,
+    CreatorEmail: null,
+    CreatorName: null,
+    CommercialSolutionArea: null,
   };
   try {
     const json = await rmpFetch(`/api/admin/v1.0/tenants/${RMP_TENANT_ID}/myevents`, {
@@ -240,13 +249,25 @@ function mapRequestToRoadmapItem(req) {
 }
 
 /**
- * True when an RMP request is a Train-the-Trainer session (goes to the TTT
- * page instead of the roadmap). Matched on event format, title, or template.
+ * Classify a request by its EventFormat (live values, 2026-08):
+ *   'Onboarding & Maintenance'                → 'roadmap'  (Lab Development)
+ *   'Train-The-Trainer'                       → 'ttt'      (TTT page)
+ *   'Custom Tech Event'/'Custom Non-Tech …'  → 'custom'   (Custom Lab Requests)
+ *   anything else (Hands-On Lab, hacks, …)    → null       (not imported)
  */
+function classifyRequest(req) {
+  const fmt = String(req.eventFormat || '').toLowerCase();
+  const title = String(req.title || '').toLowerCase();
+  if (fmt.includes('onboarding')) return 'roadmap';
+  if (fmt.includes('train') && fmt.includes('trainer')) return 'ttt';
+  if (/\bttt\b/.test(fmt) || /\bttt\b/.test(title)) return 'ttt';
+  if (fmt.includes('custom')) return 'custom';
+  return null;
+}
+
+/** Back-compat helper (used by tests): true when the request is a TTT session. */
 function isTttRequest(req) {
-  const haystack = `${req.eventFormat || ''} | ${req.title || ''} | ${req.templateName || ''}`.toLowerCase();
-  if (haystack.includes('train the trainer') || haystack.includes('train-the-trainer')) return true;
-  return /\bttt\b/i.test(haystack);
+  return classifyRequest(req) === 'ttt';
 }
 
 /**
@@ -280,11 +301,58 @@ function mapRequestToTttSession(req) {
 }
 
 /**
- * Map an RMP request to the right local catalog item:
- * Train-the-Trainer → tttSession, everything else → roadmapItem.
+ * Map an RMP request to a local Custom Lab Request item.
+ * `sr` is NOT set here — it must be assigned at insert time under the write lock.
+ */
+function mapRequestToCustomLabRequest(req) {
+  const nowIso = new Date().toISOString();
+  return {
+    id: `rmp_${req.requestUniqueName.toLowerCase()}`,
+    type: 'customLabRequest',
+    trackTitle: req.title || req.templateName || req.requestId,
+    eventId: req.requestId,
+    eventDate: req.scheduledDate ? String(req.scheduledDate).split('T')[0] : '',
+    phase: 'Under assessment',
+    sponsor: '',
+    frequency: 'One Time',
+    moveToRegularCatalog: 'TBD',
+    holLabRequested: 'No',
+    requestedBy: req.requestorName || '',
+    notes: '',
+    activityLog: [
+      {
+        date: nowIso,
+        text: `Imported from RMP — format: ${req.eventFormat || 'Unknown'}, status: ${req.status || 'Unknown'}, requested by ${req.requestorName || 'unknown'} (${req.requestorEmail || 'no email'})`,
+        addedBy: 'RMP Sync',
+      },
+    ],
+    source: 'rmp',
+    rmpRequestUniqueName: req.requestUniqueName,
+    rmpStatus: req.status,
+    rmpEventType: req.eventType,
+    rmpEventFormat: req.eventFormat,
+    rmpScheduledDate: req.scheduledDate,
+    rmpRequestDate: req.requestDate,
+    rmpRequestorName: req.requestorName,
+    rmpRequestorEmail: req.requestorEmail,
+    rmpTemplateName: req.templateName,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+/**
+ * Map an RMP request to the right local catalog item by EventFormat:
+ * Onboarding & Maintenance → roadmapItem, Train-The-Trainer → tttSession,
+ * Custom Tech/Non-Tech → customLabRequest. Returns null for formats we do
+ * NOT import (Hands-On Lab, hacks, journey maps, …).
  */
 function mapRequestToCatalogItem(req) {
-  return isTttRequest(req) ? mapRequestToTttSession(req) : mapRequestToRoadmapItem(req);
+  const kind = classifyRequest(req);
+  if (kind === 'roadmap') return mapRequestToRoadmapItem(req);
+  if (kind === 'ttt') return mapRequestToTttSession(req);
+  if (kind === 'custom') return mapRequestToCustomLabRequest(req);
+  return null;
 }
 
 function getRmpConfig() {
@@ -301,8 +369,10 @@ export {
   decodeJwtExpiry,
   isTokenUsable,
   fetchAllRequests,
+  classifyRequest,
   mapRequestToRoadmapItem,
   mapRequestToTttSession,
+  mapRequestToCustomLabRequest,
   mapRequestToCatalogItem,
   isTttRequest,
   getRmpConfig,
