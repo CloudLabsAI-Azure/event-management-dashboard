@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GraduationCap, Users, Calendar, Edit, Trash2, Plus } from "lucide-react"
+import { GraduationCap, Users, Calendar, Edit, Trash2, Plus, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useMsal } from "@azure/msal-react"
 import { useAuth } from '@/components/AuthProvider'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
+import { triggerRmpSync } from '@/lib/rmpSync'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
@@ -157,6 +159,38 @@ export default function TTTPage() {
     setIsEditDialogOpen(true)
   }
 
+  const { instance: msalInstance } = useMsal()
+  const [rmpSyncing, setRmpSyncing] = useState(false)
+
+  // Manually pull new onboarding requests from RMP (TTT requests land here)
+  const handleRmpSync = async () => {
+    setRmpSyncing(true)
+    try {
+      const result = await triggerRmpSync(msalInstance)
+      const imported = result.imported || 0
+      toast({
+        title: 'RMP sync complete',
+        description: result.baselined
+          ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
+          : imported > 0
+            ? `${imported} new request${imported === 1 ? '' : 's'} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap).`
+            : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
+      })
+      if (imported > 0) await loadData()
+    } catch (err: any) {
+      const data = err?.response?.data
+      toast({
+        title: 'RMP sync failed',
+        description: data?.requiresReauth
+          ? 'Sign out and back in with your CloudLabs account, then retry.'
+          : (data?.error || err?.message || 'Unknown error'),
+        variant: 'destructive'
+      })
+    } finally {
+      setRmpSyncing(false)
+    }
+  }
+
   const dirty = useDirtyFields<TTTSession>()
 
   const handleEdit = (session: TTTSession) => {
@@ -249,14 +283,28 @@ export default function TTTPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <GraduationCap className="h-8 w-8 text-primary" />
-            Train The Trainer (TTT)
-          </h1>
-          <p className="text-muted-foreground">
-            Manage and track Train The Trainer sessions and certifications
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+              <GraduationCap className="h-8 w-8 text-primary" />
+              Train The Trainer (TTT)
+            </h1>
+            <p className="text-muted-foreground">
+              Manage and track Train The Trainer sessions and certifications
+            </p>
+          </div>
+          {role === 'admin' && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={rmpSyncing}
+              onClick={handleRmpSync}
+              title="Fetch new onboarding requests from the CE Request Portal"
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${rmpSyncing ? 'animate-spin' : ''}`} />
+              {rmpSyncing ? 'Syncing…' : 'Sync RMP'}
+            </Button>
+          )}
         </div>
 
         {/* Statistics Cards */}
