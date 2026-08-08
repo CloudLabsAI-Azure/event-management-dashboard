@@ -15,7 +15,10 @@ const RMP_TENANT_ID = process.env.RMP_TENANT_ID || 'EAB203B6-FF38-4DFE-912F-D09E
 const RMP_STATUS_FILTER = process.env.RMP_STATUS_FILTER || '';
 const RMP_PAGE_SIZE = Number(process.env.RMP_PAGE_SIZE || 100);
 const RMP_TIMEOUT_MS = Number(process.env.RMP_TIMEOUT_MS || 30000);
-const RMP_MAX_PAGES = Number(process.env.RMP_MAX_PAGES || 50); // safety cap
+// Safety cap on pagination. Must comfortably cover the full tenant history so
+// the baseline marks EVERY request as seen (prod: ~3,850 requests; if RMP
+// clamps PageSize to 50 that is ~80 pages).
+const RMP_MAX_PAGES = Number(process.env.RMP_MAX_PAGES || 400);
 
 // RMP status name → numeric code (G9: ApprovedActionRequired maps to Approved)
 const STATUS_MAP = {
