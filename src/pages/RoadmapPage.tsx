@@ -9,12 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download, Search, AlertTriangle } from "lucide-react"
+import { Calendar, MapPin, Edit, Trash2, Plus, Clock, MessageSquarePlus, History, Download, Search, AlertTriangle, RefreshCw } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
+import { useMsal } from "@azure/msal-react"
 import { useAuth } from '@/components/AuthProvider'
 import catalogService from '@/lib/services/catalogService'
+import { triggerRmpSync } from '@/lib/rmpSync'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
 import { isNonEmptyString } from '@/lib/validation'
@@ -45,6 +47,32 @@ interface RoadmapItem {
   isUpgrade?: boolean;
   needsAttention?: boolean;
   finalizedTrackName?: string;
+  source?: string;
+}
+
+/** Map raw catalog items (type 'roadmapItem') to UI roadmap items */
+function mapCatalogListToRoadmap(list: any[]): RoadmapItem[] {
+  return list
+    .filter((i: any) => i.type === 'roadmapItem')
+    .map((r: any, idx: number) => ({
+      id: String(r.id || r._id || `temp_${idx}`),
+      sr: Number(r.sr || idx + 1),
+      trackTitle: r.trackTitle || r.title || '',
+      phase: r.phase || '',
+      eta: r.eta || 'NA',
+      eventId: r.eventId || '',
+      programType: r.programType || '',
+      approvalDate: r.approvalDate || '',
+      duration: r.duration || '',
+      labType: r.labType || (r.isUpgrade ? 'Lab Upgrade' : ''),
+      progressDeck: r.progressDeck || '',
+      notes: r.notes || '',
+      activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
+      isUpgrade: r.isUpgrade || false,
+      needsAttention: r.needsAttention || false,
+      finalizedTrackName: r.finalizedTrackName || '',
+      source: r.source || ''
+    }))
 }
 
 const getPhaseBadge = (phase: string) => {
@@ -217,26 +245,7 @@ export default function RoadmapPage() {
         const list = await catalogService.list()
         if (!mounted) return
         console.log('Catalog list:', list) // Debug log
-        const roadmapItems = list.filter((i: any) => i.type === 'roadmapItem')
-        console.log('Filtered roadmap items:', roadmapItems) // Debug log
-        const mapped = roadmapItems.map((r: any, idx: number) => ({ 
-          id: String(r.id || r._id || `temp_${idx}`),
-          sr: Number(r.sr || idx + 1), 
-          trackTitle: r.trackTitle || r.title || '', 
-          phase: r.phase || '', 
-          eta: r.eta || 'NA',
-          eventId: r.eventId || '',
-          programType: r.programType || '',
-          approvalDate: r.approvalDate || '',
-          duration: r.duration || '',
-          labType: r.labType || (r.isUpgrade ? 'Lab Upgrade' : ''),
-          progressDeck: r.progressDeck || '',
-          notes: r.notes || '',
-          activityLog: Array.isArray(r.activityLog) ? r.activityLog : [],
-          isUpgrade: r.isUpgrade || false,
-          needsAttention: r.needsAttention || false,
-          finalizedTrackName: r.finalizedTrackName || ''
-        }))
+        const mapped = mapCatalogListToRoadmap(list)
         setRoadmapData(mapped)
 
         // Auto-open activity log if ?sr= is in URL
@@ -333,6 +342,40 @@ export default function RoadmapPage() {
   }
 
   const { userRole: role, user } = useAuth()
+  const { instance: msalInstance } = useMsal()
+  const [rmpSyncing, setRmpSyncing] = useState(false)
+
+  // Manually pull new onboarding requests from RMP and refresh the table
+  const handleRmpSync = async () => {
+    setRmpSyncing(true)
+    try {
+      const result = await triggerRmpSync(msalInstance)
+      const imported = result.imported || 0
+      toast({
+        title: 'RMP sync complete',
+        description: result.baselined
+          ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
+          : imported > 0
+            ? `${imported} new onboarding request${imported === 1 ? '' : 's'} imported (${result.fetched ?? 0} fetched from RMP).`
+            : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
+      })
+      if (imported > 0) {
+        const list = await catalogService.list()
+        setRoadmapData(mapCatalogListToRoadmap(list))
+      }
+    } catch (err: any) {
+      const data = err?.response?.data
+      toast({
+        title: 'RMP sync failed',
+        description: data?.requiresReauth
+          ? 'Sign out and back in with your CloudLabs account, then retry.'
+          : (data?.error || err?.message || 'Unknown error'),
+        variant: 'destructive'
+      })
+    } finally {
+      setRmpSyncing(false)
+    }
+  }
 
   // Add activity log update
   const handleAddUpdate = async () => {
@@ -540,6 +583,16 @@ export default function RoadmapPage() {
                 <Plus className="h-4 w-4" />
                 Add Roadmap
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={rmpSyncing}
+                onClick={handleRmpSync}
+                title="Fetch new onboarding requests from the CE Request Portal"
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${rmpSyncing ? 'animate-spin' : ''}`} />
+                {rmpSyncing ? 'Syncing…' : 'Sync RMP'}
+              </Button>
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -660,7 +713,16 @@ export default function RoadmapPage() {
                           setIsNotesDialogOpen(true);
                         }}
                       >
-                        <TableCell className="font-mono text-sm">{track.eventId || 'TBD'}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <span>{track.eventId || 'TBD'}</span>
+                            {track.source === 'rmp' && (
+                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/40 text-[10px] px-1.5 py-0" title="Imported from the CE Request Portal">
+                                RMP
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="font-medium">
                           {track.trackTitle}
                         </TableCell>

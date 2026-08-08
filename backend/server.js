@@ -23,6 +23,7 @@ import https from 'https';
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError, readJsonBlob, writeJsonBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
+const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, mapRequestToRoadmapItem, getRmpConfig } = await import('./rmpService.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2046,6 +2047,176 @@ app.get('/api/diagnostics/lock-status', requireAdmin, (req, res) => {
   res.json(getLockStatus());
 });
 
+// =====================
+// RMP (CE Request Portal) Integration
+// =====================
+// Fetches event requests from RMP and auto-creates them as roadmap items
+// (type 'roadmapItem', labType 'New Lab Onboarding') in the catalog collection.
+//
+// Auth model: RMP has NO service account — every call is made with a signed-in
+// user's Azure AD B2C id_token (user-delegated). The most recent usable token is
+// kept IN MEMORY ONLY (never persisted to the data blob) so the hourly cron can
+// "borrow" it while it's still valid (~60 min). Sync self-heals whenever any
+// user with RMP access uses the app.
+
+let _rmpTokenCache = null; // { token, expiresAt, email } — in-memory only
+let _rmpSyncRunning = false;
+
+function cacheRmpToken(token, email) {
+  const expiresAt = decodeJwtExpiry(token);
+  _rmpTokenCache = { token, expiresAt, email: email || 'unknown' };
+  console.log(`[RMP] Cached B2C token from ${email} (prefix ${String(token).slice(0, 12)}…, expires ${expiresAt ? new Date(expiresAt).toISOString() : 'unknown'})`);
+}
+
+function getCachedRmpToken() {
+  if (_rmpTokenCache && isTokenUsable(_rmpTokenCache.token)) return _rmpTokenCache;
+  return null;
+}
+
+/**
+ * Run one RMP → catalog sync pass.
+ * Phase 1: snapshot processed IDs (outside lock). Phase 2: fetch from RMP
+ * (network, outside lock). Phase 3: insert new roadmap items under the write lock.
+ * Requests already imported OR previously processed (e.g. later deleted by an
+ * admin) are never re-created.
+ */
+async function runRmpSync(b2cToken, triggeredBy = 'system') {
+  if (_rmpSyncRunning) return { skipped: true, reason: 'Sync already in progress' };
+  _rmpSyncRunning = true;
+  try {
+    // Phase 1: read snapshot for pre-filtering (cheap, outside lock)
+    const snapshot = await readData();
+    const processedIds = new Set(((snapshot._rmpSync && snapshot._rmpSync.processedRequestIds) || []).map((s) => String(s).toUpperCase()));
+    const existingIds = new Set(
+      (snapshot.catalog || [])
+        .filter((i) => i && i.rmpRequestUniqueName)
+        .map((i) => String(i.rmpRequestUniqueName).toUpperCase())
+    );
+
+    // Phase 2: fetch all requests visible to this token's RMP account
+    const requests = await fetchAllRequests(b2cToken);
+    const fresh = requests.filter(
+      (r) => r.requestUniqueName && !processedIds.has(r.requestUniqueName) && !existingIds.has(r.requestUniqueName)
+    );
+
+    // Phase 3: apply under lock
+    const created = [];
+    let baselined = false;
+    await withLock(async () => {
+      const data = await readData();
+      data.catalog = Array.isArray(data.catalog) ? data.catalog : [];
+
+      // First-ever sync = baseline: record every currently-visible request as
+      // "seen" WITHOUT importing, so only requests submitted after go-live are
+      // auto-created. Avoids flooding the roadmap with historical RMP requests.
+      const isFirstSync = !(data._rmpSync && data._rmpSync.lastSync);
+      if (isFirstSync) {
+        baselined = true;
+        data._rmpSync = data._rmpSync || {};
+        data._rmpSync.processedRequestIds = [
+          ...new Set([...(data._rmpSync.processedRequestIds || []), ...requests.map((r) => r.requestUniqueName)]),
+        ];
+        data._rmpSync.lastSync = new Date().toISOString();
+        data._rmpSync.lastResult = { fetched: requests.length, imported: 0, baselined: true, triggeredBy };
+        await writeData(data, { updateTimestamp: false });
+        return;
+      }
+
+      const liveIds = new Set(
+        data.catalog.filter((i) => i && i.rmpRequestUniqueName).map((i) => String(i.rmpRequestUniqueName).toUpperCase())
+      );
+      let nextSr = data.catalog.length > 0 ? Math.max(...data.catalog.map((t) => Number(t.sr || 0))) + 1 : 1;
+      for (const r of fresh) {
+        if (liveIds.has(r.requestUniqueName)) continue; // re-check against fresh data
+        const item = mapRequestToRoadmapItem(r);
+        item.sr = nextSr++;
+        data.catalog.push(item);
+        liveIds.add(r.requestUniqueName);
+        created.push(item);
+      }
+      data._rmpSync = data._rmpSync || {};
+      data._rmpSync.processedRequestIds = [
+        ...new Set([...(data._rmpSync.processedRequestIds || []), ...requests.map((r) => r.requestUniqueName)]),
+      ];
+      data._rmpSync.lastSync = new Date().toISOString();
+      data._rmpSync.lastResult = { fetched: requests.length, imported: created.length, triggeredBy };
+      await writeData(data, { updateTimestamp: created.length > 0 });
+    }, 'rmp-sync');
+
+    // Audit log new items (outside lock)
+    for (const item of created) {
+      await logAudit({
+        user: { id: 'rmp-sync', email: triggeredBy, role: 'system' },
+        action: 'CREATE',
+        resource: 'catalog',
+        resourceId: item.id,
+        newData: item,
+      });
+    }
+
+    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length}${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
+    return { fetched: requests.length, imported: created.length, baselined, items: created };
+  } finally {
+    _rmpSyncRunning = false;
+  }
+}
+
+// Trigger a sync. Any authenticated user may contribute their B2C id_token —
+// results are scoped to THEIR RMP account and the created items are fully
+// server-defined (no client payload is trusted for item content).
+app.post('/api/rmp/sync', requireAuth, async (req, res) => {
+  try {
+    let token = String((req.body && req.body.b2cToken) || '');
+    if (token && !isTokenUsable(token)) {
+      return res.status(401).json({ error: 'B2C token is expired or invalid. Please sign out and back in.', requiresReauth: true });
+    }
+    if (token) {
+      cacheRmpToken(token, req.user && req.user.email);
+    } else {
+      const cached = getCachedRmpToken();
+      if (!cached) {
+        return res.status(401).json({
+          error: 'No usable CloudLabs (B2C) token available. Sign in with your CloudLabs account and retry.',
+          requiresReauth: true,
+        });
+      }
+      token = cached.token;
+    }
+
+    const result = await runRmpSync(token, (req.user && req.user.email) || 'manual');
+    res.json({ success: true, ...result });
+  } catch (err) {
+    if (err instanceof RmpApiError) {
+      console.error(`[RMP] Sync failed: HTTP ${err.statusCode} — ${err.message}`);
+      if (err.statusCode === 401 || err.statusCode === 403) {
+        return res.status(401).json({ error: 'RMP rejected the token. Your account may not have RMP access.', requiresReauth: true });
+      }
+      return res.status(502).json({ error: `RMP API error: ${err.message}` });
+    }
+    console.error('[RMP] Sync failed:', err && err.stack ? err.stack : err);
+    res.status(500).json({ error: 'RMP sync failed' });
+  }
+});
+
+// Sync status/metadata (no secrets)
+app.get('/api/rmp/sync-status', requireAuth, async (req, res) => {
+  try {
+    const data = await readData();
+    const meta = data._rmpSync || {};
+    const cached = getCachedRmpToken();
+    res.json({
+      lastSync: meta.lastSync || null,
+      lastResult: meta.lastResult || null,
+      processedCount: Array.isArray(meta.processedRequestIds) ? meta.processedRequestIds.length : 0,
+      tokenAvailable: !!cached,
+      config: getRmpConfig(),
+    });
+  } catch (err) {
+    console.error('GET /api/rmp/sync-status error', err);
+    res.status(500).json({ error: 'Failed to get RMP sync status' });
+  }
+});
+
 app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
@@ -2410,6 +2581,30 @@ app.listen(PORT, () => {
     }
   });
   console.log(`📅 GitHub sync for Trending Tracks scheduled: ${githubSyncSchedule}`);
+
+  // Schedule RMP onboarding-request sync (hourly by default).
+  // Borrows the most recent in-memory B2C token; skips quietly when none is usable
+  // (a fresh token arrives whenever any user with RMP access uses the app).
+  if (process.env.RMP_SYNC_ENABLED !== 'false') {
+    const rmpSyncSchedule = process.env.RMP_SYNC_SCHEDULE || '0 * * * *'; // Default: hourly
+    cron.schedule(rmpSyncSchedule, async () => {
+      const cached = getCachedRmpToken();
+      if (!cached) {
+        console.log('[RMP] Scheduled sync skipped: no usable B2C token cached');
+        return;
+      }
+      console.log(`\n🕐 Running scheduled RMP sync (borrowing token from ${cached.email})...`);
+      try {
+        const result = await runRmpSync(cached.token, `cron (token: ${cached.email})`);
+        console.log(`✅ Scheduled RMP sync complete: ${result.imported ?? 0} new onboarding requests imported`);
+      } catch (err) {
+        console.error('❌ Scheduled RMP sync failed:', err && err.message ? err.message : err);
+      }
+    });
+    console.log(`📅 RMP onboarding-request sync scheduled: ${rmpSyncSchedule} (${getRmpConfig().apiBaseUrl})`);
+  } else {
+    console.log('⚠️ RMP sync disabled (RMP_SYNC_ENABLED=false)');
+  }
 });
 
 // If a client build exists (Vite -> dist), serve it as static files in production

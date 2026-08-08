@@ -1,12 +1,34 @@
+import { useEffect } from "react"
+import { useMsal } from "@azure/msal-react"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { DashboardHeader } from "@/components/DashboardHeader"
+import { useAuth } from "@/components/AuthProvider"
+import { maybeAutoSyncRmp } from "@/lib/rmpSync"
+import { toast } from "@/hooks/use-toast"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { instance } = useMsal()
+  const { isAuthorized } = useAuth()
+
+  // Auto-import new RMP onboarding requests once per browser session.
+  // Runs server-side with the signed-in user's B2C token; silent on failure.
+  useEffect(() => {
+    if (!isAuthorized) return
+    maybeAutoSyncRmp(instance).then((result) => {
+      if (result && result.imported && result.imported > 0) {
+        toast({
+          title: "RMP onboarding requests imported",
+          description: `${result.imported} new request${result.imported === 1 ? "" : "s"} added to the Lab Development roadmap.`,
+        })
+      }
+    })
+  }, [isAuthorized, instance])
+
   return (
     <SidebarProvider>
       <AppSidebar />
