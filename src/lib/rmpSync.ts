@@ -6,8 +6,10 @@ export interface RmpSyncResult {
   success?: boolean;
   fetched?: number;
   imported?: number;
+  roadmapCount?: number;
+  tttCount?: number;
   baselined?: boolean;
-  items?: Array<{ id: string; trackTitle: string; eventId: string }>;
+  items?: Array<{ id: string; trackTitle?: string; trackName?: string; eventId: string; type?: string }>;
   skipped?: boolean;
   reason?: string;
   error?: string;

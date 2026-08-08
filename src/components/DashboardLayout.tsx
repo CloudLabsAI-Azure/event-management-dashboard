@@ -21,9 +21,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!isAuthorized) return
     maybeAutoSyncRmp(instance).then((result) => {
       if (result && result.imported && result.imported > 0) {
+        const parts = []
+        if (result.roadmapCount) parts.push(`${result.roadmapCount} roadmap`)
+        if (result.tttCount) parts.push(`${result.tttCount} TTT`)
         toast({
           title: "RMP onboarding requests imported",
-          description: `${result.imported} new request${result.imported === 1 ? "" : "s"} added to the Lab Development roadmap.`,
+          description: `${result.imported} new request${result.imported === 1 ? "" : "s"} added${parts.length ? ` (${parts.join(", ")})` : ""}.`,
         })
       }
     })

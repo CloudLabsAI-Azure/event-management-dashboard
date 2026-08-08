@@ -239,6 +239,54 @@ function mapRequestToRoadmapItem(req) {
   };
 }
 
+/**
+ * True when an RMP request is a Train-the-Trainer session (goes to the TTT
+ * page instead of the roadmap). Matched on event format, title, or template.
+ */
+function isTttRequest(req) {
+  const haystack = `${req.eventFormat || ''} | ${req.title || ''} | ${req.templateName || ''}`.toLowerCase();
+  if (haystack.includes('train the trainer') || haystack.includes('train-the-trainer')) return true;
+  return /\bttt\b/i.test(haystack);
+}
+
+/**
+ * Map an RMP request to a local TTT session item.
+ * `sr` is NOT set here — it must be assigned at insert time under the write lock.
+ */
+function mapRequestToTttSession(req) {
+  const nowIso = new Date().toISOString();
+  const statusMap = { Completed: 'Completed', InProgress: 'In Progress', 'In Progress': 'In Progress' };
+  return {
+    id: `rmp_${req.requestUniqueName.toLowerCase()}`,
+    type: 'tttSession',
+    trackName: req.title || req.templateName || req.requestId,
+    eventId: req.requestId,
+    sessionDate: req.scheduledDate ? String(req.scheduledDate).split('T')[0] : null,
+    status: statusMap[req.status] || 'Scheduled',
+    notes: `[RMP] ${req.status || 'Unknown'} — requested by ${req.requestorName || 'unknown'} (${req.requestorEmail || 'no email'})`,
+    source: 'rmp',
+    rmpRequestUniqueName: req.requestUniqueName,
+    rmpStatus: req.status,
+    rmpEventType: req.eventType,
+    rmpEventFormat: req.eventFormat,
+    rmpScheduledDate: req.scheduledDate,
+    rmpRequestDate: req.requestDate,
+    rmpRequestorName: req.requestorName,
+    rmpRequestorEmail: req.requestorEmail,
+    rmpTemplateName: req.templateName,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+/**
+ * Map an RMP request to the right local catalog item:
+ * Train-the-Trainer → tttSession, everything else → roadmapItem.
+ */
+function mapRequestToCatalogItem(req) {
+  return isTttRequest(req) ? mapRequestToTttSession(req) : mapRequestToRoadmapItem(req);
+}
+
 function getRmpConfig() {
   return {
     apiBaseUrl: RMP_API_BASE_URL,
@@ -254,5 +302,8 @@ export {
   isTokenUsable,
   fetchAllRequests,
   mapRequestToRoadmapItem,
+  mapRequestToTttSession,
+  mapRequestToCatalogItem,
+  isTttRequest,
   getRmpConfig,
 };

@@ -229,10 +229,14 @@ export default function RoadmapPage() {
       (item.programType || '').toLowerCase().includes(query);
     return matchesPhase && matchesAttention && matchesSponsor && matchesSearch;
   }).sort((a, b) => {
-    // Push "Released" items to the bottom by default
-    const aReleased = (a.phase || '').toLowerCase() === 'released' ? 1 : 0;
-    const bReleased = (b.phase || '').toLowerCase() === 'released' ? 1 : 0;
-    return aReleased - bReleased;
+    // Sort order: active phases first, then On-Hold, then Released at the bottom
+    const rank = (item: RoadmapItem) => {
+      const phase = (item.phase || '').toLowerCase();
+      if (phase === 'released') return 2;
+      if (phase === 'on-hold') return 1;
+      return 0;
+    };
+    return rank(a) - rank(b);
   });
 
   // Get unique sponsors for filter dropdown
@@ -351,12 +355,15 @@ export default function RoadmapPage() {
     try {
       const result = await triggerRmpSync(msalInstance)
       const imported = result.imported || 0
+      const breakdown = imported > 0
+        ? ` (${[result.roadmapCount ? `${result.roadmapCount} roadmap` : '', result.tttCount ? `${result.tttCount} TTT` : ''].filter(Boolean).join(', ')})`
+        : ''
       toast({
         title: 'RMP sync complete',
         description: result.baselined
           ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
           : imported > 0
-            ? `${imported} new onboarding request${imported === 1 ? '' : 's'} imported (${result.fetched ?? 0} fetched from RMP).`
+            ? `${imported} new onboarding request${imported === 1 ? '' : 's'} imported${breakdown}.`
             : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
       })
       if (imported > 0) {

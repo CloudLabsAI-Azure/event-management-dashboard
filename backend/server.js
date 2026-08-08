@@ -23,7 +23,7 @@ import https from 'https';
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError, readJsonBlob, writeJsonBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
-const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, mapRequestToRoadmapItem, getRmpConfig } = await import('./rmpService.js');
+const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, mapRequestToCatalogItem, getRmpConfig } = await import('./rmpService.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2128,7 +2128,7 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       let nextSr = data.catalog.length > 0 ? Math.max(...data.catalog.map((t) => Number(t.sr || 0))) + 1 : 1;
       for (const r of fresh) {
         if (liveIds.has(r.requestUniqueName)) continue; // re-check against fresh data
-        const item = mapRequestToRoadmapItem(r);
+        const item = mapRequestToCatalogItem(r); // TTT requests → tttSession, others → roadmapItem
         item.sr = nextSr++;
         data.catalog.push(item);
         liveIds.add(r.requestUniqueName);
@@ -2154,8 +2154,10 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       });
     }
 
-    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length}${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
-    return { fetched: requests.length, imported: created.length, baselined, items: created };
+    const tttCount = created.filter((i) => i.type === 'tttSession').length;
+    const roadmapCount = created.length - tttCount;
+    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT)${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
+    return { fetched: requests.length, imported: created.length, roadmapCount, tttCount, baselined, items: created };
   } finally {
     _rmpSyncRunning = false;
   }
