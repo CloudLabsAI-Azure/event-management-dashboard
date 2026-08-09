@@ -83,6 +83,9 @@ export function DashboardContent() {
     lastUpdated: null as number | null,
   })
 
+  // RMP auto-synced metrics (computed server-side on each RMP sync)
+  const [rmpAuto, setRmpAuto] = useState<any>(null)
+
   // Roadmap data
   const [roadmapStats, setRoadmapStats] = useState({
     development: 0,
@@ -261,6 +264,7 @@ export function DashboardContent() {
         try {
           const saved = await metricsService.get()
           if (saved) {
+            if (saved.rmpAuto && typeof saved.rmpAuto === 'object') setRmpAuto(saved.rmpAuto)
             next = {
               activeParticipants: Number(saved['dashboard.activeParticipants'] ?? next.activeParticipants) || 0,
               completedPracticeLabs: Number(saved['dashboard.completedPracticeLabs'] ?? next.completedPracticeLabs) || 0,
@@ -481,6 +485,22 @@ export function DashboardContent() {
           </div>
         </div>
       </div>
+
+      {/* RMP auto-synced metrics strip */}
+      {rmpAuto && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-indigo-200/50 dark:border-indigo-800/30 bg-gradient-to-r from-indigo-50/60 to-white dark:from-slate-800 dark:to-slate-800/60 px-6 py-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
+          <span className="font-semibold">RMP requests (auto-synced)</span>
+          <span>Onboarding: <span className="font-bold">{rmpAuto.onboarding ?? 0}</span></span>
+          <span>TTT: <span className="font-bold">{rmpAuto.ttt ?? 0}</span></span>
+          <span>Custom: <span className="font-bold">{rmpAuto.custom ?? 0}</span></span>
+          <span>Localized: <span className="font-bold">{rmpAuto.localized ?? 0}</span></span>
+          <span>Completed: <span className="font-bold">{rmpAuto.completed ?? 0}</span></span>
+          <span>Canceled: <span className="font-bold">{rmpAuto.canceled ?? 0}</span></span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+            as of {rmpAuto.computedAt ? new Date(rmpAuto.computedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+          </span>
+        </div>
+      )}
 
       {/* Main Content Grid - 2 columns */}
       <div className="grid gap-8 lg:grid-cols-2 relative z-10">

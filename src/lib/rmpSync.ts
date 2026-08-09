@@ -6,9 +6,11 @@ export interface RmpSyncResult {
   success?: boolean;
   fetched?: number;
   imported?: number;
+  updated?: number;
   roadmapCount?: number;
   tttCount?: number;
   customCount?: number;
+  localizedCount?: number;
   baselined?: boolean;
   items?: Array<{ id: string; trackTitle?: string; trackName?: string; eventId: string; type?: string }>;
   skipped?: boolean;
@@ -74,7 +76,7 @@ export async function maybeAutoSyncRmp(instance: IPublicClientApplication): Prom
   autoSyncAttempted = true;
   try {
     const result = await triggerRmpSync(instance);
-    if (result.imported && result.imported > 0) {
+    if ((result.imported && result.imported > 0) || (result.updated && result.updated > 0)) {
       try { window.dispatchEvent(new CustomEvent('catalog:changed')); } catch { /* noop */ }
     }
     return result;

@@ -172,6 +172,9 @@ function mapRawRequest(raw) {
     timeZoneLabel: String(raw.TimeZoneLabel || ''),
     isPrivate: !!raw.IsPrivate,
     totalRecords: Number(raw.TotalRecords || 0),
+    adminUrl: String(raw.AdminURL || ''),
+    registrationsPageUrl: String(raw.RegistrationsPageURL || ''),
+    attendanceReportUrl: String(raw.AttendanceReportURL || ''),
   };
 }
 
@@ -246,9 +249,62 @@ function mapRequestToRoadmapItem(req) {
     rmpRequestorName: req.requestorName,
     rmpRequestorEmail: req.requestorEmail,
     rmpTemplateName: req.templateName,
+    rmpAdminUrl: req.adminUrl || '',
+    rmpRegistrationsPageUrl: req.registrationsPageUrl || '',
+    rmpAttendanceReportUrl: req.attendanceReportUrl || '',
     createdAt: nowIso,
     updatedAt: nowIso,
   };
+}
+
+/**
+ * Fetch the rich request detail. ⚠️ Different path family — NO /admin/v1.0
+ * prefix (gotcha G2). Returns null on any failure (enrichment is best-effort;
+ * callers must not fail the sync when detail is unavailable).
+ */
+async function getRequestDetail(token, requestUniqueName) {
+  try {
+    const json = await rmpFetch(`/api/tenants/${RMP_TENANT_ID}/eventrequests/${requestUniqueName}`, { token });
+    const d = json && json.Data;
+    if (!d) return null;
+    const sessions = (Array.isArray(d.SessionRequests) ? d.SessionRequests : []).map((s) => {
+      // AdditionalSessionSettings is a JSON STRING (array or object); note the
+      // live API typo RequiredInsrtuctorCount — read both spellings (gotcha G4).
+      let instructors = null;
+      try {
+        const parsed = JSON.parse(s.AdditionalSessionSettings || 'null');
+        const st = Array.isArray(parsed) ? parsed[0] : parsed;
+        if (st) instructors = st.RequiredInstructorCount ?? st.RequiredInsrtuctorCount ?? st.NoOfInstructorFromEventAdmin ?? null;
+      } catch { /* malformed — ignore */ }
+      return {
+        title: String(s.Title || ''),
+        startDate: s.StartDate ? String(s.StartDate).split('T')[0] : null,
+        startTime: s.StartTime || null,
+        endTime: s.EndTime || null,
+        hasLab: !!s.HasLab,
+        instructors: instructors != null ? Number(instructors) : null,
+      };
+    });
+    return {
+      description: String(d.Description || ''),
+      deliveryLanguageName: String(d.DeliveryLanguageName || ''),
+      timeZone: String(d.TimeZone || ''),
+      sessions,
+    };
+  } catch (err) {
+    console.warn(`[RMP] Detail fetch failed for ${requestUniqueName}: ${err && err.message ? err.message : err}`);
+    return null;
+  }
+}
+
+/** "09:00:00"–"11:00:00" → "09:00–11:00"; joins multiple sessions. */
+function formatSessionTimes(detail) {
+  if (!detail || !Array.isArray(detail.sessions) || detail.sessions.length === 0) return '';
+  const hhmm = (t) => (t ? String(t).split(':').slice(0, 2).join(':') : '?');
+  return detail.sessions
+    .filter((s) => s.startTime || s.endTime)
+    .map((s) => `${s.startDate || ''} ${hhmm(s.startTime)}–${hhmm(s.endTime)}${s.instructors ? ` (${s.instructors} instructor${s.instructors === 1 ? '' : 's'})` : ''}`.trim())
+    .join('; ');
 }
 
 /**
@@ -276,18 +332,22 @@ function isTttRequest(req) {
 /**
  * Map an RMP request to a local TTT session item.
  * `sr` is NOT set here — it must be assigned at insert time under the write lock.
+ * `detail` (optional) enriches with session times + instructor counts.
  */
-function mapRequestToTttSession(req) {
+function mapRequestToTttSession(req, detail = null) {
   const nowIso = new Date().toISOString();
   const statusMap = { Completed: 'Completed', InProgress: 'In Progress', 'In Progress': 'In Progress' };
+  const times = formatSessionTimes(detail);
+  const noteParts = [`[RMP] ${req.status || 'Unknown'} — requested by ${req.requestorName || 'unknown'} (${req.requestorEmail || 'no email'})`];
+  if (times) noteParts.push(`Sessions: ${times}${detail && detail.timeZone ? ` (${detail.timeZone})` : ''}`);
   return {
     id: `rmp_${req.requestUniqueName.toLowerCase()}`,
     type: 'tttSession',
     trackName: req.title || req.templateName || req.requestId,
     eventId: req.requestId,
-    sessionDate: req.scheduledDate ? String(req.scheduledDate).split('T')[0] : null,
+    sessionDate: (detail && detail.sessions && detail.sessions[0] && detail.sessions[0].startDate) || (req.scheduledDate ? String(req.scheduledDate).split('T')[0] : null),
     status: statusMap[req.status] || 'Scheduled',
-    notes: `[RMP] ${req.status || 'Unknown'} — requested by ${req.requestorName || 'unknown'} (${req.requestorEmail || 'no email'})`,
+    notes: noteParts.join('\n'),
     source: 'rmp',
     rmpRequestUniqueName: req.requestUniqueName,
     rmpStatus: req.status,
@@ -298,6 +358,9 @@ function mapRequestToTttSession(req) {
     rmpRequestorName: req.requestorName,
     rmpRequestorEmail: req.requestorEmail,
     rmpTemplateName: req.templateName,
+    rmpAdminUrl: req.adminUrl || '',
+    rmpRegistrationsPageUrl: req.registrationsPageUrl || '',
+    rmpAttendanceReportUrl: req.attendanceReportUrl || '',
     createdAt: nowIso,
     updatedAt: nowIso,
   };
@@ -339,9 +402,45 @@ function mapRequestToCustomLabRequest(req) {
     rmpRequestorName: req.requestorName,
     rmpRequestorEmail: req.requestorEmail,
     rmpTemplateName: req.templateName,
+    rmpAdminUrl: req.adminUrl || '',
+    rmpRegistrationsPageUrl: req.registrationsPageUrl || '',
+    rmpAttendanceReportUrl: req.attendanceReportUrl || '',
     createdAt: nowIso,
     updatedAt: nowIso,
   };
+}
+
+/**
+ * Map an RMP request with a non-English delivery language to a localizedTrack
+ * item (Localized Tracks page: trackTitle + spanish/portuguese status fields).
+ */
+function mapRequestToLocalizedTrack(req, detail) {
+  const nowIso = new Date().toISOString();
+  const lang = String((detail && detail.deliveryLanguageName) || '').toLowerCase();
+  const done = req.status === 'Completed';
+  const state = done ? 'Available' : 'In Progress';
+  return {
+    id: `rmp_loc_${req.requestUniqueName.toLowerCase()}`,
+    type: 'localizedTrack',
+    trackTitle: req.title || req.templateName || req.requestId,
+    spanish: lang.includes('spanish') ? state : 'Not Available',
+    portuguese: lang.includes('portuguese') ? state : 'Not Available',
+    lastUpdated: nowIso.split('T')[0],
+    lastTestDate: '',
+    source: 'rmp',
+    rmpRequestUniqueName: req.requestUniqueName,
+    rmpStatus: req.status,
+    rmpDeliveryLanguage: (detail && detail.deliveryLanguageName) || '',
+    rmpAdminUrl: req.adminUrl || '',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+}
+
+/** True when the detail's delivery language should create a localizedTrack. */
+function isLocalizedLanguage(detail) {
+  const lang = String((detail && detail.deliveryLanguageName) || '').toLowerCase();
+  return lang.includes('spanish') || lang.includes('portuguese');
 }
 
 /**
@@ -350,10 +449,10 @@ function mapRequestToCustomLabRequest(req) {
  * Custom Tech/Non-Tech → customLabRequest. Returns null for formats we do
  * NOT import (Hands-On Lab, hacks, journey maps, …).
  */
-function mapRequestToCatalogItem(req) {
+function mapRequestToCatalogItem(req, detail = null) {
   const kind = classifyRequest(req);
   if (kind === 'roadmap') return mapRequestToRoadmapItem(req);
-  if (kind === 'ttt') return mapRequestToTttSession(req);
+  if (kind === 'ttt') return mapRequestToTttSession(req, detail);
   if (kind === 'custom') return mapRequestToCustomLabRequest(req);
   return null;
 }
@@ -372,10 +471,14 @@ export {
   decodeJwtExpiry,
   isTokenUsable,
   fetchAllRequests,
+  getRequestDetail,
+  formatSessionTimes,
   classifyRequest,
+  isLocalizedLanguage,
   mapRequestToRoadmapItem,
   mapRequestToTttSession,
   mapRequestToCustomLabRequest,
+  mapRequestToLocalizedTrack,
   mapRequestToCatalogItem,
   isTttRequest,
   getRmpConfig,

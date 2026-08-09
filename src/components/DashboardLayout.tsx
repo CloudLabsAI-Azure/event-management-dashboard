@@ -20,16 +20,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (!isAuthorized) return
     maybeAutoSyncRmp(instance).then((result) => {
-      if (result && result.imported && result.imported > 0) {
-        const parts = []
-        if (result.roadmapCount) parts.push(`${result.roadmapCount} roadmap`)
-        if (result.tttCount) parts.push(`${result.tttCount} TTT`)
-        if (result.customCount) parts.push(`${result.customCount} custom lab`)
-        toast({
-          title: "RMP onboarding requests imported",
-          description: `${result.imported} new request${result.imported === 1 ? "" : "s"} added${parts.length ? ` (${parts.join(", ")})` : ""}.`,
-        })
-      }
+      if (!result) return
+      const imported = result.imported || 0
+      const updated = result.updated || 0
+      if (imported === 0 && updated === 0) return
+      const parts = []
+      if (result.roadmapCount) parts.push(`${result.roadmapCount} roadmap`)
+      if (result.tttCount) parts.push(`${result.tttCount} TTT`)
+      if (result.customCount) parts.push(`${result.customCount} custom lab`)
+      if (result.localizedCount) parts.push(`${result.localizedCount} localized`)
+      const bits = []
+      if (imported > 0) bits.push(`${imported} imported${parts.length ? ` (${parts.join(", ")})` : ""}`)
+      if (updated > 0) bits.push(`${updated} updated from RMP changes`)
+      toast({ title: "RMP sync", description: bits.join(" · ") })
     })
   }, [isAuthorized, instance])
 

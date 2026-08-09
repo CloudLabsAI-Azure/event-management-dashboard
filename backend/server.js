@@ -23,7 +23,7 @@ import https from 'https';
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError, readJsonBlob, writeJsonBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
-const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, mapRequestToCatalogItem, getRmpConfig } = await import('./rmpService.js');
+const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2099,8 +2099,24 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       (r) => r.requestUniqueName && !processedIds.has(r.requestUniqueName) && !existingIds.has(r.requestUniqueName)
     );
 
+    // Phase 2.5: best-effort detail enrichment for NEW eligible requests only
+    // (delivery language → localized tracks; session times → TTT). Capped to
+    // bound sync time; a failed detail fetch never blocks the import. Skipped
+    // on baseline runs (nothing will be imported).
+    const willBaseline = !(snapshot._rmpSync && snapshot._rmpSync.lastSync) || processedIds.size === 0;
+    const RMP_DETAIL_MAX = Number(process.env.RMP_DETAIL_MAX || 20);
+    const detailByGuid = new Map();
+    const detailCandidates = willBaseline ? [] : fresh.filter((r) => classifyRequest(r)).slice(0, RMP_DETAIL_MAX);
+    for (const r of detailCandidates) {
+      const detail = await getRequestDetail(b2cToken, r.requestUniqueName);
+      if (detail) detailByGuid.set(r.requestUniqueName, detail);
+    }
+
+    const requestByGuid = new Map(requests.map((r) => [r.requestUniqueName, r]));
+
     // Phase 3: apply under lock
     const created = [];
+    const updated = [];
     let baselined = false;
     await withLock(async () => {
       const data = await readData();
@@ -2126,28 +2142,111 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       }
 
       const liveIds = new Set(
-        data.catalog.filter((i) => i && i.rmpRequestUniqueName).map((i) => String(i.rmpRequestUniqueName).toUpperCase())
+        data.catalog.filter((i) => i && i.rmpRequestUniqueName && i.type !== 'localizedTrack').map((i) => String(i.rmpRequestUniqueName).toUpperCase())
+      );
+      const liveLocalizedIds = new Set(
+        data.catalog.filter((i) => i && i.rmpRequestUniqueName && i.type === 'localizedTrack').map((i) => String(i.rmpRequestUniqueName).toUpperCase())
       );
       let nextSr = data.catalog.length > 0 ? Math.max(...data.catalog.map((t) => Number(t.sr || 0))) + 1 : 1;
       for (const r of fresh) {
-        if (liveIds.has(r.requestUniqueName)) continue; // re-check against fresh data
-        const item = mapRequestToCatalogItem(r); // route by EventFormat; null = format not imported
-        if (!item) continue;
-        item.sr = nextSr++;
-        data.catalog.push(item);
-        liveIds.add(r.requestUniqueName);
-        created.push(item);
+        const detail = detailByGuid.get(r.requestUniqueName) || null;
+        if (!liveIds.has(r.requestUniqueName)) {
+          const item = mapRequestToCatalogItem(r, detail); // route by EventFormat; null = format not imported
+          if (item) {
+            item.sr = nextSr++;
+            data.catalog.push(item);
+            liveIds.add(r.requestUniqueName);
+            created.push(item);
+          }
+        }
+        // Non-English delivery language → ALSO track on the Localized Tracks page
+        if (detail && isLocalizedLanguage(detail) && classifyRequest(r) && !liveLocalizedIds.has(r.requestUniqueName)) {
+          const locItem = mapRequestToLocalizedTrack(r, detail);
+          locItem.sr = nextSr++;
+          data.catalog.push(locItem);
+          liveLocalizedIds.add(r.requestUniqueName);
+          created.push(locItem);
+        }
       }
+
+      // Drift pass: reconcile ALREADY-imported items against current RMP state
+      // (status changes, schedule moves). Conservative: never touches items the
+      // team deleted, never overrides manual phase progress except Cancel/Reject.
+      const nowIso = new Date().toISOString();
+      for (const item of data.catalog) {
+        if (!item || !item.rmpRequestUniqueName || item.source !== 'rmp') continue;
+        const req = requestByGuid.get(String(item.rmpRequestUniqueName).toUpperCase());
+        if (!req) continue; // not visible to this account / no longer in RMP — leave untouched
+        if (created.includes(item)) continue; // just created this run
+
+        const oldStatus = item.rmpStatus || '';
+        const newStatus = req.status || '';
+        const oldDate = String(item.rmpScheduledDate || '').split('T')[0];
+        const newDate = String(req.scheduledDate || '').split('T')[0];
+        const statusChanged = oldStatus !== newStatus;
+        const scheduleChanged = oldDate !== newDate;
+        if (!statusChanged && !scheduleChanged) continue;
+
+        const before = { ...item };
+        const changes = [];
+        if (statusChanged) changes.push(`status ${oldStatus || '?'} → ${newStatus}`);
+        if (scheduleChanged) changes.push(`scheduled date ${oldDate || '?'} → ${newDate || '?'}`);
+        const noteText = `RMP update: ${changes.join(', ')}`;
+        const isCancel = newStatus === 'Canceled' || newStatus === 'Cancelled' || newStatus === 'Rejected';
+
+        item.rmpStatus = newStatus;
+        item.rmpScheduledDate = req.scheduledDate;
+        item.updatedAt = nowIso;
+
+        if (item.type === 'roadmapItem') {
+          if (isCancel) { item.phase = 'On-Hold'; item.needsAttention = true; }
+          if (scheduleChanged) item.needsAttention = true;
+          item.activityLog = [{ date: nowIso, text: noteText, addedBy: 'RMP Sync' }, ...(Array.isArray(item.activityLog) ? item.activityLog : [])];
+        } else if (item.type === 'tttSession') {
+          if (newStatus === 'Completed') item.status = 'Completed';
+          else if (newStatus === 'InProgress' || newStatus === 'In Progress') item.status = 'In Progress';
+          else if (isCancel) item.status = 'Cancelled';
+          if (scheduleChanged && newDate) item.sessionDate = newDate;
+          item.notes = `${item.notes ? item.notes + '\n' : ''}[RMP ${nowIso.split('T')[0]}] ${noteText}`;
+        } else if (item.type === 'customLabRequest') {
+          if (isCancel) item.phase = 'On-Hold';
+          if (scheduleChanged && newDate) item.eventDate = newDate;
+          item.activityLog = [{ date: nowIso, text: noteText, addedBy: 'RMP Sync' }, ...(Array.isArray(item.activityLog) ? item.activityLog : [])];
+        } else if (item.type === 'localizedTrack') {
+          if (newStatus === 'Completed') {
+            if (item.spanish === 'In Progress') item.spanish = 'Available';
+            if (item.portuguese === 'In Progress') item.portuguese = 'Available';
+          }
+          item.lastUpdated = nowIso.split('T')[0];
+        }
+        updated.push({ before, after: { ...item } });
+      }
+
+      // Auto-computed RMP metrics (namespaced — never clobbers manual metrics;
+      // MetricsEditor merges partial updates so rmpAuto survives edits)
+      const rmpItems = data.catalog.filter((i) => i && i.source === 'rmp');
+      data.metrics = data.metrics && typeof data.metrics === 'object' ? data.metrics : {};
+      data.metrics.rmpAuto = {
+        onboarding: rmpItems.filter((i) => i.type === 'roadmapItem').length,
+        ttt: rmpItems.filter((i) => i.type === 'tttSession').length,
+        custom: rmpItems.filter((i) => i.type === 'customLabRequest').length,
+        localized: rmpItems.filter((i) => i.type === 'localizedTrack').length,
+        completed: rmpItems.filter((i) => i.rmpStatus === 'Completed').length,
+        canceled: rmpItems.filter((i) => i.rmpStatus === 'Canceled' || i.rmpStatus === 'Cancelled' || i.rmpStatus === 'Rejected').length,
+        visibleInRmp: requests.length,
+        computedAt: nowIso,
+      };
+
       data._rmpSync = data._rmpSync || {};
       data._rmpSync.processedRequestIds = [
         ...new Set([...(data._rmpSync.processedRequestIds || []), ...requests.map((r) => r.requestUniqueName)]),
       ];
       data._rmpSync.lastSync = new Date().toISOString();
-      data._rmpSync.lastResult = { fetched: requests.length, imported: created.length, triggeredBy };
-      await writeData(data, { updateTimestamp: created.length > 0 });
+      data._rmpSync.lastResult = { fetched: requests.length, imported: created.length, updated: updated.length, triggeredBy };
+      await writeData(data, { updateTimestamp: created.length > 0 || updated.length > 0 });
     }, 'rmp-sync');
 
-    // Audit log new items (outside lock)
+    // Audit log new + updated items (outside lock)
     for (const item of created) {
       await logAudit({
         user: { id: 'rmp-sync', email: triggeredBy, role: 'system' },
@@ -2157,12 +2256,23 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
         newData: item,
       });
     }
+    for (const u of updated) {
+      await logAudit({
+        user: { id: 'rmp-sync', email: triggeredBy, role: 'system' },
+        action: 'UPDATE',
+        resource: 'catalog',
+        resourceId: u.after.id || u.after.sr,
+        oldData: u.before,
+        newData: u.after,
+      });
+    }
 
     const tttCount = created.filter((i) => i.type === 'tttSession').length;
     const customCount = created.filter((i) => i.type === 'customLabRequest').length;
-    const roadmapCount = created.length - tttCount - customCount;
-    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT, ${customCount} custom)${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
-    return { fetched: requests.length, imported: created.length, roadmapCount, tttCount, customCount, baselined, items: created };
+    const localizedCount = created.filter((i) => i.type === 'localizedTrack').length;
+    const roadmapCount = created.length - tttCount - customCount - localizedCount;
+    console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT, ${customCount} custom, ${localizedCount} localized), updated ${updated.length}${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
+    return { fetched: requests.length, imported: created.length, updated: updated.length, roadmapCount, tttCount, customCount, localizedCount, baselined, items: created };
   } finally {
     _rmpSyncRunning = false;
   }

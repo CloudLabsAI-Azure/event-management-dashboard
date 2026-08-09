@@ -48,6 +48,9 @@ interface RoadmapItem {
   needsAttention?: boolean;
   finalizedTrackName?: string;
   source?: string;
+  rmpAdminUrl?: string;
+  rmpRegistrationsPageUrl?: string;
+  rmpStatus?: string;
 }
 
 /** Map raw catalog items (type 'roadmapItem') to UI roadmap items */
@@ -71,7 +74,10 @@ function mapCatalogListToRoadmap(list: any[]): RoadmapItem[] {
       isUpgrade: r.isUpgrade || false,
       needsAttention: r.needsAttention || false,
       finalizedTrackName: r.finalizedTrackName || '',
-      source: r.source || ''
+      source: r.source || '',
+      rmpAdminUrl: r.rmpAdminUrl || '',
+      rmpRegistrationsPageUrl: r.rmpRegistrationsPageUrl || '',
+      rmpStatus: r.rmpStatus || ''
     }))
 }
 
@@ -355,18 +361,19 @@ export default function RoadmapPage() {
     try {
       const result = await triggerRmpSync(msalInstance)
       const imported = result.imported || 0
+      const updated = result.updated || 0
       const breakdown = imported > 0
-        ? ` (${[result.roadmapCount ? `${result.roadmapCount} roadmap` : '', result.tttCount ? `${result.tttCount} TTT` : '', result.customCount ? `${result.customCount} custom lab` : ''].filter(Boolean).join(', ')})`
+        ? ` (${[result.roadmapCount ? `${result.roadmapCount} roadmap` : '', result.tttCount ? `${result.tttCount} TTT` : '', result.customCount ? `${result.customCount} custom lab` : '', result.localizedCount ? `${result.localizedCount} localized` : ''].filter(Boolean).join(', ')})`
         : ''
       toast({
         title: 'RMP sync complete',
         description: result.baselined
           ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
-          : imported > 0
-            ? `${imported} new onboarding request${imported === 1 ? '' : 's'} imported${breakdown}.`
-            : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
+          : imported > 0 || updated > 0
+            ? `${imported} imported${breakdown}${updated > 0 ? ` · ${updated} updated from RMP changes` : ''}.`
+            : `No new requests or changes (${result.fetched ?? 0} fetched from RMP).`
       })
-      if (imported > 0) {
+      if (imported > 0 || updated > 0) {
         const list = await catalogService.list()
         setRoadmapData(mapCatalogListToRoadmap(list))
       }
@@ -1013,6 +1020,20 @@ export default function RoadmapPage() {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                   <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
                   <span className="text-sm font-medium text-amber-700 dark:text-amber-400">This item has been flagged as needing attention</span>
+                </div>
+              )}
+
+              {/* RMP source links */}
+              {selectedItem?.source === 'rmp' && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 flex-wrap">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/40 text-xs">RMP</Badge>
+                  {selectedItem.rmpStatus && <span className="text-xs text-muted-foreground">Status in RMP: {selectedItem.rmpStatus}</span>}
+                  {selectedItem.rmpAdminUrl && (
+                    <a href={selectedItem.rmpAdminUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline">Open in RMP ↗</a>
+                  )}
+                  {selectedItem.rmpRegistrationsPageUrl && (
+                    <a href={selectedItem.rmpRegistrationsPageUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline">Registration page ↗</a>
+                  )}
                 </div>
               )}
               

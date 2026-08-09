@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GraduationCap, Users, Calendar, Edit, Trash2, Plus, RefreshCw } from "lucide-react"
+import { GraduationCap, Users, Calendar, Edit, Trash2, Plus, RefreshCw, ExternalLink } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useMsal } from "@azure/msal-react"
 import { useAuth } from '@/components/AuthProvider'
@@ -27,6 +27,8 @@ interface TTTSession {
   sessionDate: string
   status: string
   notes?: string
+  source?: string
+  rmpAdminUrl?: string
 }
 
 const getStatusBadge = (status: string) => {
@@ -77,7 +79,9 @@ export default function TTTPage() {
           trackName: i.trackName || i.courseName || '',
           sessionDate: i.sessionDate || '',
           status: i.status || 'Scheduled',
-          notes: i.notes || ''
+          notes: i.notes || '',
+          source: i.source || '',
+          rmpAdminUrl: i.rmpAdminUrl || ''
         }))
       
       // Auto-mark past events as completed
@@ -168,15 +172,16 @@ export default function TTTPage() {
     try {
       const result = await triggerRmpSync(msalInstance)
       const imported = result.imported || 0
+      const updated = result.updated || 0
       toast({
         title: 'RMP sync complete',
         description: result.baselined
           ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
-          : imported > 0
-            ? `${imported} new request${imported === 1 ? '' : 's'} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap, ${result.customCount || 0} custom lab).`
-            : `No new requests found (${result.fetched ?? 0} fetched from RMP).`
+          : imported > 0 || updated > 0
+            ? `${imported} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap, ${result.customCount || 0} custom lab)${updated > 0 ? ` · ${updated} updated` : ''}.`
+            : `No new requests or changes (${result.fetched ?? 0} fetched from RMP).`
       })
-      if (imported > 0) await loadData()
+      if (imported > 0 || updated > 0) await loadData()
     } catch (err: any) {
       const data = err?.response?.data
       toast({
@@ -383,6 +388,19 @@ export default function TTTPage() {
                         <TableCell>{getStatusBadge(session.status)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            {session.source === 'rmp' && session.rmpAdminUrl && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Open in RMP"
+                                asChild
+                              >
+                                <a href={session.rmpAdminUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            )}
                             {role === 'admin' && (
                               <>
                                 <Button
