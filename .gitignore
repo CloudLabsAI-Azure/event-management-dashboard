@@ -70,3 +70,5 @@ temp/
 
 # IMPORTANT: Do NOT ignore data.json - it contains user accounts and app data
 # backend/data.json should be committed and deployed
+# v2 rebuild (separate repo later)
+v2/
