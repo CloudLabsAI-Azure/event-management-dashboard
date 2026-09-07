@@ -50,6 +50,7 @@ interface MenuItem {
   title: string;
   url: string;
   icon: any;
+  domainOnly?: string;
   children?: { title: string; url: string; icon: any }[];
 }
 

@@ -23,7 +23,8 @@ import https from 'https';
 const { readDataFromBlob, writeDataToBlob, getBlobMetadata, blobExists, uploadImageToBlob, deleteImageFromBlob, getImageBlobUrl, convertToProxyUrls, streamImageFromBlob, ConcurrencyError, readJsonBlob, writeJsonBlob } = await import('./blobStorageService.js');
 const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails } = await import('./azureDevOpsService.js');
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
-const { RmpApiError, isTokenUsable, decodeJwtExpiry, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
+const { RmpApiError, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
+const { createRmpTokenCache } = await import('./rmpTokenCache.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2059,19 +2060,8 @@ app.get('/api/diagnostics/lock-status', requireAdmin, (req, res) => {
 // "borrow" it while it's still valid (~60 min). Sync self-heals whenever any
 // user with RMP access uses the app.
 
-let _rmpTokenCache = null; // { token, expiresAt, email } — in-memory only
+const rmpTokenCache = createRmpTokenCache();
 let _rmpSyncRunning = false;
-
-function cacheRmpToken(token, email) {
-  const expiresAt = decodeJwtExpiry(token);
-  _rmpTokenCache = { token, expiresAt, email: email || 'unknown' };
-  console.log(`[RMP] Cached B2C token from ${email} (prefix ${String(token).slice(0, 12)}…, expires ${expiresAt ? new Date(expiresAt).toISOString() : 'unknown'})`);
-}
-
-function getCachedRmpToken() {
-  if (_rmpTokenCache && isTokenUsable(_rmpTokenCache.token)) return _rmpTokenCache;
-  return null;
-}
 
 /**
  * Run one RMP → catalog sync pass.
@@ -2273,6 +2263,11 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
     const roadmapCount = created.length - tttCount - customCount - localizedCount;
     console.log(`[RMP] Sync complete: fetched ${requests.length}, imported ${created.length} (${roadmapCount} roadmap, ${tttCount} TTT, ${customCount} custom, ${localizedCount} localized), updated ${updated.length}${baselined ? ' (baseline established — historical requests marked as seen)' : ''} (by ${triggeredBy})`);
     return { fetched: requests.length, imported: created.length, updated: updated.length, roadmapCount, tttCount, customCount, localizedCount, baselined, items: created };
+  } catch (err) {
+    if (err instanceof RmpApiError && (err.statusCode === 401 || err.statusCode === 403)) {
+      rmpTokenCache.invalidate(b2cToken);
+    }
+    throw err;
   } finally {
     _rmpSyncRunning = false;
   }
@@ -2283,14 +2278,13 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
 // server-defined (no client payload is trusted for item content).
 app.post('/api/rmp/sync', requireAuth, async (req, res) => {
   try {
-    let token = String((req.body && req.body.b2cToken) || '');
-    if (token && !isTokenUsable(token)) {
-      return res.status(401).json({ error: 'B2C token is expired or invalid. Please sign out and back in.', requiresReauth: true });
-    }
+    let token = String((req.body && req.body.b2cToken) || '').trim();
     if (token) {
-      cacheRmpToken(token, req.user && req.user.email);
+      // Do not cache based on JWT shape/expiry alone. RMP must confirm access
+      // before this token can replace the credential borrowed by the cron.
+      await rmpTokenCache.cacheIfAuthorized(token, req.user && req.user.email);
     } else {
-      const cached = getCachedRmpToken();
+      const cached = rmpTokenCache.get();
       if (!cached) {
         return res.status(401).json({
           error: 'No usable CloudLabs (B2C) token available. Sign in with your CloudLabs account and retry.',
@@ -2305,8 +2299,11 @@ app.post('/api/rmp/sync', requireAuth, async (req, res) => {
   } catch (err) {
     if (err instanceof RmpApiError) {
       console.error(`[RMP] Sync failed: HTTP ${err.statusCode} — ${err.message}`);
-      if (err.statusCode === 401 || err.statusCode === 403) {
-        return res.status(401).json({ error: 'RMP rejected the token. Your account may not have RMP access.', requiresReauth: true });
+      if (err.statusCode === 401) {
+        return res.status(401).json({ error: 'RMP rejected an expired or invalid token. Please sign in again.', requiresReauth: true });
+      }
+      if (err.statusCode === 403) {
+        return res.status(403).json({ error: 'RMP access could not be confirmed for this account. Ask an RMP administrator to check your tenant access. No unverified token was cached.', requiresRmpAccess: true });
       }
       return res.status(502).json({ error: `RMP API error: ${err.message}` });
     }
@@ -2320,12 +2317,14 @@ app.get('/api/rmp/sync-status', requireAuth, async (req, res) => {
   try {
     const data = await readData();
     const meta = data._rmpSync || {};
-    const cached = getCachedRmpToken();
+    const cached = rmpTokenCache.get();
     res.json({
       lastSync: meta.lastSync || null,
       lastResult: meta.lastResult || null,
       processedCount: Array.isArray(meta.processedRequestIds) ? meta.processedRequestIds.length : 0,
       tokenAvailable: !!cached,
+      tokenExpiresAt: cached ? new Date(cached.expiresAt).toISOString() : null,
+      tokenVerifiedAt: cached ? new Date(cached.verifiedAt).toISOString() : null,
       config: getRmpConfig(),
     });
   } catch (err) {
@@ -2705,7 +2704,7 @@ app.listen(PORT, () => {
   if (process.env.RMP_SYNC_ENABLED !== 'false') {
     const rmpSyncSchedule = process.env.RMP_SYNC_SCHEDULE || '0 * * * *'; // Default: hourly
     cron.schedule(rmpSyncSchedule, async () => {
-      const cached = getCachedRmpToken();
+      const cached = rmpTokenCache.get();
       if (!cached) {
         console.log('[RMP] Scheduled sync skipped: no usable B2C token cached');
         return;

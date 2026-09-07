@@ -107,14 +107,13 @@ async function rmpFetch(path, { method = 'GET', body, token }) {
 }
 
 /**
- * Fetch one page of the tenant's event requests.
- * Gotcha G6: empty result / no account visibility = HTTP 500 "No event found." → return [].
+ * Build list/probe requests with null rather than non-matching empty filters.
  */
-async function getMyEventsPage(token, pageNumber, pageSize = RMP_PAGE_SIZE) {
+function myEventsBody(pageNumber, pageSize, status = RMP_STATUS_FILTER || null) {
   // IMPORTANT: unused filters must be null, not '' — the live RMP API treats
   // empty strings as non-matching filters and returns zero rows (verified
   // against the admin portal's own requests).
-  const body = {
+  return {
     PageNumber: pageNumber,
     PageSize: pageSize,
     SearchRequest: null,
@@ -127,7 +126,7 @@ async function getMyEventsPage(token, pageNumber, pageSize = RMP_PAGE_SIZE) {
     ScheduleStartDate: null,
     ScheduleEndDate: null,
     EventType: null,
-    Status: RMP_STATUS_FILTER || null,
+    Status: status,
     EventFormat: null,
     TrackUniqueNames: null,
     BudgetStatus: null,
@@ -137,10 +136,48 @@ async function getMyEventsPage(token, pageNumber, pageSize = RMP_PAGE_SIZE) {
     CreatorName: null,
     CommercialSolutionArea: null,
   };
+}
+
+/**
+ * Confirm access with RMP itself, not just a locally decoded JWT expiry.
+ * Probe without status/search filters so configured sync filters cannot hide
+ * the user's access. Empty/no-visibility responses are deliberately inconclusive:
+ * do not let them replace a known-working token used by scheduled syncs.
+ */
+async function verifyRmpAccess(token) {
+  if (!isTokenUsable(token)) {
+    throw new RmpApiError('B2C token is expired or invalid. Please sign in again.', 401);
+  }
+
+  let json;
+  try {
+    json = await rmpFetch(`/api/admin/v1.0/tenants/${RMP_TENANT_ID}/myevents`, {
+      method: 'POST',
+      body: myEventsBody(1, 1, null),
+      token,
+    });
+  } catch (err) {
+    if (err instanceof RmpApiError && err.statusCode === 500 && String(err.details || '').includes('No event found')) {
+      throw new RmpApiError('No visible RMP requests could be confirmed for this account. Token not cached.', 403);
+    }
+    throw err;
+  }
+
+  if (json?.Status !== 'Success' || !Array.isArray(json.Data)) {
+    throw new RmpApiError('RMP returned an unexpected access-check response. Token not cached.', 502);
+  }
+  if (!json.Data.some((item) => typeof item?.RequestUniqueName === 'string' && item.RequestUniqueName.trim())) {
+    throw new RmpApiError('No visible RMP requests could be confirmed for this account. Token not cached.', 403);
+  }
+  return true;
+}
+
+/** Empty filtered searches are normal during sync, but not proof of RMP access. */
+async function getMyEventsPage(token, pageNumber, pageSize = RMP_PAGE_SIZE) {
   try {
     const json = await rmpFetch(`/api/admin/v1.0/tenants/${RMP_TENANT_ID}/myevents`, {
       method: 'POST',
-      body,
+      body: myEventsBody(pageNumber, pageSize),
       token,
     });
     return Array.isArray(json && json.Data) ? json.Data : [];
@@ -259,8 +296,8 @@ function mapRequestToRoadmapItem(req) {
 
 /**
  * Fetch the rich request detail. ⚠️ Different path family — NO /admin/v1.0
- * prefix (gotcha G2). Returns null on any failure (enrichment is best-effort;
- * callers must not fail the sync when detail is unavailable).
+ * prefix (gotcha G2). Returns null on non-auth failures (best-effort enrichment).
+ * Credential rejection propagates so callers can evict a revoked token.
  */
 async function getRequestDetail(token, requestUniqueName) {
   try {
@@ -292,6 +329,8 @@ async function getRequestDetail(token, requestUniqueName) {
       sessions,
     };
   } catch (err) {
+    // A revoked token must be evicted, even when only detail enrichment failed.
+    if (err instanceof RmpApiError && (err.statusCode === 401 || err.statusCode === 403)) throw err;
     console.warn(`[RMP] Detail fetch failed for ${requestUniqueName}: ${err && err.message ? err.message : err}`);
     return null;
   }
@@ -470,6 +509,7 @@ export {
   STATUS_MAP,
   decodeJwtExpiry,
   isTokenUsable,
+  verifyRmpAccess,
   fetchAllRequests,
   getRequestDetail,
   formatSessionTimes,

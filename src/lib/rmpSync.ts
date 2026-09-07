@@ -17,13 +17,16 @@ export interface RmpSyncResult {
   reason?: string;
   error?: string;
   requiresReauth?: boolean;
+  requiresRmpAccess?: boolean;
 }
 
 export interface RmpSyncStatus {
   lastSync: string | null;
-  lastResult: { fetched: number; imported: number; triggeredBy: string } | null;
+  lastResult: { fetched: number; imported: number; updated?: number; baselined?: boolean; triggeredBy: string } | null;
   processedCount: number;
   tokenAvailable: boolean;
+  tokenExpiresAt: string | null;
+  tokenVerifiedAt: string | null;
   config: { apiBaseUrl: string; tenantId: string; statusFilter: string };
 }
 
@@ -50,12 +53,19 @@ export async function acquireB2CIdToken(instance: IPublicClientApplication): Pro
 
 /**
  * Trigger a server-side RMP → catalog sync using the current user's B2C token.
- * The backend also keeps the token in memory so the hourly cron can reuse it.
+ * The backend caches it only after RMP confirms access, for hourly cron reuse.
  */
 export async function triggerRmpSync(instance: IPublicClientApplication): Promise<RmpSyncResult> {
   const b2cToken = await acquireB2CIdToken(instance);
   const res = await api.post('/api/rmp/sync', { b2cToken });
-  return res.data as RmpSyncResult;
+  const result = res.data as RmpSyncResult;
+  if (!result.skipped) {
+    window.dispatchEvent(new CustomEvent('rmp:synced'));
+    if ((result.imported || 0) > 0 || (result.updated || 0) > 0) {
+      window.dispatchEvent(new CustomEvent('catalog:changed'));
+    }
+  }
+  return result;
 }
 
 export async function getRmpSyncStatus(): Promise<RmpSyncStatus> {
@@ -75,11 +85,7 @@ export async function maybeAutoSyncRmp(instance: IPublicClientApplication): Prom
   if (autoSyncAttempted) return null;
   autoSyncAttempted = true;
   try {
-    const result = await triggerRmpSync(instance);
-    if ((result.imported && result.imported > 0) || (result.updated && result.updated > 0)) {
-      try { window.dispatchEvent(new CustomEvent('catalog:changed')); } catch { /* noop */ }
-    }
-    return result;
+    return await triggerRmpSync(instance);
   } catch (err) {
     // Silent by design: user may not have RMP access, or no B2C session (dev bypass)
     console.warn('RMP auto-sync skipped:', err);
