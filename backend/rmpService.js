@@ -510,6 +510,7 @@ export {
   decodeJwtExpiry,
   isTokenUsable,
   verifyRmpAccess,
+  rmpFetch,
   fetchAllRequests,
   getRequestDetail,
   formatSessionTimes,

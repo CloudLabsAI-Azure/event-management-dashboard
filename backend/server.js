@@ -25,6 +25,7 @@ const { processEventSummaryLogs, downloadImage, getWorkItems, getWorkItemDetails
 const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditService.js');
 const { RmpApiError, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
 const { createRmpTokenCache } = await import('./rmpTokenCache.js');
+const { createRmpCatalogueStore, registerRmpCatalogueRoutes } = await import('./rmpCatalogueSync.js');
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2061,6 +2062,23 @@ app.get('/api/diagnostics/lock-status', requireAdmin, (req, res) => {
 // user with RMP access uses the app.
 
 const rmpTokenCache = createRmpTokenCache();
+const RMP_CATALOGUE_BLOB = 'rmp-catalogue.json';
+const rmpCataloguePath = path.join(__dirname, RMP_CATALOGUE_BLOB);
+const rmpCatalogueSync = createRmpCatalogueStore({
+  tokenCache: rmpTokenCache,
+  readSnapshot: async () => {
+    if (STORAGE_MODE === 'blob') return (await readJsonBlob(RMP_CATALOGUE_BLOB)).data;
+    try { return JSON.parse(await fs.promises.readFile(rmpCataloguePath, 'utf8')); }
+    catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  },
+  writeSnapshot: async snapshot => {
+    if (STORAGE_MODE === 'blob') return writeJsonBlob(RMP_CATALOGUE_BLOB, snapshot);
+    const temporaryPath = `${rmpCataloguePath}.tmp`;
+    await fs.promises.writeFile(temporaryPath, JSON.stringify(snapshot), 'utf8');
+    await fs.promises.rename(temporaryPath, rmpCataloguePath);
+  },
+});
+registerRmpCatalogueRoutes(app, { requireAuth, tokenCache: rmpTokenCache, catalogueSync: rmpCatalogueSync });
 let _rmpSyncRunning = false;
 
 /**
@@ -2294,6 +2312,9 @@ app.post('/api/rmp/sync', requireAuth, async (req, res) => {
       token = cached.token;
     }
 
+    // Catalogue releases are independent of request imports and their baseline.
+    // Queue promptly after verified sign-in; do not block on catalogue detail I/O.
+    await rmpCatalogueSync.queueRefresh().catch(() => console.warn('[RMP Catalog] Could not queue catalogue refresh; request sync will continue.'));
     const result = await runRmpSync(token, (req.user && req.user.email) || 'manual');
     res.json({ success: true, ...result });
   } catch (err) {
@@ -2711,6 +2732,7 @@ app.listen(PORT, () => {
       }
       console.log(`\n🕐 Running scheduled RMP sync (borrowing token from ${cached.email})...`);
       try {
+        await rmpCatalogueSync.queueRefresh().catch(() => console.warn('[RMP Catalog] Could not queue catalogue refresh; request sync will continue.'));
         const result = await runRmpSync(cached.token, `cron (token: ${cached.email})`);
         console.log(`✅ Scheduled RMP sync complete: ${result.imported ?? 0} new onboarding requests imported`);
       } catch (err) {

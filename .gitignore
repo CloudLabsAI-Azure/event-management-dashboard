@@ -37,6 +37,8 @@ logs/
 *.log
 
 # Runtime data
+backend/rmp-catalogue.json
+backend/rmp-catalogue.json.tmp
 pids/
 *.pid
 *.seed

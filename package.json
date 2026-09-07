@@ -57,6 +57,7 @@
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.1.0",
+    "html-to-text": "^10.0.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "multer": "^2.0.2",

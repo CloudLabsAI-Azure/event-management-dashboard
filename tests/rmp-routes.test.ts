@@ -37,6 +37,10 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
   const register = (path: string, ...callbacks: Handler[]) => handlers.set(path, callbacks[callbacks.length - 1])
   vm.runInNewContext(source.slice(start, end), {
     createRmpTokenCache: () => cache,
+    createRmpCatalogueStore: () => ({ queueRefresh: async () => ({ refreshing: false }) }),
+    registerRmpCatalogueRoutes: () => {},
+    path: { join: (...parts: string[]) => parts.join('/') },
+    __dirname: 'fixture',
     app: { get: register, post: register },
     requireAuth: () => {},
     RmpApiError,

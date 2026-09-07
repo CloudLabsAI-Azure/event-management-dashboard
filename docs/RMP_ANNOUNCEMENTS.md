@@ -12,7 +12,7 @@ The backend keeps a token in memory **only after the configured RMP tenant confi
 - `/api/rmp/sync-status` exposes availability and verification/expiry timestamps, **never the token**.
 - Tokens remain process-local and short-lived. This does not implement server-side refresh tokens or guarantee unattended sync after token expiry/server restart.
 
-The existing first-sync baseline, selective request mapping, and hourly sync schedule are unchanged. Errors distinguish reauthentication (`401`, `requiresReauth`) from unconfirmed tenant access (`403`, `requiresRmpAccess`).
+The existing first-sync baseline, selective request mapping, and hourly sync schedule are unchanged for **requests**. Catalogue announcements use a separate service and are not limited by that baseline. Errors distinguish reauthentication (`401`, `requiresReauth`) from unconfirmed tenant access (`403`, `requiresRmpAccess`).
 
 ## Announcements data sources
 
@@ -20,22 +20,49 @@ The page derives a read-only feed rather than inserting generated announcements 
 
 | Entry | Source | Meaning |
 | --- | --- | --- |
-| Lab onboarding | Catalog `roadmapItem` with `labType: New Lab Onboarding`, including RMP imports | A new onboarding request/work item, **not necessarily a released lab**. Local phase is displayed separately from RMP status. |
+| Content releases | Admin Center `trackList` + `partnertrack/{TrackUniqueName}` | Actual catalogue labs. `LaunchDate` is the portal's **Content Release Date**. Historical labs remain included after their New Release highlight expires. |
+| New Release | Catalogue `Popularity` includes the exact `New Release` tag | Optional highlight filter within content release results; **not** a `myevents` request or a local roadmap entry. |
+| RMP retirement | Catalogue `IsRetired === true` | Explicit current retirement state. `IsHide` alone is not retirement. RMP does not supply a retirement date in the observed response. |
 | Added / retired update | Existing `trackChange` records | Explicit administrator-confirmed catalog changes. |
 | Confirmed retirement | FY27 review entries labeled `FY26 — already removed` | Previously confirmed retirement; the effective date is not fabricated. |
 | Planned retirement | FY27 review entries labeled `FY27 — pending removal` | A plan, not an already-retired lab. |
 | Team notice / PDF | Existing `generalAnnouncement` / `pdfCatalog` records | Preserved administrator-managed content. |
 
-Draft, cancelled and rejected onboarding requests, upgrades, TTT and custom event requests are not promoted to new-lab announcements. A disappeared RMP request, a cancelled event, or a missing catalogue item is **never** inferred to be a retirement.
+**All roadmap/event requests are excluded**, including requests whose format was incorrectly mapped to "New Lab Onboarding". Budget and milestone request titles no longer appear as catalogue releases. A disappeared RMP request, a cancelled event, or a missing catalogue item is **never** inferred to be a retirement.
 
-No reliable live RMP retirement field was present in either reviewed project. Retirement notices therefore use the explicit records above, not a fabricated upstream API or user-scoped catalogue disappearance. The FY27 reference remains curated source data; updating it updates the derived feed on the next deployment.
+On September 7, 2026, the signed-in Admin Center Catalog confirmed the live `IsRetired` and `LaunchDate` fields. These take precedence over matching FY27 reference retirement entries. Existing manual history remains editable and the FY27 reference remains separately labeled.
 
-The page fetches the catalog/status on mount, window focus, every 60 seconds while active, and after catalog/RMP change events. A separate RMP sync action fetches upstream data with verified access. Search, lifecycle filters, source links, read-only automatic entries, editable notices, and PDF resources are retained. Matching manual entries take precedence over automatic projections, and confirmed retirement records supersede matching planned removals.
+## Content Release Date: source filtering
+
+The date picker sends `from` and `to` as calendar dates to the backend. The backend uses the **exact filter expression observed from the portal**, not request/import dates:
+
+`(content_release_datefrom in (2026-08-01)) and (content_release_dateto in (2026-09-07))`
+
+It is passed as the encoded value of the literal `$filter` query key on:
+
+`GET /api/admin/v1.0/tenants/{tenantId}/trackList?$filter=...&$pagenumber=1&$pagesize=100`
+
+- Both dates must be valid `YYYY-MM-DD` calendar dates, start <= end. No client-supplied raw filter expression is accepted.
+- Every pagination request retains the same date filter. Pagination uses the actual returned page size and verifies deduplicated count against `TotalRows`; incomplete results do not replace a snapshot.
+- The observed source response for August 1–September 7, 2026 contained 11 catalogue records. A genuinely empty interval returned HTTP 200 with `Status: Success, Data: []`; empty ranges do not imply deleted/retired labs.
+- `GET /api/rmp/catalogue?from=...&to=...` serves/queues that range. `POST /api/rmp/catalogue/sync` accepts the same dates with an optional candidate B2C token.
+- Range caches are isolated: a failed/empty range cannot overwrite all-catalogue data or display cached results from a different interval. The unfiltered sanitized snapshot is persisted separately; bounded per-range caches live in memory.
+- Upstream calls for different ranges are serialized; detail fetches run in batches of five. Repeated polling shares the in-flight refresh. Fifteen-minute TTL and retry cooldown limit upstream requests.
+- Only allowlisted display fields are retained. Descriptions are converted to plain text; raw catalogue metadata, OAuth tokens, activation codes, and signed resource URLs are not persisted in the publication snapshot.
+
+## Page behavior
+
+- **Content Release Date**: start/end inputs, Apply dates, All dates. Default range is the first day of the previous month through today.
+- **Month / year**: groups the returned releases by `LaunchDate`, newest first. Missing dates stay **Undated**; a sync timestamp is never substituted.
+- Additional filters: content releases, New Release highlight, event type, level, keyword search, retirement notices and manual updates. New Release is optional, so older releases without that tag are still available for historical periods.
+- Source date filters apply only to RMP catalogue data. Manual notices and FY27 plans remain clearly separate. For retired labs, the upstream range filters their original content release date, **not retirement time**; retirement dates remain unknown.
+- The page checks its snapshot every 60 seconds (every 2 seconds during refresh), on focus and after sync events. Source data refreshes when stale and a verified token is available. Sign-in/request sync and the existing hourly job also queue a catalogue refresh.
+- Full source metadata cards, month headings, a matching timeframe link to RMP, stale/error states, manual notice editing and PDF resources are retained. No production-data migration or deletion is performed.
 
 ## Validation
 
 - `npm test` runs offline regression tests using Node's test runner and `tsx`. All RMP responses are mocked and tokens are synthetic fixtures.
 - `npm run typecheck` checks the frontend and Vite configuration.
-- Browser validation uses an isolated build with synthetic local API data; it does not contact RMP or write production data.
+- Source contracts are inspected read-only through the user's signed-in Catalog UI; no tokens/passwords are extracted. Application browser validation uses an isolated build with synthetic local API data and never writes production data.
 
-Before production rollout, verify one RMP-enabled account and one account without RMP visibility against the configured tenant. The second account must not displace the first account's token. Confirm that the first nonempty sync's existing baseline behavior is still the desired onboarding policy.
+Before production rollout, verify one RMP-enabled account and one account without RMP visibility against the configured tenant. The second account must not displace the first account's token. Confirm a source date range in both pages; catalogue access can differ from event-request access. Tokens remain process-local and cannot refresh indefinitely after expiry/restart.

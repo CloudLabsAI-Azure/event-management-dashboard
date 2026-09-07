@@ -1,4 +1,6 @@
 /** Read-only announcement projections. Opening the feed never creates catalog rows. */
+import type { RmpCatalogueItem } from '@/types/rmpCatalogue'
+
 interface RecordIdentity {
   id: string
   sr: number
@@ -28,7 +30,8 @@ export interface GeneralAnnouncement extends RecordIdentity {
 }
 
 export type EditableAnnouncement = PdfCatalog | TrackChange | GeneralAnnouncement
-export type LabUpdateKind = 'onboarding' | 'retired' | 'planned-retirement'
+export type LabUpdateKind = 'new-release' | 'catalogue-release' | 'retired' | 'planned-retirement' | 'manual-update'
+export type LabUpdateFilterKind = LabUpdateKind | 'all' | 'releases'
 
 export interface LabUpdate {
   id: string
@@ -36,10 +39,17 @@ export interface LabUpdate {
   title: string
   description: string
   status: string
-  source: 'RMP' | 'Lab Development' | 'Manual update' | 'FY27 review'
+  source: 'RMP Catalog' | 'Manual update' | 'FY27 review'
   date: string | null
   dateLabel: string
-  eventId?: string
+  level?: string
+  eventType?: string
+  topic?: string
+  labLanguages?: string
+  registrationLanguages?: string
+  highlights?: string[]
+  releaseNotesUrl?: string | null
+  detailAvailable?: boolean
   replacement?: string
   href?: string
   manualRecord?: TrackChange
@@ -58,7 +68,9 @@ const normalized = (value: string): string => value.normalize('NFKC').toLowerCas
 
 function validDate(value: unknown): string | null {
   const date = text(value)
-  return /^\d{4}-\d{2}-\d{2}(T.+)?$/.test(date) && Number.isFinite(Date.parse(date)) ? date : null
+  if (!/^\d{4}-\d{2}-\d{2}(T.+)?$/.test(date) || !Number.isFinite(Date.parse(date))) return null
+  const calendar = new Date(`${date.slice(0, 10)}T00:00:00Z`)
+  return calendar.toISOString().slice(0, 10) === date.slice(0, 10) ? date : null
 }
 
 function dateValue(value: string | null): number {
@@ -82,18 +94,17 @@ export function safeResourceUrl(value: string): string | null {
 }
 
 /**
- * Onboarding requests are not necessarily released labs. Only explicit manual
- * retirement records / confirmed readout entries indicate retirement. Missing
- * RMP records, cancelled requests and pending removals never imply retirement.
+ * New releases come ONLY from the Admin Center's catalogue snapshot. Roadmap
+ * requests (including budget/milestone requests) are never catalogue releases.
+ * IsRetired is explicit upstream state; absence/cancellation is not retirement.
  */
-export function buildAnnouncementData(catalog: unknown, retirements: readonly RetirementSource[] = []) {
+export function buildAnnouncementData(catalog: unknown, retirements: readonly RetirementSource[] = [], catalogueItems: readonly RmpCatalogueItem[] = []) {
   const rows: Record<string, unknown>[] = Array.isArray(catalog)
     ? catalog.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item))
     : []
   const pdfCatalogs: PdfCatalog[] = []
   const announcements: GeneralAnnouncement[] = []
   const trackChanges: TrackChange[] = []
-  const onboarding: LabUpdate[] = []
 
   for (const row of rows) {
     const identity = { id: text(row.id) || text(row._id), sr: Number(row.sr) || 0 }
@@ -112,26 +123,6 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
         ...identity, type: 'trackChange', trackName: text(row.trackName), changeType: row.changeType,
         changeDate: validDate(row.changeDate) || '', notes: text(row.notes),
       })
-    } else if (row.type === 'roadmapItem' && normalized(text(row.labType)) === 'new lab onboarding' && row.isUpgrade !== true && row.isUpgrade !== 'true') {
-      const excludedStatuses = new Set(['draft', 'cancelled', 'canceled', 'rejected', 'retired'])
-      if (excludedStatuses.has(normalized(text(row.rmpStatus))) || excludedStatuses.has(normalized(text(row.phase)))) continue
-      const title = text(row.finalizedTrackName) || text(row.trackTitle) || text(row.trackName)
-      if (!title) continue
-      const createdAt = validDate(row.createdAt)
-      const requestDate = validDate(row.rmpRequestDate)
-      const phase = text(row.phase) || 'Under assessment'
-      onboarding.push({
-        id: `onboarding:${text(row.rmpRequestUniqueName) || identity.id || identity.sr || normalized(title)}`,
-        kind: 'onboarding', title,
-        description: row.source === 'rmp'
-          ? `Onboarding request synced from RMP${text(row.rmpStatus) ? ` · RMP status: ${text(row.rmpStatus)}` : ''}. See Lab Development for release readiness.`
-          : 'New lab onboarding tracked in Lab Development. See the source record for release readiness.',
-        status: phase, source: row.source === 'rmp' ? 'RMP' : 'Lab Development',
-        date: createdAt || requestDate,
-        dateLabel: createdAt ? 'Added to roadmap' : 'Requested',
-        eventId: text(row.eventId),
-        href: identity.sr > 0 ? `/dashboard/roadmap?sr=${identity.sr}` : '/dashboard/roadmap',
-      })
     }
   }
 
@@ -139,11 +130,30 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
   // All deduplication is in-memory, so source records remain untouched.
   const updates: LabUpdate[] = []
   const manualNames = new Set<string>()
+  const catalogueRetiredNames = new Set<string>()
   const seenIds = new Set<string>()
+  for (const item of catalogueItems) {
+    if (!item.id || !item.title || !['new-release', 'catalogue-release', 'retired'].includes(item.kind)) continue
+    const id = `catalogue:${item.id.toUpperCase()}`
+    if (seenIds.has(id)) continue
+    seenIds.add(id)
+    if (item.kind === 'retired') catalogueRetiredNames.add(normalized(item.title))
+    updates.push({
+      id, kind: item.kind, title: item.title, description: item.description,
+      source: 'RMP Catalog', status: item.kind === 'retired' ? 'Retired in RMP' : item.kind === 'new-release' ? 'New Release' : 'Catalog release',
+      date: validDate(item.kind === 'retired' ? item.retirementDate : item.releaseDate),
+      dateLabel: item.kind === 'retired' ? 'Retired on' : 'Content released',
+      href: safeResourceUrl(item.detailsUrl) || undefined,
+      level: item.level, eventType: item.eventType, topic: item.topic,
+      labLanguages: item.labLanguages, registrationLanguages: item.registrationLanguages,
+      highlights: item.highlights, releaseNotesUrl: safeResourceUrl(item.releaseNotesUrl || ''),
+      detailAvailable: item.detailAvailable,
+    })
+  }
   trackChanges.sort((a, b) => dateValue(b.changeDate) - dateValue(a.changeDate))
   for (const record of trackChanges) {
     if (!record.trackName) continue
-    const kind = record.changeType === 'added' ? 'onboarding' : 'retired'
+    const kind = record.changeType === 'added' ? 'manual-update' : 'retired'
     const key = `${kind}:${normalized(record.trackName)}`
     const id = `manual:${record.id || record.sr || key}`
     if (seenIds.has(id)) continue
@@ -158,13 +168,6 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
       dateLabel: kind === 'retired' ? 'Retired on' : 'Added on', manualRecord: record,
     })
   }
-  onboarding.sort((a, b) => dateValue(b.date) - dateValue(a.date))
-  for (const update of onboarding) {
-    const key = `onboarding:${normalized(update.title)}`
-    if (manualNames.has(key) || seenIds.has(update.id)) continue
-    seenIds.add(update.id)
-    updates.push(update)
-  }
   for (const retirement of retirements) {
     if (!retirement.title) continue
     const kind = retirement.bucket === 'FY26 — already removed' ? 'retired'
@@ -173,7 +176,7 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
     const name = normalized(retirement.title)
     const key = `${kind}:${name}`
     const id = `readout:${key}`
-    if (seenIds.has(id) || manualNames.has(key) || (kind === 'planned-retirement' && manualNames.has(`retired:${name}`))) continue
+    if (seenIds.has(id) || catalogueRetiredNames.has(name) || manualNames.has(key) || (kind === 'planned-retirement' && manualNames.has(`retired:${name}`))) continue
     seenIds.add(id)
     updates.push({
       id, kind, title: retirement.title, description: retirement.reason,
@@ -188,4 +191,41 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
     announcements: announcements.sort((a, b) => dateValue(b.announcementDate) - dateValue(a.announcementDate)),
     labUpdates: updates.sort((a, b) => dateValue(b.date) - dateValue(a.date) || a.title.localeCompare(b.title)),
   }
+}
+
+/** Month keys include year, so May 2025 and May 2026 never collapse together. */
+export function announcementMonth(date: string | null): string {
+  return validDate(date)?.slice(0, 7) || 'undated'
+}
+
+export function formatAnnouncementMonth(month: string): string {
+  if (month === 'undated') return 'Undated'
+  return new Date(`${month}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+export interface LabUpdateFilters {
+  kind?: LabUpdateFilterKind
+  month?: string
+  eventType?: string
+  level?: string
+  query?: string
+}
+
+export function filterLabUpdates(items: readonly LabUpdate[], filters: LabUpdateFilters): LabUpdate[] {
+  const query = (filters.query || '').trim().toLowerCase()
+  return items.filter(item => (!filters.kind || filters.kind === 'all' || item.kind === filters.kind || (filters.kind === 'releases' && (item.kind === 'new-release' || item.kind === 'catalogue-release')))
+    && (!filters.month || filters.month === 'all' || announcementMonth(item.date) === filters.month)
+    && (!filters.eventType || filters.eventType === 'all' || item.eventType === filters.eventType)
+    && (!filters.level || filters.level === 'all' || item.level === filters.level)
+    && (!query || [item.title, item.description, item.topic, item.eventType, item.level, item.labLanguages, item.registrationLanguages, item.replacement, item.source].some(value => value?.toLowerCase().includes(query))))
+}
+
+export function groupLabUpdatesByMonth(items: readonly LabUpdate[]) {
+  const groups = new Map<string, LabUpdate[]>()
+  for (const item of items) {
+    const key = announcementMonth(item.date)
+    groups.set(key, [...(groups.get(key) || []), item])
+  }
+  return [...groups.entries()].sort(([a], [b]) => a === b ? 0 : a === 'undated' ? 1 : b === 'undated' ? -1 : b.localeCompare(a))
+    .map(([month, updates]) => ({ month, label: formatAnnouncementMonth(month), updates: [...updates].sort((a, b) => dateValue(b.date) - dateValue(a.date) || a.title.localeCompare(b.title)) }))
 }

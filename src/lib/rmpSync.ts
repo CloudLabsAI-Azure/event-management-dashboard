@@ -1,6 +1,7 @@
 import { IPublicClientApplication } from '@azure/msal-browser';
 import { loginRequest } from './msalConfig';
 import api from './api';
+import type { ContentReleaseRange, RmpCatalogueState } from '@/types/rmpCatalogue';
 
 export interface RmpSyncResult {
   success?: boolean;
@@ -71,6 +72,18 @@ export async function triggerRmpSync(instance: IPublicClientApplication): Promis
 export async function getRmpSyncStatus(): Promise<RmpSyncStatus> {
   const res = await api.get('/api/rmp/sync-status');
   return res.data as RmpSyncStatus;
+}
+
+/** Catalogue data is separate from the request-import baseline and local roadmap. */
+export async function getRmpCatalogue(range: ContentReleaseRange | null = null, signal?: AbortSignal): Promise<RmpCatalogueState> {
+  return (await api.get<RmpCatalogueState>('/api/rmp/catalogue', { signal, params: range || undefined })).data;
+}
+
+export async function refreshRmpCatalogue(instance: IPublicClientApplication, range: ContentReleaseRange | null = null): Promise<RmpCatalogueState> {
+  const b2cToken = await acquireB2CIdToken(instance);
+  const response = await api.post<RmpCatalogueState>('/api/rmp/catalogue/sync', { b2cToken, ...range });
+  window.dispatchEvent(new CustomEvent('rmp:catalogue-changed'));
+  return response.data;
 }
 
 // Only auto-sync once per browser session.
