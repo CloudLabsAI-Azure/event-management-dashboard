@@ -1,5 +1,26 @@
 # Verified RMP tokens and automatic announcements
 
+## Temporary request-import pause (September 8, 2026)
+
+Request-based RMP lab/onboarding imports are **paused and hidden by default** via
+`RMP_REQUEST_IMPORTS_ENABLED=false`. This does not disable the actual Admin Center
+Catalog releases or Content Release Date filtering described below.
+
+- The catalog, track, event and full-data GET responses omit records marked
+	`source: rmp` or carrying `rmpRequestUniqueName`. Manual records stay visible.
+- Lab Development and TTT hide their request **Sync RMP** buttons. Dashboard
+	counts/stale lists use the filtered catalog; the imported-request metrics strip
+	is hidden. Manual notices/PDFs and real catalogue releases are unaffected.
+- The request-sync endpoint, core sync and hourly request job cannot import or
+	reconcile requests while paused. Login still supplies a verified token to the
+	separate catalogue sync so Announcements continues to work.
+- **Nothing is deleted or renumbered.** Internal data reads used for edits, ID
+	allocation, CSV appends and duplicate checks remain unfiltered. The legacy
+	whole-data save preserves hidden rows and the existing request baseline.
+- To restore, explicitly set `RMP_REQUEST_IMPORTS_ENABLED=true` on the backend
+	and restart. The retained records, controls and request sync return without a
+	data migration. Existing duplicate event IDs remain reserved while hidden.
+
 ## Token admission
 
 The backend keeps a token in memory **only after the configured RMP tenant confirms request visibility**. It sends an unfiltered, one-record `myevents` probe using the candidate B2C ID token. Decoding a JWT expiry is not an authorization check.

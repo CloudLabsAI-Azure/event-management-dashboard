@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import { createRmpTokenCache } from '../backend/rmpTokenCache.js'
 import { RmpApiError } from '../backend/rmpService.js'
+import { RMP_REQUEST_IMPORTS_PAUSED_REASON } from '../backend/rmpRequestPolicy.js'
 
 function token(subject: string) {
   const payload = Buffer.from(JSON.stringify({ sub: subject, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')
@@ -21,13 +22,17 @@ type Handler = (req: { body?: Record<string, unknown>; user?: { email: string } 
  * startup otherwise writes its data schema and can start live integration jobs.
  * Storage and upstream calls are synthetic, isolated in a VM sandbox.
  */
-function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
+function harness(options: { deny?: string; upstreamError?: RmpApiError; requestImportsEnabled?: boolean } = {}) {
   const source = readFileSync(new URL('../backend/server.js', import.meta.url), 'utf8')
   const start = source.indexOf('const rmpTokenCache = createRmpTokenCache();')
   const end = source.indexOf("app.get('/api/:resource',", start)
   assert.ok(start > 0 && end > start, 'RMP route section must be present')
   const handlers = new Map<string, Handler>()
+  let probes = 0
+  let reads = 0
+  let catalogueQueued = 0
   const cache = createRmpTokenCache({ verifyAccess: async (candidate: string) => {
+    probes++
     if (candidate === options.deny) throw new RmpApiError('Denied', 403)
     return true
   } })
@@ -35,9 +40,11 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
   let fetches = 0
   let stored: Record<string, unknown> = { catalog: [], _rmpSync: {} }
   const register = (path: string, ...callbacks: Handler[]) => handlers.set(path, callbacks[callbacks.length - 1])
-  vm.runInNewContext(source.slice(start, end), {
+  const context = vm.createContext({
+    RMP_REQUEST_IMPORTS_ENABLED: options.requestImportsEnabled ?? true,
+    RMP_REQUEST_IMPORTS_PAUSED_REASON,
     createRmpTokenCache: () => cache,
-    createRmpCatalogueStore: () => ({ queueRefresh: async () => ({ refreshing: false }) }),
+    createRmpCatalogueStore: () => ({ queueRefresh: async () => { catalogueQueued++; return { refreshing: false } } }),
     registerRmpCatalogueRoutes: () => {},
     path: { join: (...parts: string[]) => parts.join('/') },
     __dirname: 'fixture',
@@ -46,7 +53,7 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
     RmpApiError,
     process: { env: {} },
     console: { log() {}, error() {} },
-    readData: async () => structuredClone(stored),
+    readData: async () => { reads++; return structuredClone(stored) },
     writeData: async (data: Record<string, unknown>) => { stored = structuredClone(data); writes++ },
     withLock: async (fn: () => Promise<unknown>) => fn(),
     fetchAllRequests: async () => {
@@ -61,6 +68,7 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
     logAudit: async () => {},
     getRmpConfig: () => ({ apiBaseUrl: 'https://example.invalid', tenantId: 'fixture' }),
   })
+  vm.runInContext(source.slice(start, end), context)
 
   async function call(path: string, body: Record<string, unknown> = {}) {
     let status = 200
@@ -72,7 +80,11 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError } = {}) {
     await handlers.get(path)!({ body, user: { email: 'fixture@example.invalid' } }, res)
     return { status, response }
   }
-  return { cache, call, getWrites: () => writes, getFetches: () => fetches }
+  return {
+    cache, call, getWrites: () => writes, getFetches: () => fetches, getReads: () => reads,
+    getProbes: () => probes, getCatalogueQueued: () => catalogueQueued,
+    runCore: () => vm.runInContext("runRmpSync('synthetic-fixture', 'test')", context),
+  }
 }
 
 test('sync endpoint refuses a denied candidate without touching data or a working token', async () => {
@@ -98,6 +110,8 @@ test('verified sync preserves baseline semantics and status never serializes cre
   assert.equal(app.getWrites(), 1)
   const status = await app.call('/api/rmp/sync-status')
   assert.equal(status.response.tokenAvailable, true)
+  assert.equal(status.response.requestSyncEnabled, true)
+  assert.equal(status.response.importedLabsVisible, true)
   assert.equal(typeof status.response.tokenVerifiedAt, 'string')
   assert.equal(typeof status.response.tokenExpiresAt, 'string')
   assert.ok(!JSON.stringify(status.response).includes(candidate))
@@ -122,4 +136,36 @@ test('a request without a token cannot start sync unless a verified credential i
   const result = await app.call('/api/rmp/sync')
   assert.equal(result.status, 200)
   assert.equal(result.response.baselined, true)
+})
+
+test('paused request sync does not probe tokens, fetch requests, read storage or change the baseline', async () => {
+  const app = harness({ requestImportsEnabled: false })
+  const result = await app.call('/api/rmp/sync', { b2cToken: token('unused') })
+  assert.equal(result.status, 200)
+  assert.equal(result.response.paused, true)
+  assert.equal(result.response.skipped, true)
+  assert.equal(result.response.imported, 0)
+  assert.equal(result.response.updated, 0)
+  assert.equal(app.getProbes(), 0)
+  assert.equal(app.getFetches(), 0)
+  assert.equal(app.getReads(), 0)
+  assert.equal(app.getWrites(), 0)
+  assert.equal(app.getCatalogueQueued(), 0)
+})
+
+test('core sync is also paused for direct callers and scheduled jobs', async () => {
+  const app = harness({ requestImportsEnabled: false })
+  const result = await app.runCore()
+  assert.equal(result.paused, true)
+  assert.equal(app.getFetches(), 0)
+  assert.equal(app.getWrites(), 0)
+})
+
+test('status exposes the temporary pause while retaining a usable catalogue token', async () => {
+  const app = harness({ requestImportsEnabled: false })
+  await app.cache.cacheIfAuthorized(token('catalogue'))
+  const { response } = await app.call('/api/rmp/sync-status')
+  assert.equal(response.requestSyncEnabled, false)
+  assert.equal(response.importedLabsVisible, false)
+  assert.equal(response.tokenAvailable, true)
 })

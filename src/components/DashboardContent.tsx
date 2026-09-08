@@ -44,6 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { useToast } from '@/hooks/use-toast'
+import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
 
 const ADMIN_URL = "https://admin.cloudevents.ai"
 
@@ -72,6 +73,7 @@ const statusColors = {
 export function DashboardContent() {
   const navigate = useNavigate()
   const { userRole } = useAuth()
+  const requestSyncEnabled = useRmpRequestSyncEnabled()
   const { toast } = useToast()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -487,7 +489,7 @@ export function DashboardContent() {
       </div>
 
       {/* RMP auto-synced metrics strip */}
-      {rmpAuto && (
+      {requestSyncEnabled && rmpAuto && (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-indigo-200/50 dark:border-indigo-800/30 bg-gradient-to-r from-indigo-50/60 to-white dark:from-slate-800 dark:to-slate-800/60 px-6 py-3 text-sm text-slate-700 dark:text-slate-300 relative z-10">
           <span className="font-semibold">RMP requests (auto-synced)</span>
           <span>Onboarding: <span className="font-bold">{rmpAuto.onboarding ?? 0}</span></span>

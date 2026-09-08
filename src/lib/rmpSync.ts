@@ -15,6 +15,7 @@ export interface RmpSyncResult {
   baselined?: boolean;
   items?: Array<{ id: string; trackTitle?: string; trackName?: string; eventId: string; type?: string }>;
   skipped?: boolean;
+  paused?: boolean;
   reason?: string;
   error?: string;
   requiresReauth?: boolean;
@@ -25,6 +26,8 @@ export interface RmpSyncStatus {
   lastSync: string | null;
   lastResult: { fetched: number; imported: number; updated?: number; baselined?: boolean; triggeredBy: string } | null;
   processedCount: number;
+  requestSyncEnabled: boolean;
+  importedLabsVisible: boolean;
   tokenAvailable: boolean;
   tokenExpiresAt: string | null;
   tokenVerifiedAt: string | null;
@@ -90,14 +93,18 @@ export async function refreshRmpCatalogue(instance: IPublicClientApplication, ra
 let autoSyncAttempted = false;
 
 /**
- * Fire-and-forget auto sync: called once after login. Also hands the server a
- * fresh B2C token for its hourly cron. Never surfaces errors to the user
- * (background behavior); returns the result when a sync actually ran.
+ * Once after login: respect the server's temporary request-import pause. Keep
+ * the independent, real catalogue feed authenticated without importing requests.
  */
 export async function maybeAutoSyncRmp(instance: IPublicClientApplication): Promise<RmpSyncResult | null> {
   if (autoSyncAttempted) return null;
   autoSyncAttempted = true;
   try {
+    const status = await getRmpSyncStatus();
+    if (!status.requestSyncEnabled) {
+      await refreshRmpCatalogue(instance);
+      return null;
+    }
     return await triggerRmpSync(instance);
   } catch (err) {
     // Silent by design: user may not have RMP access, or no B2C session (dev bypass)

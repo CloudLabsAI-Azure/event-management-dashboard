@@ -23,6 +23,7 @@ import { isNonEmptyString } from '@/lib/validation'
 import api from "@/lib/api";
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
+import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
 
 interface ActivityLogEntry {
   date: string;
@@ -352,6 +353,7 @@ export default function RoadmapPage() {
   }
 
   const { userRole: role, user } = useAuth()
+  const requestSyncEnabled = useRmpRequestSyncEnabled()
   const { instance: msalInstance } = useMsal()
   const [rmpSyncing, setRmpSyncing] = useState(false)
 
@@ -597,7 +599,7 @@ export default function RoadmapPage() {
                 <Plus className="h-4 w-4" />
                 Add Roadmap
               </Button>
-              <Button
+              {requestSyncEnabled && <Button
                 size="sm"
                 variant="outline"
                 disabled={rmpSyncing}
@@ -606,7 +608,7 @@ export default function RoadmapPage() {
               >
                 <RefreshCw className={`h-4 w-4 mr-1 ${rmpSyncing ? 'animate-spin' : ''}`} />
                 {rmpSyncing ? 'Syncing…' : 'Sync RMP'}
-              </Button>
+              </Button>}
               <Button 
                 size="sm" 
                 variant="outline" 

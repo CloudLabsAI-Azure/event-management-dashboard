@@ -15,8 +15,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { instance } = useMsal()
   const { isAuthorized } = useAuth()
 
-  // Auto-import new RMP onboarding requests once per browser session.
-  // Runs server-side with the signed-in user's B2C token; silent on failure.
+  // Keep catalogue releases connected after sign-in. Request imports only run
+  // if explicitly enabled server-side; their temporary pause is respected.
   useEffect(() => {
     if (!isAuthorized) return
     maybeAutoSyncRmp(instance).then((result) => {

@@ -18,6 +18,7 @@ import { triggerRmpSync } from '@/lib/rmpSync'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
+import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
 
 interface TTTSession {
   id?: string
@@ -44,6 +45,7 @@ const getStatusBadge = (status: string) => {
 
 export default function TTTPage() {
   const { userRole: role } = useAuth()
+  const requestSyncEnabled = useRmpRequestSyncEnabled()
   const { toast } = useToast()
   const [tttSessions, setTttSessions] = useState<TTTSession[]>([])
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -298,7 +300,7 @@ export default function TTTPage() {
               Manage and track Train The Trainer sessions and certifications
             </p>
           </div>
-          {role === 'admin' && (
+          {role === 'admin' && requestSyncEnabled && (
             <Button
               size="sm"
               variant="outline"

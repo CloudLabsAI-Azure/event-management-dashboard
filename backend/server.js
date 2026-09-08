@@ -26,6 +26,7 @@ const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditS
 const { RmpApiError, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
 const { createRmpTokenCache } = await import('./rmpTokenCache.js');
 const { createRmpCatalogueStore, registerRmpCatalogueRoutes } = await import('./rmpCatalogueSync.js');
+import { rmpRequestImportsEnabled, RMP_REQUEST_IMPORTS_PAUSED_REASON, visibleLabResource, visibleDashboardData, preserveHiddenRmpImports } from './rmpRequestPolicy.js';
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -46,6 +47,7 @@ const DATA_PATH = path.join(__dirname, 'data.json');
 // Storage mode: 'blob' for Azure Blob Storage, 'local' for local file system
 const STORAGE_MODE = process.env.STORAGE_MODE || 'blob';
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+const RMP_REQUEST_IMPORTS_ENABLED = rmpRequestImportsEnabled();
 
 // =====================
 // Concurrency-Safe Data Access
@@ -146,7 +148,7 @@ async function writeData(data, options = {}) {
 // Routes
 app.get('/api/data', async (req, res) => {
   try {
-    const data = await readData();
+    const data = visibleDashboardData(await readData(), RMP_REQUEST_IMPORTS_ENABLED);
     // Convert blob URLs to proxy URLs for secure frontend access (hides SAS token)
     if (data.reviews && process.env.STORAGE_MODE === 'blob') {
       data.reviews = convertToProxyUrls(data.reviews);
@@ -308,7 +310,8 @@ app.post('/api/upload-review', requireAdmin, upload.array('files', 20), async (r
 
 app.post('/api/data', async (req, res) => {
   await withLock(async () => {
-    await writeData(req.body || {});
+    const stored = await readData();
+    await writeData(preserveHiddenRmpImports(req.body || {}, stored, RMP_REQUEST_IMPORTS_ENABLED));
   }, 'POST /api/data');
   res.json({ success: true });
 });
@@ -401,6 +404,8 @@ async function setMetrics(metrics) {
 }
 
 async function getResource(name) {
+  // Keep raw items internally. Filtering here would delete hidden imports when
+  // an unrelated manual record is edited or a CSV is appended.
   const data = await readData();
   return data[name] || [];
 }
@@ -2089,6 +2094,9 @@ let _rmpSyncRunning = false;
  * admin) are never re-created.
  */
 async function runRmpSync(b2cToken, triggeredBy = 'system') {
+  if (!RMP_REQUEST_IMPORTS_ENABLED) {
+    return { skipped: true, paused: true, imported: 0, updated: 0, reason: RMP_REQUEST_IMPORTS_PAUSED_REASON };
+  }
   if (_rmpSyncRunning) return { skipped: true, reason: 'Sync already in progress' };
   _rmpSyncRunning = true;
   try {
@@ -2295,6 +2303,11 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
 // results are scoped to THEIR RMP account and the created items are fully
 // server-defined (no client payload is trusted for item content).
 app.post('/api/rmp/sync', requireAuth, async (req, res) => {
+  // Also protect old tabs/clients: no token probe, request fetch, baseline write,
+  // new import or drift update may run while request imports are paused.
+  if (!RMP_REQUEST_IMPORTS_ENABLED) {
+    return res.json({ success: true, skipped: true, paused: true, imported: 0, updated: 0, reason: RMP_REQUEST_IMPORTS_PAUSED_REASON });
+  }
   try {
     let token = String((req.body && req.body.b2cToken) || '').trim();
     if (token) {
@@ -2343,6 +2356,8 @@ app.get('/api/rmp/sync-status', requireAuth, async (req, res) => {
       lastSync: meta.lastSync || null,
       lastResult: meta.lastResult || null,
       processedCount: Array.isArray(meta.processedRequestIds) ? meta.processedRequestIds.length : 0,
+      requestSyncEnabled: RMP_REQUEST_IMPORTS_ENABLED,
+      importedLabsVisible: RMP_REQUEST_IMPORTS_ENABLED,
       tokenAvailable: !!cached,
       tokenExpiresAt: cached ? new Date(cached.expiresAt).toISOString() : null,
       tokenVerifiedAt: cached ? new Date(cached.verifiedAt).toISOString() : null,
@@ -2358,7 +2373,7 @@ app.get('/api/:resource', async (req, res) => {
   const resource = String(req.params.resource);
   if (!VALID_RESOURCES.has(resource)) return res.status(404).json({ error: 'Unknown resource' });
   const data = await getResource(resource);
-  res.json(data);
+  res.json(visibleLabResource(resource, data, RMP_REQUEST_IMPORTS_ENABLED));
 });
 
 app.post('/api/:resource', requireAdmin, sanitizeRequest, async (req, res) => {
@@ -2724,6 +2739,7 @@ app.listen(PORT, () => {
   // (a fresh token arrives whenever any user with RMP access uses the app).
   if (process.env.RMP_SYNC_ENABLED !== 'false') {
     const rmpSyncSchedule = process.env.RMP_SYNC_SCHEDULE || '0 * * * *'; // Default: hourly
+    if (!RMP_REQUEST_IMPORTS_ENABLED) console.log(`[RMP] ${RMP_REQUEST_IMPORTS_PAUSED_REASON} Catalogue release sync remains enabled.`);
     cron.schedule(rmpSyncSchedule, async () => {
       const cached = rmpTokenCache.get();
       if (!cached) {
@@ -2733,6 +2749,7 @@ app.listen(PORT, () => {
       console.log(`\n🕐 Running scheduled RMP sync (borrowing token from ${cached.email})...`);
       try {
         await rmpCatalogueSync.queueRefresh().catch(() => console.warn('[RMP Catalog] Could not queue catalogue refresh; request sync will continue.'));
+        if (!RMP_REQUEST_IMPORTS_ENABLED) return;
         const result = await runRmpSync(cached.token, `cron (token: ${cached.email})`);
         console.log(`✅ Scheduled RMP sync complete: ${result.imported ?? 0} new onboarding requests imported`);
       } catch (err) {
