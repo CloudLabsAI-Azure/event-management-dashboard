@@ -1,5 +1,6 @@
-// Temporary pause: request-based RMP lab imports are hidden unless explicitly
-// re-enabled. The separate Admin Center catalogue release feed is unaffected.
+// Kill switch: request-based RMP lab imports run only when
+// RMP_REQUEST_IMPORTS_ENABLED is exactly "true"; otherwise they are hidden and
+// paused. The separate Admin Center catalogue release feed is unaffected.
 export const RMP_REQUEST_IMPORTS_PAUSED_REASON = 'RMP lab onboarding imports are temporarily paused.';
 
 export function rmpRequestImportsEnabled(env = process.env) {

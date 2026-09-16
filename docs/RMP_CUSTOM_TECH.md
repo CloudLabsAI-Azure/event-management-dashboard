@@ -34,8 +34,8 @@ ignored. Limits and error/identity handling are described in [RMP_TTT_SCAN.md](R
 This is **source-only synchronization into a separate Custom Tech view**:
 
 - No catalog rows are inserted; no request baseline or dashboard metrics are changed.
-- `RMP_REQUEST_IMPORTS_ENABLED` remains off. Existing onboarding and other hidden
-  request imports are not restored or silently deleted.
+- This feature neither reads nor changes `RMP_REQUEST_IMPORTS_ENABLED`. Onboarding
+  and other request imports are governed solely by that flag.
 - The **Development Roadmap** tab retains existing manual edits, activities,
   CRUD, CSV uploads and exports. The separate **Custom Lab Request** page is unchanged.
 - The server does not borrow another user's cached token or persist request

@@ -93,8 +93,8 @@ export async function refreshRmpCatalogue(instance: IPublicClientApplication, ra
 let autoSyncAttempted = false;
 
 /**
- * Once after login: respect the server's temporary request-import pause. Keep
- * the independent, real catalogue feed authenticated without importing requests.
+ * Once after login: respect the server's request-import switch. Keep the
+ * independent, real catalogue feed authenticated without importing requests.
  */
 export async function maybeAutoSyncRmp(instance: IPublicClientApplication): Promise<RmpSyncResult | null> {
   if (autoSyncAttempted) return null;

@@ -28,7 +28,7 @@ persisted across page reloads or accounts.
 
 ## Read-only boundaries
 
-- `POST /api/rmp/ttt/scan` is separate from the paused `/api/rmp/sync` importer.
+- `POST /api/rmp/ttt/scan` is separate from the `/api/rmp/sync` request importer.
 - This feature does **not** enable `RMP_REQUEST_IMPORTS_ENABLED`, unhide old
   imported labs, create catalog rows, modify the baseline, or update metrics.
 - Existing saved dashboard sessions remain editable in **Dashboard sessions**.

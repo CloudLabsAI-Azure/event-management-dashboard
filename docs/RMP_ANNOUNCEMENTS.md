@@ -1,25 +1,30 @@
 # Verified RMP tokens and automatic announcements
 
-## Temporary request-import pause (September 8, 2026)
+## Request imports (restored September 16, 2026)
 
-Request-based RMP lab/onboarding imports are **paused and hidden by default** via
-`RMP_REQUEST_IMPORTS_ENABLED=false`. This does not disable the actual Admin Center
-Catalog releases or Content Release Date filtering described below.
+Request-based RMP lab/onboarding imports are **enabled** via
+`RMP_REQUEST_IMPORTS_ENABLED=true`. They were paused on September 8, 2026 and
+restored on September 16, 2026. The actual Admin Center Catalog releases and
+Content Release Date filtering described below are independent of this flag and
+stayed enabled throughout.
 
-- The catalog, track, event and full-data GET responses omit records marked
-	`source: rmp` or carrying `rmpRequestUniqueName`. Manual records stay visible.
-- Lab Development and TTT hide their request **Sync RMP** buttons. Dashboard
-	counts/stale lists use the filtered catalog; the imported-request metrics strip
-	is hidden. Manual notices/PDFs and real catalogue releases are unaffected.
-- The request-sync endpoint, core sync and hourly request job cannot import or
-	reconcile requests while paused. Login still supplies a verified token to the
-	separate catalogue sync so Announcements continues to work.
-- **Nothing is deleted or renumbered.** Internal data reads used for edits, ID
-	allocation, CSV appends and duplicate checks remain unfiltered. The legacy
-	whole-data save preserves hidden rows and the existing request baseline.
-- To restore, explicitly set `RMP_REQUEST_IMPORTS_ENABLED=true` on the backend
-	and restart. The retained records, controls and request sync return without a
-	data migration. Existing duplicate event IDs remain reserved while hidden.
+- Records marked `source: rmp` or carrying `rmpRequestUniqueName` are visible
+	again in the catalog, track, event and full-data GET responses.
+- Lab Development and TTT show their request **Sync RMP** buttons. Dashboard
+	counts/stale lists use the full catalog and the imported-request metrics strip
+	is shown again.
+- The request-sync endpoint, core sync and hourly request job import and
+	reconcile requests normally. Login supplies a verified token to both the
+	request sync and the separate catalogue sync.
+- **The pause deleted and renumbered nothing.** Records retained during the
+	pause returned without a data migration, and duplicate event IDs stayed
+	reserved while hidden.
+- The pre-pause `_rmpSync` baseline was preserved, so restoring did not reimport
+	history. Requests created *during* the pause were not in the baseline, so the
+	first run after restart imported that backlog in one pass.
+- The flag remains an explicit opt-in and doubles as a kill switch: it must be
+	exactly `true`. Set it to anything else and restart to hide and pause imports
+	again, without data loss.
 
 The separate [read-only TTT scan](RMP_TTT_SCAN.md) reads **My Events →
 Train-The-Trainer** with the caller's own account. It does not re-enable imports

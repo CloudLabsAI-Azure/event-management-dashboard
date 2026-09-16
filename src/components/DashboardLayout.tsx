@@ -16,7 +16,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isAuthorized } = useAuth()
 
   // Keep catalogue releases connected after sign-in. Request imports only run
-  // if explicitly enabled server-side; their temporary pause is respected.
+  // when enabled server-side; the server-side switch is respected either way.
   useEffect(() => {
     if (!isAuthorized) return
     maybeAutoSyncRmp(instance).then((result) => {
