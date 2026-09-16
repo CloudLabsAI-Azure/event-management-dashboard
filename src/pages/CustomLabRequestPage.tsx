@@ -108,11 +108,13 @@ export default function CustomLabRequestPage() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+  // Q5 Opsgility token budget: only requests needing a hands-on lab consume tokens.
+  const [holFilter, setHolFilter] = useState<'all' | 'Yes' | 'No'>('all');
 
   // Export to Excel function
   const handleExportExcel = () => {
     // Prepare data for export
-    const exportData = customLabData.map(item => ({
+    const exportData = filteredCustomLabData.map(item => ({
       'Event ID': item.eventId || '',
       'Event Date': item.eventDate || '',
       'Track Title': item.trackTitle || '',
@@ -145,7 +147,8 @@ export default function CustomLabRequestPage() {
     
     // Generate filename with date
     const date = new Date().toISOString().split('T')[0];
-    const filename = `Custom_Lab_Requests_${date}.xlsx`;
+    const scope = holFilter === 'all' ? '' : `_HOL_${holFilter}`;
+    const filename = `Custom_Lab_Requests${scope}_${date}.xlsx`;
     
     // Download
     XLSX.writeFile(wb, filename);
@@ -313,8 +316,9 @@ export default function CustomLabRequestPage() {
     });
   };
 
-  // Filtered data based on search, sorted: upcoming events first (nearest future date on top), then past events (most recent past first), no-date at bottom
+  // Filtered data based on HOL requirement and search, sorted: upcoming events first (nearest future date on top), then past events (most recent past first), no-date at bottom
   const filteredCustomLabData = customLabData.filter(item => {
+    if (holFilter !== 'all' && (item.holLabRequested || 'No') !== holFilter) return false;
     const query = searchQuery.toLowerCase();
     if (!query) return true;
     return (item.eventId || '').toLowerCase().includes(query) ||
@@ -396,7 +400,17 @@ export default function CustomLabRequestPage() {
                   className="pl-9 h-9"
                 />
               </div>
-              {searchQuery && (
+              <Select value={holFilter} onValueChange={(value: 'all' | 'Yes' | 'No') => setHolFilter(value)}>
+                <SelectTrigger className="h-9 w-[190px]">
+                  <SelectValue placeholder="HOL Lab Requested" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All requests</SelectItem>
+                  <SelectItem value="Yes">HOL Lab: Yes</SelectItem>
+                  <SelectItem value="No">HOL Lab: No</SelectItem>
+                </SelectContent>
+              </Select>
+              {(searchQuery || holFilter !== 'all') && (
                 <Badge variant="secondary" className="text-xs">
                   {filteredCustomLabData.length} result{filteredCustomLabData.length !== 1 ? 's' : ''}
                 </Badge>
@@ -510,8 +524,10 @@ export default function CustomLabRequestPage() {
                   ))}
                   {filteredCustomLabData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                        No custom lab requests found. Click "Add Custom Lab Request" to create one.
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                        {customLabData.length === 0
+                          ? 'No custom lab requests found. Click "Add Custom Lab Request" to create one.'
+                          : 'No custom lab requests match the current filters.'}
                       </TableCell>
                     </TableRow>
                   )}
