@@ -21,6 +21,13 @@ Catalog releases or Content Release Date filtering described below.
 	and restart. The retained records, controls and request sync return without a
 	data migration. Existing duplicate event IDs remain reserved while hidden.
 
+The separate [read-only TTT scan](RMP_TTT_SCAN.md) reads **My Events →
+Train-The-Trainer** with the caller's own account. It does not re-enable imports
+or change saved dashboard sessions.
+Likewise [Custom Tech automatic sync](RMP_CUSTOM_TECH.md) reads only **My Events →
+Custom Tech Event** in Lab Development while that source view is open. It does
+not restore the paused bulk importer or overwrite manual development phases.
+
 ## Token admission
 
 The backend keeps a token in memory **only after the configured RMP tenant confirms request visibility**. It sends an unfiltered, one-record `myevents` probe using the candidate B2C ID token. Decoding a JWT expiry is not an authorization check.
@@ -74,9 +81,14 @@ It is passed as the encoded value of the literal `$filter` query key on:
 ## Page behavior
 
 - **Content Release Date**: start/end inputs, Apply dates, All dates. Default range is the first day of the previous month through today.
-- **Month / year**: groups the returned releases by `LaunchDate`, newest first. Missing dates stay **Undated**; a sync timestamp is never substituted.
-- Additional filters: content releases, New Release highlight, event type, level, keyword search, retirement notices and manual updates. New Release is optional, so older releases without that tag are still available for historical periods.
-- Source date filters apply only to RMP catalogue data. Manual notices and FY27 plans remain clearly separate. For retired labs, the upstream range filters their original content release date, **not retirement time**; retirement dates remain unknown.
+- **Month / year**: groups and filters every RMP lab category by its `LaunchDate`, including retired and recently updated labs. The actual retirement date remains unknown and is displayed separately. Local updates/notices/PDFs use their recorded dates. Missing dates stay **Undated**; a sync timestamp is never substituted.
+- **All updates** is the default. Category/highlight filters include Content releases, New Release, Recently Updated, Upgraded, Trending, More Languages Available, Retired, Planned retirement and Manual update. Highlight matching uses exact, case-insensitive RMP tags; neither a sync time nor a modification date alone invents a Recently Updated tag. Highlights can overlap; All updates lists each record once.
+- Every category scans the same applied dataset, not a separate unfiltered list. Switching categories or summary cards does **not** clear dates, month, type, level or keyword search. Applying new dates also retains the view selections. **Clear view filters** explicitly resets those refinements; **All dates** removes only the date range.
+- Results and category/summary counts share the applied date range, month, event type, level and metadata search. Counts for a category equal the rows displayed when that category is selected. Options are built across the applied dataset so switching categories does not discard a selected filter; a selection with no matches remains visible as such.
+- The date range is sent upstream unchanged for RMP records. Manual lab changes, team notices and PDF resources are additionally scoped locally by their recorded effective/publication dates. Undated manual/FY27 entries are excluded from a bounded date range, with a notice explaining that **All dates** restores them. They are not deleted.
+- Date controls and month/search are shared across all page tabs. Event type, level and lab-category filters apply only to lab updates, because team notices and PDFs do not have those fields; this distinction is shown in the UI.
+- Search scans titles, descriptions, source/status, highlights, topic, type, level, languages, IDs and recorded dates across all fetched rows. Multiple terms may match different fields. It is not limited to the first upstream page or the currently selected category.
+- For RMP-retired or updated labs, the applied timeframe remains their original **Content Release Date**, not a claim they were retired or modified within that timeframe. Source modification dates are displayed separately when available.
 - The page checks its snapshot every 60 seconds (every 2 seconds during refresh), on focus and after sync events. Source data refreshes when stale and a verified token is available. Sign-in/request sync and the existing hourly job also queue a catalogue refresh.
 - Full source metadata cards, month headings, a matching timeframe link to RMP, stale/error states, manual notice editing and PDF resources are retained. No production-data migration or deletion is performed.
 

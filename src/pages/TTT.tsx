@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,6 +18,9 @@ import EntityEditDialog from '@/components/EntityEditDialog'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
 import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RmpTttScanPanel } from '@/components/ttt/RmpTttScanPanel'
+import { formatAnnouncementDate } from '@/lib/announcements'
 
 interface TTTSession {
   id?: string
@@ -69,9 +71,6 @@ export default function TTTPage() {
       const res = await api.get('/api/catalog')
       const items = Array.isArray(res.data) ? res.data : []
       
-      const today = new Date()
-      today.setHours(0, 0, 0, 0) // Reset to start of day for accurate comparison
-      
       const sessions = items
         .filter((i: any) => i.type === 'tttSession')
         .map((i: any) => ({
@@ -86,59 +85,16 @@ export default function TTTPage() {
           rmpAdminUrl: i.rmpAdminUrl || ''
         }))
       
-      // Auto-mark past events as completed
-      const sessionsToUpdate: TTTSession[] = []
-      const updatedSessions = sessions.map((session) => {
-        if (session.sessionDate && session.status !== 'Completed') {
-          const sessionDate = new Date(session.sessionDate)
-          sessionDate.setHours(0, 0, 0, 0)
-          
-          if (sessionDate < today) {
-            // Mark as completed and track for backend update
-            const autoNote = 'Event is delivered hence marking it as completed'
-            const updatedNotes = session.notes 
-              ? `${session.notes}\n[Auto] ${autoNote}` 
-              : `[Auto] ${autoNote}`
-            
-            const updatedSession = {
-              ...session,
-              status: 'Completed',
-              notes: updatedNotes
-            }
-            sessionsToUpdate.push(updatedSession)
-            return updatedSession
-          }
-        }
-        return session
-      })
-      
-      // Update backend for auto-completed sessions
-      if (sessionsToUpdate.length > 0) {
-        for (const session of sessionsToUpdate) {
-          try {
-            await api.put(`/api/catalog/${session.sr}`, { ...session, type: 'tttSession' })
-          } catch (err) {
-            console.error('Error auto-updating session:', session.sr, err)
-          }
-        }
-        
-        if (sessionsToUpdate.length > 0) {
-          toast({
-            title: 'Auto-Completed',
-            description: `${sessionsToUpdate.length} past event(s) marked as completed`
-          })
-        }
-      }
-      
-      // Sort sessions
-      const sortedSessions = updatedSessions.sort((a, b) => {
+      // Viewing/scanning TTT is read-only. A past date does not prove delivery;
+      // retain stored statuses (especially Cancelled) until an explicit edit.
+      const sortedSessions = sessions.sort((a, b) => {
         // Scheduled sessions first, Completed last
         if (a.status === 'Scheduled' && b.status !== 'Scheduled') return -1
         if (a.status !== 'Scheduled' && b.status === 'Scheduled') return 1
         if (a.status === 'Completed' && b.status !== 'Completed') return 1
         if (a.status !== 'Completed' && b.status === 'Completed') return -1
         // For same status, sort by session date (most recent first)
-        return new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime()
+        return b.sessionDate.localeCompare(a.sessionDate)
       })
       
       setTttSessions(sortedSessions)
@@ -314,6 +270,10 @@ export default function TTTPage() {
           )}
         </div>
 
+        <Tabs defaultValue="local" className="space-y-5">
+          <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="local">Dashboard sessions</TabsTrigger><TabsTrigger value="rmp">RMP scan (read-only)</TabsTrigger></TabsList>
+          <TabsContent value="rmp" forceMount className="data-[state=inactive]:hidden"><RmpTttScanPanel /></TabsContent>
+          <TabsContent value="local" className="space-y-6">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
@@ -346,7 +306,7 @@ export default function TTTPage() {
                   TTT Sessions
                 </CardTitle>
                 <CardDescription>
-                  All Train The Trainer sessions and their details
+                  Saved dashboard sessions. RMP scans are shown separately and never imported automatically.
                 </CardDescription>
               </div>
               {role === 'admin' && (
@@ -384,7 +344,7 @@ export default function TTTPage() {
                         <TableCell className="text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {new Date(session.sessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {formatAnnouncementDate(session.sessionDate || null)}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(session.status)}</TableCell>
@@ -433,6 +393,9 @@ export default function TTTPage() {
             </ScrollArea>
           </CardContent>
         </Card>
+
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <EntityEditDialog

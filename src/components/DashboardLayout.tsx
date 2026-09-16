@@ -39,7 +39,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex min-w-0 flex-col">
         <DashboardHeader />
         <main className="flex-1 overflow-y-auto p-6 bg-background">
           <div className="max-w-none mx-auto">

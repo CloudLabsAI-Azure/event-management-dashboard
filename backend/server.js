@@ -26,6 +26,8 @@ const { logAudit, getAuditEntries, getResourceHistory } = await import('./auditS
 const { RmpApiError, fetchAllRequests, getRequestDetail, classifyRequest, isLocalizedLanguage, mapRequestToCatalogItem, mapRequestToLocalizedTrack, formatSessionTimes, getRmpConfig } = await import('./rmpService.js');
 const { createRmpTokenCache } = await import('./rmpTokenCache.js');
 const { createRmpCatalogueStore, registerRmpCatalogueRoutes } = await import('./rmpCatalogueSync.js');
+const { registerRmpTttRoutes } = await import('./rmpTttService.js');
+const { registerRmpCustomTechRoutes } = await import('./rmpCustomTechService.js');
 import { rmpRequestImportsEnabled, RMP_REQUEST_IMPORTS_PAUSED_REASON, visibleLabResource, visibleDashboardData, preserveHiddenRmpImports } from './rmpRequestPolicy.js';
 import { withLock, getLockStatus } from './writeLock.js';
 
@@ -2084,6 +2086,9 @@ const rmpCatalogueSync = createRmpCatalogueStore({
   },
 });
 registerRmpCatalogueRoutes(app, { requireAuth, tokenCache: rmpTokenCache, catalogueSync: rmpCatalogueSync });
+// Explicit read-only TTT scanning does not re-enable the paused request importer.
+registerRmpTttRoutes(app, { requireAuth });
+registerRmpCustomTechRoutes(app, { requireAuth });
 let _rmpSyncRunning = false;
 
 /**

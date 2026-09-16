@@ -32,6 +32,8 @@ export function CatalogueLabCard({ update, actions }: { update: LabUpdate; actio
               {[
                 ['Level', update.level], ['Event type', update.eventType], ['Topic', update.topic],
                 ['Lab language', update.labLanguages], ['Registration page language', update.registrationLanguages],
+                ['Content release date', update.contentReleaseDate ? formatAnnouncementDate(update.contentReleaseDate) : null],
+                ['Content last updated', update.lastContentModifiedDate ? formatAnnouncementDate(update.lastContentModifiedDate) : null],
               ].map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-muted-foreground">{label}</dt><dd className="mt-0.5 break-words font-medium">{value || 'Not provided'}</dd></div>)}
             </dl>
           )}

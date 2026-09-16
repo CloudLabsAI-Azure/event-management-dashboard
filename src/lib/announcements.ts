@@ -1,5 +1,6 @@
 /** Read-only announcement projections. Opening the feed never creates catalog rows. */
-import type { RmpCatalogueItem } from '@/types/rmpCatalogue'
+import type { ContentReleaseRange, RmpCatalogueItem } from '@/types/rmpCatalogue'
+import { contentReleaseRangeError } from '@/lib/contentReleaseDates'
 
 interface RecordIdentity {
   id: string
@@ -31,7 +32,20 @@ export interface GeneralAnnouncement extends RecordIdentity {
 
 export type EditableAnnouncement = PdfCatalog | TrackChange | GeneralAnnouncement
 export type LabUpdateKind = 'new-release' | 'catalogue-release' | 'retired' | 'planned-retirement' | 'manual-update'
-export type LabUpdateFilterKind = LabUpdateKind | 'all' | 'releases'
+export type LabUpdateFilterKind = LabUpdateKind | 'all' | 'releases' | 'recently-updated' | 'upgraded' | 'trending' | 'more-languages'
+
+export const LAB_UPDATE_FILTERS = [
+  { value: 'all', label: 'All updates' },
+  { value: 'releases', label: 'Content releases' },
+  { value: 'new-release', label: 'New Release' },
+  { value: 'recently-updated', label: 'Recently Updated' },
+  { value: 'upgraded', label: 'Upgraded' },
+  { value: 'trending', label: 'Trending' },
+  { value: 'more-languages', label: 'More Languages Available' },
+  { value: 'retired', label: 'Retired' },
+  { value: 'planned-retirement', label: 'Planned retirement' },
+  { value: 'manual-update', label: 'Manual update' },
+] as const satisfies readonly { value: LabUpdateFilterKind; label: string }[]
 
 export interface LabUpdate {
   id: string
@@ -42,6 +56,9 @@ export interface LabUpdate {
   source: 'RMP Catalog' | 'Manual update' | 'FY27 review'
   date: string | null
   dateLabel: string
+  /** Source LaunchDate applies to every RMP category; it is never a retirement date. */
+  contentReleaseDate?: string | null
+  lastContentModifiedDate?: string | null
   level?: string
   eventType?: string
   topic?: string
@@ -143,6 +160,8 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
       source: 'RMP Catalog', status: item.kind === 'retired' ? 'Retired in RMP' : item.kind === 'new-release' ? 'New Release' : 'Catalog release',
       date: validDate(item.kind === 'retired' ? item.retirementDate : item.releaseDate),
       dateLabel: item.kind === 'retired' ? 'Retired on' : 'Content released',
+      contentReleaseDate: validDate(item.releaseDate),
+      lastContentModifiedDate: validDate(item.lastContentModifiedDate),
       href: safeResourceUrl(item.detailsUrl) || undefined,
       level: item.level, eventType: item.eventType, topic: item.topic,
       labLanguages: item.labLanguages, registrationLanguages: item.registrationLanguages,
@@ -211,21 +230,109 @@ export interface LabUpdateFilters {
   query?: string
 }
 
+/** Search all display metadata, including lifecycle status and every highlight. */
+export function matchesAnnouncementSearch(query: string | undefined, ...values: (string | null | undefined)[]): boolean {
+  const terms = (query || '').normalize('NFKC').trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const haystack = values.filter(Boolean).join(' ').normalize('NFKC').toLowerCase()
+  return terms.every(term => haystack.includes(term))
+}
+
+/** Category filters are independent: a New Release can also be Recently Updated. */
+export function matchesLabUpdateCategory(item: LabUpdate, kind: LabUpdateFilterKind = 'all'): boolean {
+  const highlight = {
+    'new-release': 'new release',
+    'recently-updated': 'recently updated',
+    upgraded: 'upgraded',
+    trending: 'trending',
+    'more-languages': 'more languages available',
+  }[kind] as string | undefined
+  if (highlight) return item.source === 'RMP Catalog' && (
+    (kind === 'new-release' && item.kind === 'new-release')
+    || item.highlights?.some(tag => tag.trim().toLowerCase() === highlight) === true
+  )
+  if (kind === 'all') return true
+  if (kind === 'releases') return item.kind === 'new-release' || item.kind === 'catalogue-release'
+  return item.kind === kind
+}
+
+export function labUpdateFilterDate(item: LabUpdate): string | null {
+  return item.source === 'RMP Catalog' ? item.contentReleaseDate ?? null : item.date
+}
+
 export function filterLabUpdates(items: readonly LabUpdate[], filters: LabUpdateFilters): LabUpdate[] {
-  const query = (filters.query || '').trim().toLowerCase()
-  return items.filter(item => (!filters.kind || filters.kind === 'all' || item.kind === filters.kind || (filters.kind === 'releases' && (item.kind === 'new-release' || item.kind === 'catalogue-release')))
-    && (!filters.month || filters.month === 'all' || announcementMonth(item.date) === filters.month)
+  return items.filter(item => matchesLabUpdateCategory(item, filters.kind)
+    && (!filters.month || filters.month === 'all' || announcementMonth(labUpdateFilterDate(item)) === filters.month)
     && (!filters.eventType || filters.eventType === 'all' || item.eventType === filters.eventType)
     && (!filters.level || filters.level === 'all' || item.level === filters.level)
-    && (!query || [item.title, item.description, item.topic, item.eventType, item.level, item.labLanguages, item.registrationLanguages, item.replacement, item.source].some(value => value?.toLowerCase().includes(query))))
+    && matchesAnnouncementSearch(filters.query, item.title, item.description, item.topic, item.eventType,
+      item.level, item.labLanguages, item.registrationLanguages, item.replacement, item.source,
+      item.status, item.id, item.date, item.contentReleaseDate, item.lastContentModifiedDate, ...(item.highlights || [])))
 }
 
 export function groupLabUpdatesByMonth(items: readonly LabUpdate[]) {
   const groups = new Map<string, LabUpdate[]>()
   for (const item of items) {
-    const key = announcementMonth(item.date)
+    const key = announcementMonth(labUpdateFilterDate(item))
     groups.set(key, [...(groups.get(key) || []), item])
   }
   return [...groups.entries()].sort(([a], [b]) => a === b ? 0 : a === 'undated' ? 1 : b === 'undated' ? -1 : b.localeCompare(a))
-    .map(([month, updates]) => ({ month, label: formatAnnouncementMonth(month), updates: [...updates].sort((a, b) => dateValue(b.date) - dateValue(a.date) || a.title.localeCompare(b.title)) }))
+    .map(([month, updates]) => ({ month, label: formatAnnouncementMonth(month), updates: [...updates].sort((a, b) => dateValue(labUpdateFilterDate(b)) - dateValue(labUpdateFilterDate(a)) || a.title.localeCompare(b.title)) }))
+}
+
+export type AnnouncementData = ReturnType<typeof buildAnnouncementData>
+
+/**
+ * A single applied dataset for every category/tab. RMP is already range-filtered
+ * upstream; unknown detail dates still belong to that source response. Local
+ * notices have no upstream filter, so their recorded dates must be scoped here.
+ * Undated local/FY27 history is visible only with All dates, never invented dates.
+ */
+export function scopeAnnouncementData(data: AnnouncementData, range: ContentReleaseRange | null): AnnouncementData {
+  if (!range) return data
+  const error = contentReleaseRangeError(range)
+  if (error) throw new Error(error)
+  const within = (value: string | null) => {
+    const date = validDate(value)?.slice(0, 10)
+    return !!date && date >= range.from && date <= range.to
+  }
+  return {
+    labUpdates: data.labUpdates.filter(item => item.source === 'RMP Catalog'
+      ? !validDate(item.contentReleaseDate) || within(item.contentReleaseDate || null)
+      : within(item.date)),
+    announcements: data.announcements.filter(item => within(item.announcementDate)),
+    pdfCatalogs: data.pdfCatalogs.filter(item => within(item.uploadDate)),
+  }
+}
+
+/** Rows, counts and options all derive from the same complete applied dataset. */
+export function buildAnnouncementView(data: AnnouncementData, filters: LabUpdateFilters, range: ContentReleaseRange | null) {
+  const scoped = scopeAnnouncementData(data, range)
+  const matchingAllCategories = filterLabUpdates(scoped.labUpdates, { ...filters, kind: 'all' })
+  const kinds: LabUpdateFilterKind[] = [...LAB_UPDATE_FILTERS.map(option => option.value), 'catalogue-release']
+  const categoryCounts = Object.fromEntries(kinds.map(kind => [kind, matchingAllCategories.filter(item => matchesLabUpdateCategory(item, kind)).length])) as Record<LabUpdateFilterKind, number>
+  const updates = matchingAllCategories.filter(item => matchesLabUpdateCategory(item, filters.kind))
+  const monthMatches = (date: string) => !filters.month || filters.month === 'all' || announcementMonth(date) === filters.month
+  const announcements = scoped.announcements.filter(item => monthMatches(item.announcementDate)
+    && matchesAnnouncementSearch(filters.query, item.title, item.message, item.announcementDate))
+  const pdfCatalogs = scoped.pdfCatalogs.filter(item => monthMatches(item.uploadDate)
+    && matchesAnnouncementSearch(filters.query, item.title, item.description, item.uploadDate))
+  // Options stay stable across categories. Do not remove a user's current
+  // selection merely because the next category has zero matches for it.
+  const months = [...new Set([
+    ...scoped.labUpdates.map(item => announcementMonth(labUpdateFilterDate(item))),
+    ...scoped.announcements.map(item => announcementMonth(item.announcementDate)),
+    ...scoped.pdfCatalogs.map(item => announcementMonth(item.uploadDate)),
+  ])].sort((a, b) => a === b ? 0 : a === 'undated' ? 1 : b === 'undated' ? -1 : b.localeCompare(a))
+  return {
+    updates, categoryCounts, announcements, pdfCatalogs,
+    monthGroups: groupLabUpdatesByMonth(updates),
+    options: {
+      months,
+      eventTypes: [...new Set(scoped.labUpdates.map(item => item.eventType).filter((value): value is string => !!value))].sort(),
+      levels: [...new Set(scoped.labUpdates.map(item => item.level).filter((value): value is string => !!value))].sort(),
+    },
+    undatedLocalCount: range ? data.labUpdates.filter(item => item.source !== 'RMP Catalog' && !validDate(item.date)).length
+      + data.announcements.filter(item => !validDate(item.announcementDate)).length
+      + data.pdfCatalogs.filter(item => !validDate(item.uploadDate)).length : 0,
+  }
 }

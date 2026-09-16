@@ -24,6 +24,8 @@ import api from "@/lib/api";
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
 import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RmpCustomTechPanel } from '@/components/rmp/RmpCustomTechPanel'
 
 interface ActivityLogEntry {
   date: string;
@@ -170,6 +172,7 @@ function isItemStale(item: RoadmapItem): boolean {
 export default function RoadmapPage() {
   const [searchParams] = useSearchParams();
   const initialPhaseFilter = searchParams.get('phase') || 'all';
+  const [developmentTab, setDevelopmentTab] = useState(searchParams.get('tab') === 'custom-tech' ? 'custom-tech' : 'roadmap');
   
   const [roadmapData, setRoadmapData] = useState<RoadmapItem[]>([])
   const [editingItem, setEditingItem] = useState<RoadmapItem | null>(null)
@@ -591,10 +594,14 @@ export default function RoadmapPage() {
             {(() => { const staleCount = roadmapData.filter(isItemStale).length; return staleCount > 0 ? (<span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium"><AlertTriangle className="h-3.5 w-3.5" />{staleCount} stale</span>) : null; })()}
           </p>
         </div>
+        <Tabs value={developmentTab} onValueChange={setDevelopmentTab} className="space-y-5">
+          <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="roadmap">Development Roadmap</TabsTrigger><TabsTrigger value="custom-tech">Custom Tech</TabsTrigger></TabsList>
+          <TabsContent value="custom-tech" forceMount className="data-[state=inactive]:hidden"><RmpCustomTechPanel active={developmentTab === 'custom-tech'} /></TabsContent>
+          <TabsContent value="roadmap" className="space-y-6">
         <div className="flex justify-end">
           {/* Add Roadmap button for admins */}
           {role === 'admin' && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" onClick={() => { setEditingItem({ sr: 0, trackTitle: '', phase: '', eta: '', eventId: '', programType: '', approvalDate: '', notes: '' }); setIsEditDialogOpen(true); }}>
                 <Plus className="h-4 w-4" />
                 Add Roadmap
@@ -867,6 +874,9 @@ export default function RoadmapPage() {
               </ScrollArea>
           </CardContent>
         </Card>
+
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

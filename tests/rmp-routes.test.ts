@@ -46,6 +46,8 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError; requestI
     createRmpTokenCache: () => cache,
     createRmpCatalogueStore: () => ({ queueRefresh: async () => { catalogueQueued++; return { refreshing: false } } }),
     registerRmpCatalogueRoutes: () => {},
+    registerRmpTttRoutes: () => {},
+    registerRmpCustomTechRoutes: () => {},
     path: { join: (...parts: string[]) => parts.join('/') },
     __dirname: 'fixture',
     app: { get: register, post: register },

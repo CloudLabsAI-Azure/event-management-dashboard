@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { retirements } from '@/data/fy27Readout'
-import { buildAnnouncementData, filterLabUpdates, groupLabUpdatesByMonth, formatAnnouncementDate, safeResourceUrl, type EditableAnnouncement, type LabUpdateFilterKind } from '@/lib/announcements'
+import { buildAnnouncementData, buildAnnouncementView, LAB_UPDATE_FILTERS, formatAnnouncementMonth, formatAnnouncementDate, safeResourceUrl, type EditableAnnouncement, type LabUpdateFilterKind } from '@/lib/announcements'
 import { defaultContentReleaseRange, contentReleaseRangeError } from '@/lib/contentReleaseDates'
 import type { ContentReleaseRange } from '@/types/rmpCatalogue'
 import { getRmpSyncStatus, getRmpCatalogue, refreshRmpCatalogue } from '@/lib/rmpSync'
@@ -38,7 +38,7 @@ export default function Announcements() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<LabUpdateFilterKind>('releases')
+  const [filter, setFilter] = useState<LabUpdateFilterKind>('all')
   const [dateRange, setDateRange] = useState<ContentReleaseRange | null>(() => defaultContentReleaseRange())
   const [draftRange, setDraftRange] = useState<ContentReleaseRange>(() => defaultContentReleaseRange())
   const [dateError, setDateError] = useState<string | null>(null)
@@ -96,36 +96,21 @@ export default function Announcements() {
   }, [refresh])
 
   const data = useMemo(() => buildAnnouncementData(catalog.data, retirements, rmpCatalogue.data?.items), [catalog.data, rmpCatalogue.data?.items])
+  const view = useMemo(() => buildAnnouncementView(data, { kind: filter, month, eventType, level, query: search }, dateRange), [data, filter, month, eventType, level, search, dateRange])
   const query = search.trim().toLowerCase()
-  const matches = (...values: string[]) => !query || values.some(value => value.toLowerCase().includes(query))
-  const updates = filterLabUpdates(data.labUpdates, { kind: filter, month, eventType, level, query: search })
-  const monthGroups = groupLabUpdatesByMonth(updates)
-  const filterOptions = useMemo(() => {
-    const kindItems = filterLabUpdates(data.labUpdates, { kind: filter })
-    return {
-      months: groupLabUpdatesByMonth(kindItems),
-      eventTypes: [...new Set(kindItems.map(item => item.eventType).filter(Boolean))].sort(),
-      levels: [...new Set(kindItems.map(item => item.level).filter(Boolean))].sort(),
-    }
-  }, [data.labUpdates, filter])
-  const clearFilters = () => { setSearch(''); setMonth('all'); setEventType('all'); setLevel('all') }
-  const changeKind = (kind: LabUpdateFilterKind) => { setFilter(kind); clearFilters() }
+  const { updates, monthGroups, options: filterOptions, categoryCounts: counts, announcements: notices, pdfCatalogs: pdfs } = view
+  const clearFilters = () => { setSearch(''); setMonth('all'); setEventType('all'); setLevel('all'); setFilter('all') }
+  const changeKind = (kind: LabUpdateFilterKind) => { setFilter(kind) }
   const applyDateRange = (event: React.FormEvent) => {
     event.preventDefault()
     const error = contentReleaseRangeError(draftRange)
     setDateError(error)
     if (error) return
-    clearFilters()
     setDateRange({ ...draftRange })
   }
   const fetchingCatalogue = syncing || rmpCatalogue.data?.refreshing
-  const notices = data.announcements.filter(item => matches(item.title, item.message))
-  const pdfs = data.pdfCatalogs.filter(item => matches(item.title, item.description))
-  const counts = {
-    releases: filterLabUpdates(data.labUpdates, { kind: 'releases' }).length,
-    retired: data.labUpdates.filter(item => item.kind === 'retired').length,
-    planned: data.labUpdates.filter(item => item.kind === 'planned-retirement').length,
-  }
+  const loadingLabData = catalog.isPending || rmpCatalogue.isPending || (!rmpCatalogue.data?.lastSyncedAt && fetchingCatalogue)
+  const hasViewFilters = month !== 'all' || eventType !== 'all' || level !== 'all' || !!search || filter !== 'all'
 
   const syncRmp = async () => {
     setSyncing(true)
@@ -205,23 +190,37 @@ export default function Announcements() {
           </div>
         </section>
 
+        <form onSubmit={applyDateRange} className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-primary" />Content Release Date</div>
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="content-release-from" className="text-xs">From</Label><Input id="content-release-from" type="date" value={draftRange.from} onChange={event => { setDraftRange({ ...draftRange, from: event.target.value }); setDateError(null) }} aria-invalid={!!dateError} aria-describedby={dateError ? 'content-date-error' : undefined} /></div>
+            <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="content-release-to" className="text-xs">To</Label><Input id="content-release-to" type="date" value={draftRange.to} onChange={event => { setDraftRange({ ...draftRange, to: event.target.value }); setDateError(null) }} aria-invalid={!!dateError} aria-describedby={dateError ? 'content-date-error' : undefined} /></div>
+            <Button type="submit">Apply dates</Button>
+            <Button type="button" variant="outline" onClick={() => { setDateRange(null); setDraftRange({ from: '', to: '' }); setDateError(null) }}>All dates</Button>
+          </div>
+          {dateError && <p id="content-date-error" role="alert" className="text-sm text-destructive">{dateError}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{dateRange ? `Applied: ${formatAnnouncementDate(dateRange.from)} – ${formatAnnouncementDate(dateRange.to)}` : 'Applied: all dates'}</span><span>One timeframe for every category and tab</span></div>
+          <p className="text-xs text-muted-foreground">RMP labs use Content Release Date across all categories. Manual updates, team notices and PDFs use their recorded effective/publication dates. Search and view filters stay applied until you clear them.</p>
+          {view.undatedLocalCount > 0 && <p className="text-xs text-muted-foreground">{view.undatedLocalCount} undated manual/FY27 entries are excluded from this timeframe. Choose All dates to include them.</p>}
+        </form>
+
         {catalog.isError && (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-            <span>Could not fetch the latest announcements. {catalog.data ? 'Showing the last loaded catalog.' : 'Only the published FY27 retirement reference is available.'}</span>
+            <span>Could not fetch the latest manual announcements. {catalog.data ? 'Showing the last loaded records within the applied filters.' : 'Manual entries may be incomplete.'}</span>
             <Button variant="outline" size="sm" onClick={() => { void catalog.refetch() }}>Retry</Button>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
-            { label: 'Content releases in range', value: rmpCatalogue.data?.lastSyncedAt ? counts.releases : '—', icon: Rocket, color: labUpdateStyles['new-release'].color, kind: 'releases' as const },
-            { label: 'Retirement notices', value: counts.retired, icon: Archive, color: labUpdateStyles.retired.color, kind: 'retired' as const },
-            { label: 'Planned retirements', value: counts.planned, icon: CalendarClock, color: labUpdateStyles['planned-retirement'].color, kind: 'planned-retirement' as const },
-            { label: 'PDF resources', value: data.pdfCatalogs.length, icon: BookOpen, color: 'bg-primary/10 text-primary', kind: null },
+            { label: 'All matching lab updates', value: loadingLabData ? '—' : counts.all, icon: Rocket, color: labUpdateStyles['new-release'].color, kind: 'all' as const },
+            { label: 'Recently Updated', value: loadingLabData ? '—' : counts['recently-updated'], icon: RefreshCw, color: 'bg-sky-500/10 text-sky-700 dark:text-sky-400', kind: 'recently-updated' as const },
+            { label: 'Matching retirements', value: loadingLabData ? '—' : counts.retired, icon: Archive, color: labUpdateStyles.retired.color, kind: 'retired' as const },
+            { label: 'Matching PDF resources', value: catalog.isPending ? '—' : pdfs.length, icon: BookOpen, color: 'bg-primary/10 text-primary', kind: null },
           ].map(stat => (
-            <button key={stat.label} type="button" onClick={() => { clearFilters(); if (stat.kind) { setTab('labs'); changeKind(stat.kind) } else setTab('resources') }} className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button key={stat.label} type="button" onClick={() => { if (stat.kind) { setTab('labs'); changeKind(stat.kind) } else setTab('resources') }} className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className={`rounded-lg p-2.5 ${stat.color}`}><stat.icon className="h-5 w-5" /></div>
-              <div><div className="text-2xl font-semibold tabular-nums">{catalog.isPending ? '—' : stat.value}</div><div className="text-xs text-muted-foreground">{stat.label}</div></div>
+              <div><div className="text-2xl font-semibold tabular-nums">{stat.value}</div><div className="text-xs text-muted-foreground">{stat.label}</div></div>
             </button>
           ))}
         </div>
@@ -231,8 +230,8 @@ export default function Announcements() {
             <div className="flex flex-col justify-between gap-3 sm:flex-row">
               <TabsList className="h-auto flex-wrap justify-start">
                 <TabsTrigger value="labs"><Rocket className="mr-1.5 h-3.5 w-3.5" /> Lab updates</TabsTrigger>
-                <TabsTrigger value="notices"><Bell className="mr-1.5 h-3.5 w-3.5" /> Team notices</TabsTrigger>
-                <TabsTrigger value="resources"><FileText className="mr-1.5 h-3.5 w-3.5" /> Resources</TabsTrigger>
+                <TabsTrigger value="notices"><Bell className="mr-1.5 h-3.5 w-3.5" /> Team notices ({notices.length})</TabsTrigger>
+                <TabsTrigger value="resources"><FileText className="mr-1.5 h-3.5 w-3.5" /> Resources ({pdfs.length})</TabsTrigger>
               </TabsList>
               <div className="relative sm:max-w-[240px]">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -240,32 +239,25 @@ export default function Announcements() {
               </div>
             </div>
 
+            <div className="grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-3">
+              <div className="space-y-1.5"><Label htmlFor="release-month" className="text-xs">Month / year</Label><Select value={month} onValueChange={setMonth}><SelectTrigger id="release-month"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All months</SelectItem>{filterOptions.months.map(value => <SelectItem key={value} value={value}>{formatAnnouncementMonth(value)}</SelectItem>)}{month !== 'all' && !filterOptions.months.includes(month) && <SelectItem value={month}>{formatAnnouncementMonth(month)} (0 matches)</SelectItem>}</SelectContent></Select></div>
+              {tab === 'labs' ? <>
+                <div className="space-y-1.5"><Label htmlFor="release-type" className="text-xs">Event type</Label><Select value={eventType} onValueChange={setEventType}><SelectTrigger id="release-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All event types</SelectItem>{filterOptions.eventTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}{eventType !== 'all' && !filterOptions.eventTypes.includes(eventType) && <SelectItem value={eventType}>{eventType} (0 matches)</SelectItem>}</SelectContent></Select></div>
+                <div className="space-y-1.5"><Label htmlFor="release-level" className="text-xs">Level</Label><Select value={level} onValueChange={setLevel}><SelectTrigger id="release-level"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All levels</SelectItem>{filterOptions.levels.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}{level !== 'all' && !filterOptions.levels.includes(level) && <SelectItem value={level}>{level} (0 matches)</SelectItem>}</SelectContent></Select></div>
+              </> : <p className="self-center text-xs text-muted-foreground sm:col-span-2">Dates, month and search apply to these records. Event type, level and lab category apply only to lab updates.</p>}
+            </div>
+            {hasViewFilters && <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={clearFilters}>Clear view filters</Button>}
+
             <TabsContent value="labs" className="space-y-4">
-              <form onSubmit={applyDateRange} className="space-y-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="h-4 w-4 text-primary" />Content Release Date</div>
-                <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
-                  <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="content-release-from" className="text-xs">From</Label><Input id="content-release-from" type="date" value={draftRange.from} onChange={event => { setDraftRange({ ...draftRange, from: event.target.value }); setDateError(null) }} aria-invalid={!!dateError} aria-describedby={dateError ? 'content-date-error' : undefined} /></div>
-                  <div className="min-w-0 flex-1 space-y-1.5"><Label htmlFor="content-release-to" className="text-xs">To</Label><Input id="content-release-to" type="date" value={draftRange.to} onChange={event => { setDraftRange({ ...draftRange, to: event.target.value }); setDateError(null) }} aria-invalid={!!dateError} aria-describedby={dateError ? 'content-date-error' : undefined} /></div>
-                  <Button type="submit">Apply dates</Button>
-                  <Button type="button" variant="outline" onClick={() => { setDateRange(null); setDraftRange({ from: '', to: '' }); setDateError(null); clearFilters() }}>All dates</Button>
-                </div>
-                {dateError && <p id="content-date-error" role="alert" className="text-sm text-destructive">{dateError}</p>}
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{dateRange ? `Applied: ${formatAnnouncementDate(dateRange.from)} – ${formatAnnouncementDate(dateRange.to)}` : 'Applied: all content release dates'}</span><span>Filtered by RMP · Not request/import dates</span></div>
-              </form>
               <div className="flex flex-wrap items-center gap-2">
-                {(['releases', 'new-release', 'all', 'retired', 'planned-retirement', 'manual-update'] as const).map(kind => (
-                  <Button key={kind} size="sm" variant={filter === kind ? 'secondary' : 'ghost'} aria-pressed={filter === kind} className="h-8 rounded-full text-xs" onClick={() => changeKind(kind)}>{kind === 'all' ? 'All updates' : kind === 'releases' ? 'Content releases' : labUpdateStyles[kind].label}</Button>
+                {LAB_UPDATE_FILTERS.map(({ value, label }) => (
+                  <Button key={value} size="sm" variant={filter === value ? 'secondary' : 'ghost'} aria-pressed={filter === value} aria-label={`${label}: ${loadingLabData ? 'loading' : counts[value]} matches`} className="h-8 gap-1.5 rounded-full text-xs" onClick={() => changeKind(value)}>{label}<span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] tabular-nums">{loadingLabData ? '—' : counts[value]}</span></Button>
                 ))}
                 {isAdmin && <Button size="sm" variant="outline" className="ml-auto h-8 text-xs" onClick={() => setEditor({ type: 'trackChange' })}><Plus className="mr-1.5 h-3.5 w-3.5" /> Add confirmed update</Button>}
               </div>
-              <div className="grid gap-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-3">
-                <div className="space-y-1.5"><Label htmlFor="release-month" className="text-xs">Month / year</Label><Select value={month} onValueChange={setMonth}><SelectTrigger id="release-month"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All months</SelectItem>{filterOptions.months.map(group => <SelectItem key={group.month} value={group.month}>{group.label} ({group.updates.length})</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1.5"><Label htmlFor="release-type" className="text-xs">Event type</Label><Select value={eventType} onValueChange={setEventType}><SelectTrigger id="release-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All event types</SelectItem>{filterOptions.eventTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-1.5"><Label htmlFor="release-level" className="text-xs">Level</Label><Select value={level} onValueChange={setLevel}><SelectTrigger id="release-level"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All levels</SelectItem>{filterOptions.levels.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{updates.length} matching updates · Grouped by source date</span>{(month !== 'all' || eventType !== 'all' || level !== 'all' || search) && <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={clearFilters}>Clear filters</Button>}</div>
-              <p className="text-xs leading-relaxed text-muted-foreground">The timeframe is sent to the Catalog’s Content Release Date filter. New Release narrows to that highlight; older releases remain available under Content releases. Manual notices and FY27 plans are separate from this upstream date filter.</p>
-              {filter === 'retired' && <p className="text-xs text-muted-foreground">For RMP-retired labs, the timeframe filters their original content release date, not when they were retired. Retirement dates are not supplied by RMP.</p>}
+              <p role="status" className="text-xs text-muted-foreground">{loadingLabData ? 'Loading applied data…' : `${updates.length} matching updates · ${counts.all} across all categories with these filters`}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">Every category scans the same applied dataset. Counts include the selected month, type, level and search. Highlight categories can overlap; All updates lists each record once.</p>
+              {(filter === 'retired' || filter === 'recently-updated' || filter === 'all') && <p className="text-xs text-muted-foreground">RMP month grouping always uses Content Release Date, including retired and updated labs. Recently Updated matches the RMP highlight—not the sync date. Actual retirement dates remain unknown when not provided.</p>}
               {(rmpCatalogue.isError || rmpCatalogue.data?.error) && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">{rmpCatalogue.data?.error || 'Could not load the RMP catalogue.'} {rmpCatalogue.data?.lastSyncedAt ? 'Showing the last successful snapshot.' : 'No catalogue releases have been loaded yet.'}</div>}
               {rmpCatalogue.data?.detailErrors > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{rmpCatalogue.data.detailErrors} catalogue details could not be fetched; affected dates remain undated until a successful retry.</p>}
               {rmpCatalogue.isPending || (!rmpCatalogue.data?.lastSyncedAt && fetchingCatalogue)
@@ -274,7 +266,7 @@ export default function Announcements() {
                 : monthGroups.map(group => (
                   <section key={group.month} aria-label={group.label} className="space-y-3">
                     <div className="flex items-center gap-3 pt-3"><CalendarClock className="h-4 w-4 text-primary" /><h2 className="font-semibold">{group.label}</h2><Badge variant="secondary" className="text-xs">{group.updates.length}</Badge><div className="h-px flex-1 bg-border" /></div>
-                    {group.month === 'undated' && <p className="text-xs text-muted-foreground">The source does not provide an effective date for these entries. Sync time is not used as a release or retirement date.</p>}
+                    {group.month === 'undated' && <p className="text-xs text-muted-foreground">The source does not provide a content release date (or a recorded date for local entries). Sync time is never substituted.</p>}
                     {group.updates.map(update => <CatalogueLabCard key={update.id} update={update} actions={update.manualRecord && recordActions(update.manualRecord)} />)}
                   </section>
                 ))}

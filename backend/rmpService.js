@@ -11,6 +11,16 @@
 
 const RMP_API_BASE_URL = String(process.env.RMP_API_BASE_URL || 'https://api.cloudevents.ai').replace(/\/+$/, '');
 const RMP_TENANT_ID = process.env.RMP_TENANT_ID || 'EAB203B6-FF38-4DFE-912F-D09EBD3E57E6';
+// My Events -> Train-The-Trainer filter, observed in this tenant on 2026-09-08.
+// Other tenants must configure their own ID or use the scan's exact-name fallback.
+const RMP_TTT_EVENT_FORMAT_ID = process.env.RMP_TTT_EVENT_FORMAT_ID || (
+  RMP_TENANT_ID.toUpperCase() === 'EAB203B6-FF38-4DFE-912F-D09EBD3E57E6'
+    ? '4CEE1672-2E96-47FC-93B4-93433FCE98A2' : ''
+);
+const RMP_CUSTOM_TECH_EVENT_FORMAT_ID = process.env.RMP_CUSTOM_TECH_EVENT_FORMAT_ID || (
+  RMP_TENANT_ID.toUpperCase() === 'EAB203B6-FF38-4DFE-912F-D09EBD3E57E6'
+    ? '9EA99230-9DB6-4C57-BEBE-BFC7B5CCBD4E' : ''
+);
 // Comma string of numeric status codes (see STATUS_MAP). Empty = all statuses.
 const RMP_STATUS_FILTER = process.env.RMP_STATUS_FILTER || '';
 const RMP_PAGE_SIZE = Number(process.env.RMP_PAGE_SIZE || 100);
@@ -73,7 +83,7 @@ function isTokenUsable(token, skewMs = 60 * 1000) {
  * Single fetch wrapper for all RMP calls.
  * Never logs the token (prefix only).
  */
-async function rmpFetch(path, { method = 'GET', body, token }) {
+async function rmpFetch(path, { method = 'GET', body, token, signal }) {
   const url = `${RMP_API_BASE_URL}${path}`;
   let res;
   try {
@@ -85,7 +95,7 @@ async function rmpFetch(path, { method = 'GET', body, token }) {
         Authorization: `Bearer ${token}`,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(RMP_TIMEOUT_MS),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(RMP_TIMEOUT_MS)]) : AbortSignal.timeout(RMP_TIMEOUT_MS),
     });
   } catch (err) {
     if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
@@ -501,6 +511,8 @@ function getRmpConfig() {
     apiBaseUrl: RMP_API_BASE_URL,
     tenantId: RMP_TENANT_ID,
     statusFilter: RMP_STATUS_FILTER || 'all',
+    tttEventFormatId: RMP_TTT_EVENT_FORMAT_ID || null,
+    customTechEventFormatId: RMP_CUSTOM_TECH_EVENT_FORMAT_ID || null,
   };
 }
 
@@ -511,6 +523,7 @@ export {
   isTokenUsable,
   verifyRmpAccess,
   rmpFetch,
+  myEventsBody,
   fetchAllRequests,
   getRequestDetail,
   formatSessionTimes,

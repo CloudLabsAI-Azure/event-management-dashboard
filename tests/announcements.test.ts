@@ -157,10 +157,11 @@ test('New Release metadata and grouping date come from the catalogue, not import
   assert.equal(result.labUpdates[0].manualRecord, undefined)
 })
 
-test('retirement is undated even when the retired lab has a LaunchDate', () => {
+test('retirement date remains unknown but the lab groups by its real content release month', () => {
   const result = buildAnnouncementData([], [], [release({ kind: 'retired', releaseDate: '2024-01-01' })])
   assert.equal(result.labUpdates[0].date, null)
-  assert.equal(groupLabUpdatesByMonth(result.labUpdates)[0].label, 'Undated')
+  assert.equal(result.labUpdates[0].contentReleaseDate, '2024-01-01')
+  assert.equal(groupLabUpdatesByMonth(result.labUpdates)[0].label, 'January 2024')
 })
 
 test('live RMP retirement supersedes stale FY27 retirement plans/reference duplicates', () => {
