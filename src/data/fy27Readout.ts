@@ -29,7 +29,7 @@ export interface NewProposal {
 
 export const readoutMeta = {
   title: "Catalog Review FY27",
-  subtitle: "Lab & deck updates · FY27 retirements · new catalog proposals · refreshed Top 25",
+  subtitle: "Lab & deck updates · FY27 retirements · new catalog proposals · refreshed Top 15",
   version: "1.0",
   date: "25 Jun 2026",
   owner: "Event-Support@spektrasystems.com",
@@ -38,20 +38,8 @@ export const readoutMeta = {
   sourceFile: "FY27_Catalog_Readout_V1.1.pptx",
 };
 
-// ── Section 1: New Top 25 — post-build updates ──────────────────────────────
-export const top25Updates: LabUpdate[] = [
-  {
-    title: "Microsoft Azure AI Agents: Hands-on Lab",
-    update:
-      "Refreshed the Foundry UI and screenshots, updated the GPT token configuration, added an Azure AI Search step, and strengthened validation in Labs 1 and 3. The deck reflects serverless execution, multi-agent orchestration, the new Foundry roles and refreshed links.",
-    status: "Done",
-  },
-  {
-    title: "Hands-on with Microsoft Foundry and Agent Frameworks",
-    update:
-      "Updated the UI and screenshots, migrated from DeepSeek-R1 to V3.2, refreshed the repository and exercises to the latest versions, and introduced a policy restricting OpenAI model deployment. The deck reflects the new models and advanced orchestration.",
-    status: "Done",
-  },
+// ── Section 1: New Top 15 — post-build updates ──────────────────────────────
+export const top15Updates: LabUpdate[] = [
   {
     title: "GitHub Copilot Innovation Workshop — Mastering Copilot Across the SDLC",
     update:
@@ -59,9 +47,14 @@ export const top25Updates: LabUpdate[] = [
     status: "Done",
   },
   {
-    title: "Building and Operationalizing AI Agents with Microsoft Foundry and Agent Frameworks",
+    title: "Foundry IQ — Business Intelligence to Intelligent Action",
+    update: "Newly onboarded and trending topic; ready to use.",
+    status: "Done",
+  },
+  {
+    title: "Microsoft Azure AI Agents: Hands-on Lab",
     update:
-      "Refreshed the Getting Started images, the new Foundry login flow, and the MCP-connection and VS Code execution screenshots, and tidied naming and documentation. The deck reflects the latest Foundry roles, terminology and URLs.",
+      "Refreshed the Foundry UI and screenshots, updated the GPT token configuration, added an Azure AI Search step, and strengthened validation in Labs 1 and 3. The deck reflects serverless execution, multi-agent orchestration, the new Foundry roles and refreshed links.",
     status: "Done",
   },
   {
@@ -77,33 +70,9 @@ export const top25Updates: LabUpdate[] = [
     status: "Done",
   },
   {
-    title: "Fabric — Analyst in a Day",
+    title: "Build a Fabric Real-Time Intelligence Solution in a Day",
     update:
-      "Minor screenshot updates to make options easier to locate; all other content is current. No major update was required, and links have been refreshed to the latest content.",
-    status: "Done",
-  },
-  {
-    title: "MS Fabric Foundation for Enterprise Analytics",
-    update:
-      "Simplified the zoom configuration, corrected spacing and rendering issues, and aligned the instructional text to the latest terminology.",
-    status: "Done",
-  },
-  {
-    title: "Effective Utilization of Copilot Studio",
-    update:
-      "Updated the agent-name, variable-property and Sales/Finance condition screenshots across Labs 03 and 05 to the latest Copilot Studio UI. The deck adds the new agent experience and guidance on Foundry IQ and agent memory.",
-    status: "Done",
-  },
-  {
-    title: "Accelerating Development with GitHub Copilot and Copilot Chat",
-    update:
-      "Highlighted the login fields, refined the Exercise 1 instructions, and added terminal and schema-setup steps with a clarifying screenshot.",
-    status: "Done",
-  },
-  {
-    title: "Leverage Microsoft 365 Copilot and Copilot Studio for Human Resources",
-    update:
-      "Completed a full content and screenshot refresh across Getting Started and Labs 01–04, validated the candidate-ranking scenario, and added guidance on response variability. The deck reflects the latest M365 Copilot and Copilot Studio features.",
+      "Updated the Fabric Portal UI for the RTI dashboard visuals. The deck reflects the latest Fabric AI functionality and multi-model support.",
     status: "Done",
   },
   {
@@ -113,30 +82,31 @@ export const top25Updates: LabUpdate[] = [
     status: "Done",
   },
   {
-    title: "Implementing DevOps with GitHub and Azure DevOps",
-    update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
-  },
-  {
-    title: "Snowflake Integration with Microsoft Fabric (Iceberg and Data Agent)",
-    update:
-      "Added a scenario and architecture overview, refreshed the Fabric Portal navigation, introduced step numbering and RTI troubleshooting, and standardised the formatting.",
-    status: "Done",
-  },
-  {
     title: "Fabric IQ — Unified Data to Business Intelligence",
     update: "Newly onboarded and trending topic; ready to use.",
     status: "Done",
   },
   {
-    title: "Microsoft Defender for Cloud — AI Workload Protection",
+    title: "Building Security Copilot Agents using Microsoft Sentinel Data (Hands-on Lab)",
     update: "Tested and validated post-Microsoft Build; no updates required.",
     status: "Done",
   },
   {
-    title: "Build a Fabric Real-Time Intelligence Solution in a Day",
+    title: "Build and Deploy Agentic AI Solutions",
     update:
-      "Updated the Fabric Portal UI for the RTI dashboard visuals. The deck reflects the latest Fabric AI functionality and multi-model support.",
+      "Post-build refresh pending — update summary to be supplied by the catalog team.",
+    status: "In progress",
+  },
+  {
+    title: "Build Production-Ready AI Agents-Faster",
+    update:
+      "Post-build refresh pending — update summary to be supplied by the catalog team.",
+    status: "In progress",
+  },
+  {
+    title: "Fabric — Analyst in a Day",
+    update:
+      "Minor screenshot updates to make options easier to locate; all other content is current. No major update was required, and links have been refreshed to the latest content.",
     status: "Done",
   },
   {
@@ -146,39 +116,13 @@ export const top25Updates: LabUpdate[] = [
     status: "Done",
   },
   {
-    title: "Foundry IQ — Business Intelligence to Intelligent Action",
-    update: "Newly onboarded and trending topic; ready to use.",
+    title: "Hands-on with Microsoft Foundry and Agent Frameworks",
+    update:
+      "Updated the UI and screenshots, migrated from DeepSeek-R1 to V3.2, refreshed the repository and exercises to the latest versions, and introduced a policy restricting OpenAI model deployment. The deck reflects the new models and advanced orchestration.",
     status: "Done",
   },
   {
-    title: "Getting Started with Microsoft Foundry, Agents and the MCP Framework",
-    update:
-      "Updated the lab content with the new Foundry UI and refreshed terminology for agents and the overview.",
-    status: "In progress",
-  },
-  {
-    title: "Get Started with Real-Time Analytics and Data Science (Fabric)",
-    update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
-  },
-  {
-    title: "Developing AI Applications with Microsoft Foundry",
-    update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
-  },
-  {
-    title: "Building and Managing AI Agents using the Azure Agents Control Plane",
-    update:
-      "Updated with the latest Fabric Portal UI and the new Foundry Portal, and refreshed terminology for agents and orchestration.",
-    status: "In progress",
-  },
-  {
     title: "Microsoft Defender for Cloud — Security Posture Management",
-    update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
-  },
-  {
-    title: "GitHub Copilot — Zero to Agents",
     update: "Tested and validated post-Microsoft Build; no updates required.",
     status: "In progress",
   },
@@ -258,9 +202,77 @@ export const additionalLabs: LabUpdate[] = [
     status: "Done",
   },
   {
-    title: "Building Security Copilot Agents using Microsoft Sentinel Data (Hands-on Lab)",
+    title: "Building and Operationalizing AI Agents with Microsoft Foundry and Agent Frameworks",
+    update:
+      "Refreshed the Getting Started images, the new Foundry login flow, and the MCP-connection and VS Code execution screenshots, and tidied naming and documentation. The deck reflects the latest Foundry roles, terminology and URLs.",
+    status: "Done",
+  },
+  {
+    title: "MS Fabric Foundation for Enterprise Analytics",
+    update:
+      "Simplified the zoom configuration, corrected spacing and rendering issues, and aligned the instructional text to the latest terminology.",
+    status: "Done",
+  },
+  {
+    title: "Effective Utilization of Copilot Studio",
+    update:
+      "Updated the agent-name, variable-property and Sales/Finance condition screenshots across Labs 03 and 05 to the latest Copilot Studio UI. The deck adds the new agent experience and guidance on Foundry IQ and agent memory.",
+    status: "Done",
+  },
+  {
+    title: "Accelerating Development with GitHub Copilot and Copilot Chat",
+    update:
+      "Highlighted the login fields, refined the Exercise 1 instructions, and added terminal and schema-setup steps with a clarifying screenshot.",
+    status: "Done",
+  },
+  {
+    title: "Leverage Microsoft 365 Copilot and Copilot Studio for Human Resources",
+    update:
+      "Completed a full content and screenshot refresh across Getting Started and Labs 01–04, validated the candidate-ranking scenario, and added guidance on response variability. The deck reflects the latest M365 Copilot and Copilot Studio features.",
+    status: "Done",
+  },
+  {
+    title: "Implementing DevOps with GitHub and Azure DevOps",
     update: "Tested and validated post-Microsoft Build; no updates required.",
     status: "Done",
+  },
+  {
+    title: "Snowflake Integration with Microsoft Fabric (Iceberg and Data Agent)",
+    update:
+      "Added a scenario and architecture overview, refreshed the Fabric Portal navigation, introduced step numbering and RTI troubleshooting, and standardised the formatting.",
+    status: "Done",
+  },
+  {
+    title: "Microsoft Defender for Cloud — AI Workload Protection",
+    update: "Tested and validated post-Microsoft Build; no updates required.",
+    status: "Done",
+  },
+  {
+    title: "Getting Started with Microsoft Foundry, Agents and the MCP Framework",
+    update:
+      "Updated the lab content with the new Foundry UI and refreshed terminology for agents and the overview.",
+    status: "In progress",
+  },
+  {
+    title: "Get Started with Real-Time Analytics and Data Science (Fabric)",
+    update: "Tested and validated post-Microsoft Build; no updates required.",
+    status: "In progress",
+  },
+  {
+    title: "Developing AI Applications with Microsoft Foundry",
+    update: "Tested and validated post-Microsoft Build; no updates required.",
+    status: "In progress",
+  },
+  {
+    title: "Building and Managing AI Agents using the Azure Agents Control Plane",
+    update:
+      "Updated with the latest Fabric Portal UI and the new Foundry Portal, and refreshed terminology for agents and orchestration.",
+    status: "In progress",
+  },
+  {
+    title: "GitHub Copilot — Zero to Agents",
+    update: "Tested and validated post-Microsoft Build; no updates required.",
+    status: "In progress",
   },
 ];
 
@@ -363,7 +375,7 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Updates completed",
     detail:
-      "The Top 25 and 15 additional labs have been refreshed and validated post-build, and all decks have been brought current.",
+      "Catalog labs have been refreshed and validated post-build, and all decks have been brought current. The lab-by-lab breakdown is being finalised and will follow separately.",
   },
   {
     title: "Retirements confirmed",
@@ -378,6 +390,6 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Next steps",
     detail:
-      "The refreshed Top 25 set goes live next week. We request sign-off to proceed with the FY27 rollout.",
+      "The refreshed catalog set goes live next week. We request sign-off to proceed with the FY27 rollout.",
   },
 ];

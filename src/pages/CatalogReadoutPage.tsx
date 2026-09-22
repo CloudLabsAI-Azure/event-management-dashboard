@@ -36,11 +36,16 @@ import {
   readoutMeta,
   retirements,
   retirementSummary,
-  top25Updates,
+  top15Updates,
   type DeckStatus,
   type LabUpdate,
   type Readiness,
 } from "@/data/fy27Readout";
+
+// Temporarily hidden: the lab update sections are being reworked and two Top 15
+// entries still lack their post-build summaries. Flip to true to restore — no
+// data, tables or components were removed, only their rendering is gated.
+const SHOW_LAB_UPDATE_SECTIONS: boolean = false;
 
 const statusBadge = (status: DeckStatus) =>
   status === "Done" ? (
@@ -111,10 +116,10 @@ export default function CatalogReadoutPage() {
             r.title.toLowerCase().includes(q) || r.update.toLowerCase().includes(q),
         );
 
-  const filteredTop25 = useMemo(() => filterLabs(top25Updates), [q]);
+  const filteredTop15 = useMemo(() => filterLabs(top15Updates), [q]);
   const filteredAdditional = useMemo(() => filterLabs(additionalLabs), [q]);
 
-  const top25Done = top25Updates.filter((l) => l.status === "Done").length;
+  const top15Done = top15Updates.filter((l) => l.status === "Done").length;
   const additionalDone = additionalLabs.filter((l) => l.status === "Done").length;
 
   return (
@@ -123,7 +128,13 @@ export default function CatalogReadoutPage() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">{readoutMeta.title}</h1>
-          <p className="text-muted-foreground">{readoutMeta.subtitle}</p>
+          {/* The stored subtitle advertises the lab update sections, so it is
+              reduced while they are hidden. Restoring the flag restores it. */}
+          <p className="text-muted-foreground">
+            {SHOW_LAB_UPDATE_SECTIONS
+              ? readoutMeta.subtitle
+              : "FY27 retirements · new catalog proposals"}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
             Version {readoutMeta.version} · {readoutMeta.date} · Owner: {readoutMeta.owner} ·
             Sponsor: {readoutMeta.sponsor}
@@ -131,13 +142,15 @@ export default function CatalogReadoutPage() {
         </div>
 
         {/* Stat callouts */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className={SHOW_LAB_UPDATE_SECTIONS ? "grid gap-4 grid-cols-2 lg:grid-cols-4" : "grid gap-4 grid-cols-2"}>
+          {SHOW_LAB_UPDATE_SECTIONS && (
+            <>
           <Card className="glass-card">
             <CardHeader className="pb-2">
-              <CardDescription>Top 25 refreshed</CardDescription>
+              <CardDescription>Top 15 refreshed</CardDescription>
               <CardTitle className="text-3xl">
-                {top25Done}
-                <span className="text-base text-muted-foreground">/{top25Updates.length}</span>
+                {top15Done}
+                <span className="text-base text-muted-foreground">/{top15Updates.length}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">Decks updated post-build</CardContent>
@@ -152,6 +165,8 @@ export default function CatalogReadoutPage() {
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">Reviewed & validated</CardContent>
           </Card>
+            </>
+          )}
           <Card className="glass-card">
             <CardHeader className="pb-2">
               <CardDescription>Retirements</CardDescription>
@@ -170,7 +185,8 @@ export default function CatalogReadoutPage() {
           </Card>
         </div>
 
-        {/* Search */}
+        {/* Search - only filters the lab update tables, so it hides with them */}
+        {SHOW_LAB_UPDATE_SECTIONS && (
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -180,30 +196,32 @@ export default function CatalogReadoutPage() {
             className="pl-9 h-9"
           />
         </div>
+        )}
 
         {/* Tabs */}
-        <Tabs defaultValue="updates" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            <TabsTrigger value="updates">Lab & Deck Updates</TabsTrigger>
+        <Tabs defaultValue={SHOW_LAB_UPDATE_SECTIONS ? "updates" : "retirements"} className="w-full">
+          <TabsList className={SHOW_LAB_UPDATE_SECTIONS ? "grid w-full grid-cols-2 lg:grid-cols-4" : "grid w-full grid-cols-3"}>
+            {SHOW_LAB_UPDATE_SECTIONS && <TabsTrigger value="updates">Lab & Deck Updates</TabsTrigger>}
             <TabsTrigger value="retirements">FY27 Retirements</TabsTrigger>
             <TabsTrigger value="proposals">New Proposals</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
 
-          {/* Lab & Deck Updates */}
+          {/* Lab & Deck Updates - temporarily hidden */}
+          {SHOW_LAB_UPDATE_SECTIONS && (
           <TabsContent value="updates" className="space-y-6">
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  Top 25 — post-build updates
+                  Top 15 — post-build updates
                 </CardTitle>
                 <CardDescription>
-                  Post-build refreshes across the Top 25 workshop set · {filteredTop25.length} shown
+                  Post-build refreshes across the Top 15 workshop set · {filteredTop15.length} shown
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <LabUpdatesTable rows={filteredTop25} />
+                <LabUpdatesTable rows={filteredTop15} />
               </CardContent>
             </Card>
 
@@ -211,7 +229,7 @@ export default function CatalogReadoutPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  Additional 15 labs — reviewed and validated
+                  Additional {additionalLabs.length} labs — reviewed and validated
                 </CardTitle>
                 <CardDescription>
                   Reviewed and validated after Microsoft Build · {filteredAdditional.length} shown
@@ -222,6 +240,7 @@ export default function CatalogReadoutPage() {
               </CardContent>
             </Card>
           </TabsContent>
+          )}
 
           {/* Retirements */}
           <TabsContent value="retirements" className="space-y-4">
