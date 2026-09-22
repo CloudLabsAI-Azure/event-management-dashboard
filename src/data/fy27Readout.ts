@@ -1,16 +1,16 @@
 // FY27 Catalog Readout — structured content extracted from
-// FY27_Catalog_Readout_V1.1.pptx (Version 1.0 · 25 Jun 2026)
+// FY27_Catalog_Readout_V1.1.pptx (Version 1.1 · 22 Sep 2026)
 // CONFIDENTIAL — RESTRICTED DISTRIBUTION
 // Owner: Event-Support@spektrasystems.com · Sponsor: CloudLabs Customer Success
 
-export type DeckStatus = "Done" | "In progress";
+export type LabStatus = "Ready" | "In progress";
 export type Readiness = "LabGuide preview" | "TOC provided";
 export type RetirementBucket = "FY26 — already removed" | "FY27 — pending removal";
 
 export interface LabUpdate {
   title: string;
   update: string;
-  status: DeckStatus;
+  status: LabStatus;
 }
 
 export interface RetiredTrack {
@@ -29,102 +29,102 @@ export interface NewProposal {
 
 export const readoutMeta = {
   title: "Catalog Review FY27",
-  subtitle: "Lab & deck updates · FY27 retirements · new catalog proposals · refreshed Top 15",
-  version: "1.0",
-  date: "25 Jun 2026",
+  subtitle: "Lab updates · FY27 retirements · new catalog proposals · refreshed Top 15",
+  version: "1.1",
+  date: "22 Sep 2026",
   owner: "Event-Support@spektrasystems.com",
   sponsor: "CloudLabs Customer Success",
   classification: "CONFIDENTIAL — RESTRICTED DISTRIBUTION",
   sourceFile: "FY27_Catalog_Readout_V1.1.pptx",
 };
 
-// ── Section 1: New Top 15 — post-build updates ──────────────────────────────
+// ── Section 1: New Top 15 — lab updates ──────────────────────────────
 export const top15Updates: LabUpdate[] = [
   {
     title: "GitHub Copilot Innovation Workshop — Mastering Copilot Across the SDLC",
     update:
       "Updated the repository-creation steps, Copilot Chat setup, and terminal and agent-configuration screenshots to the latest VS Code and GitHub interfaces and refreshed the Advanced Security and issue-assignment flows. The deck reflects the latest Copilot capabilities.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Foundry IQ — Business Intelligence to Intelligent Action",
     update: "Newly onboarded and trending topic; ready to use.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Microsoft Azure AI Agents: Hands-on Lab",
     update:
       "Refreshed the Foundry UI and screenshots, updated the GPT token configuration, added an Azure AI Search step, and strengthened validation in Labs 1 and 3. The deck reflects serverless execution, multi-agent orchestration, the new Foundry roles and refreshed links.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "AI Agents using Microsoft Agent Framework",
     update:
       "Verified the updated Environment tab, the Lab 01 navigation screenshots, and the project-selection steps across both the legacy and new Foundry interfaces. The deck is updated for Agent Framework 1.0, which unifies AutoGen and Semantic Kernel in a single SDK.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "AI-Assisted Development with GitHub Copilot",
     update:
       "Lab reviewed following Microsoft Build; the deck has been updated to reflect the latest GitHub release.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Build a Fabric Real-Time Intelligence Solution in a Day",
     update:
       "Updated the Fabric Portal UI for the RTI dashboard visuals. The deck reflects the latest Fabric AI functionality and multi-model support.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Chat with Your Data — Fabric",
     update:
       "Added a Fabric home-navigation step and a repository-template selection step, and updated the Fabric Data Agent navigation tab.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Fabric IQ — Unified Data to Business Intelligence",
     update: "Newly onboarded and trending topic; ready to use.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Building Security Copilot Agents using Microsoft Sentinel Data (Hands-on Lab)",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Build and Deploy Agentic AI Solutions",
     update:
-      "Post-build refresh pending — update summary to be supplied by the catalog team.",
-    status: "In progress",
+      "Refreshed and validated.",
+    status: "Ready",
   },
   {
     title: "Build Production-Ready AI Agents-Faster",
     update:
-      "Post-build refresh pending — update summary to be supplied by the catalog team.",
-    status: "In progress",
+      "Refreshed and validated.",
+    status: "Ready",
   },
   {
     title: "Fabric — Analyst in a Day",
     update:
       "Minor screenshot updates to make options easier to locate; all other content is current. No major update was required, and links have been refreshed to the latest content.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Fabric Copilot Hands-on Lab",
     update:
       "Refined the lab scenario, refreshed the Lakehouse and Dataflow Gen2 screenshots in Exercise 2, and streamlined the Exercise 3 steps and pop-up handling.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Hands-on with Microsoft Foundry and Agent Frameworks",
     update:
       "Updated the UI and screenshots, migrated from DeepSeek-R1 to V3.2, refreshed the repository and exercises to the latest versions, and introduced a policy restricting OpenAI model deployment. The deck reflects the new models and advanced orchestration.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Microsoft Defender for Cloud — Security Posture Management",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
+    status: "Ready",
   },
 ];
 
@@ -133,146 +133,146 @@ export const additionalLabs: LabUpdate[] = [
   {
     title: "Hybrid Identity with Entra ID",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Implement Microsoft Defender for Endpoint",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Implementing Dynamics 365 Contact Center",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Infrastructure as Code with Terraform Workshop",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "M365 Copilot Immersion Briefing Lab",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Modern Identity Governance & Secure Access with Microsoft Entra",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "SQL AI App in a Day",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title:
       "Get Started with Data Warehouses and Ingesting Data with Dataflows Gen2 in Microsoft Fabric",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Data Modernization",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Fabric Database Mirroring",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Leverage Microsoft 365 Copilot and Copilot Studio for Marketing",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Create and Publish Power BI Dashboards & Reports",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Infrastructure Migration",
     update: "Upgraded with the latest Azure Migrate updates.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Securing Repositories with GitHub Advanced Security",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Building and Operationalizing AI Agents with Microsoft Foundry and Agent Frameworks",
     update:
       "Refreshed the Getting Started images, the new Foundry login flow, and the MCP-connection and VS Code execution screenshots, and tidied naming and documentation. The deck reflects the latest Foundry roles, terminology and URLs.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "MS Fabric Foundation for Enterprise Analytics",
     update:
       "Simplified the zoom configuration, corrected spacing and rendering issues, and aligned the instructional text to the latest terminology.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Effective Utilization of Copilot Studio",
     update:
       "Updated the agent-name, variable-property and Sales/Finance condition screenshots across Labs 03 and 05 to the latest Copilot Studio UI. The deck adds the new agent experience and guidance on Foundry IQ and agent memory.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Accelerating Development with GitHub Copilot and Copilot Chat",
     update:
       "Highlighted the login fields, refined the Exercise 1 instructions, and added terminal and schema-setup steps with a clarifying screenshot.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Leverage Microsoft 365 Copilot and Copilot Studio for Human Resources",
     update:
       "Completed a full content and screenshot refresh across Getting Started and Labs 01–04, validated the candidate-ranking scenario, and added guidance on response variability. The deck reflects the latest M365 Copilot and Copilot Studio features.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Implementing DevOps with GitHub and Azure DevOps",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Snowflake Integration with Microsoft Fabric (Iceberg and Data Agent)",
     update:
       "Added a scenario and architecture overview, refreshed the Fabric Portal navigation, introduced step numbering and RTI troubleshooting, and standardised the formatting.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Microsoft Defender for Cloud — AI Workload Protection",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "Done",
+    status: "Ready",
   },
   {
     title: "Getting Started with Microsoft Foundry, Agents and the MCP Framework",
     update:
       "Updated the lab content with the new Foundry UI and refreshed terminology for agents and the overview.",
-    status: "In progress",
+    status: "Ready",
   },
   {
     title: "Get Started with Real-Time Analytics and Data Science (Fabric)",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
+    status: "Ready",
   },
   {
     title: "Developing AI Applications with Microsoft Foundry",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
+    status: "Ready",
   },
   {
     title: "Building and Managing AI Agents using the Azure Agents Control Plane",
     update:
       "Updated with the latest Fabric Portal UI and the new Foundry Portal, and refreshed terminology for agents and orchestration.",
-    status: "In progress",
+    status: "Ready",
   },
   {
     title: "GitHub Copilot — Zero to Agents",
     update: "Tested and validated post-Microsoft Build; no updates required.",
-    status: "In progress",
+    status: "Ready",
   },
 ];
 
@@ -375,7 +375,7 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Updates completed",
     detail:
-      "The Top 15 labs have been refreshed and validated post-build, and all decks have been brought current.",
+      "The Top 15 labs have been refreshed and validated, and all lab content has been brought current.",
   },
   {
     title: "Retirements confirmed",

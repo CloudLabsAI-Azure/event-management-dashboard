@@ -37,13 +37,13 @@ import {
   retirements,
   retirementSummary,
   top15Updates,
-  type DeckStatus,
+  type LabStatus,
   type LabUpdate,
   type Readiness,
 } from "@/data/fy27Readout";
 
-// Section visibility, independent of each other. The Top 15 post-build updates
-// are shown; the additional labs section is temporarily hidden while its
+// Section visibility, independent of each other. The Top 15 lab updates are
+// shown; the additional labs section is temporarily hidden while its
 // content is finalised. Flip either one - no data or components are removed,
 // only their rendering is gated.
 const SHOW_TOP15_SECTION: boolean = true;
@@ -64,11 +64,11 @@ const TABS_LIST_CLASS = SHOW_UPDATES_TAB
   ? "grid w-full grid-cols-2 lg:grid-cols-4"
   : "grid w-full grid-cols-3";
 
-const statusBadge = (status: DeckStatus) =>
-  status === "Done" ? (
+const statusBadge = (status: LabStatus) =>
+  status === "Ready" ? (
     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500 whitespace-nowrap">
       <CheckCircle2 className="h-3 w-3 mr-1" />
-      Done
+      Ready
     </Badge>
   ) : (
     <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500 whitespace-nowrap">
@@ -95,14 +95,13 @@ function LabUpdatesTable({ rows }: { rows: LabUpdate[] }) {
         <TableHeader className="sticky top-0 bg-background z-10">
           <TableRow>
             <TableHead className="min-w-[280px]">Lab title</TableHead>
-            <TableHead className="min-w-[420px]">Update completed post-build</TableHead>
-            <TableHead className="w-32">Deck status</TableHead>
+            <TableHead className="w-32">Lab status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
                 No labs match your search.
               </TableCell>
             </TableRow>
@@ -110,7 +109,6 @@ function LabUpdatesTable({ rows }: { rows: LabUpdate[] }) {
             rows.map((lab, idx) => (
               <TableRow key={idx}>
                 <TableCell className="font-medium align-top">{lab.title}</TableCell>
-                <TableCell className="text-muted-foreground align-top text-sm">{lab.update}</TableCell>
                 <TableCell className="align-top">{statusBadge(lab.status)}</TableCell>
               </TableRow>
             ))
@@ -130,14 +128,14 @@ export default function CatalogReadoutPage() {
       ? rows
       : rows.filter(
           (r) =>
-            r.title.toLowerCase().includes(q) || r.update.toLowerCase().includes(q),
+            r.title.toLowerCase().includes(q),
         );
 
   const filteredTop15 = useMemo(() => filterLabs(top15Updates), [q]);
   const filteredAdditional = useMemo(() => filterLabs(additionalLabs), [q]);
 
-  const top15Done = top15Updates.filter((l) => l.status === "Done").length;
-  const additionalDone = additionalLabs.filter((l) => l.status === "Done").length;
+  const top15Ready = top15Updates.filter((l) => l.status === "Ready").length;
+  const additionalReady = additionalLabs.filter((l) => l.status === "Ready").length;
 
   return (
     <DashboardLayout>
@@ -165,11 +163,11 @@ export default function CatalogReadoutPage() {
             <CardHeader className="pb-2">
               <CardDescription>Top 15 refreshed</CardDescription>
               <CardTitle className="text-3xl">
-                {top15Done}
+                {top15Ready}
                 <span className="text-base text-muted-foreground">/{top15Updates.length}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-xs text-muted-foreground">Decks updated post-build</CardContent>
+            <CardContent className="text-xs text-muted-foreground">Labs refreshed and validated</CardContent>
           </Card>
           )}
           {SHOW_ADDITIONAL_LABS_SECTION && (
@@ -177,7 +175,7 @@ export default function CatalogReadoutPage() {
             <CardHeader className="pb-2">
               <CardDescription>Additional labs</CardDescription>
               <CardTitle className="text-3xl">
-                {additionalDone}
+                {additionalReady}
                 <span className="text-base text-muted-foreground">/{additionalLabs.length}</span>
               </CardTitle>
             </CardHeader>
@@ -207,7 +205,7 @@ export default function CatalogReadoutPage() {
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search labs by title or update..."
+            placeholder="Search labs by title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
@@ -232,10 +230,10 @@ export default function CatalogReadoutPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  Top 15 — post-build updates
+                  Top 15 — lab updates
                 </CardTitle>
                 <CardDescription>
-                  Post-build refreshes across the Top 15 workshop set · {filteredTop15.length} shown
+                  Across the Top 15 workshop set · {filteredTop15.length} shown
                 </CardDescription>
               </CardHeader>
               <CardContent>
