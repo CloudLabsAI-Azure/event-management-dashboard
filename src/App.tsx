@@ -12,7 +12,7 @@ import { RootRedirect } from "./components/RootRedirect";
 import Index from "./pages/Index";
 import UsersPage from "./pages/Users";
 import CatalogHealth from "./pages/CatalogHealth";
-import Top25Tracks from "./pages/Top25Tracks";
+import TrendingTracks from "./pages/TrendingTracks";
 import RoadmapPage from "./pages/RoadmapPage";
 import CatalogReadoutPage from "./pages/CatalogReadoutPage";
 import LabMaintenancePage from "./pages/LabMaintenancePage";
@@ -97,7 +97,9 @@ const App = () => {
                   <Route index element={<Index />} />
                   <Route path="users" element={<UsersPage />} />
                   <Route path="catalog-health" element={<CatalogHealth />} />
-                  <Route path="top25-tracks" element={<Top25Tracks />} />
+                  <Route path="trending-tracks" element={<TrendingTracks />} />
+                  {/* Old slug kept so existing links and bookmarks do not 404 */}
+                  <Route path="top25-tracks" element={<Navigate to="/dashboard/trending-tracks" replace />} />
                   <Route path="roadmap" element={<RoadmapPage />} />
                   <Route path="catalog-readout" element={<CatalogReadoutPage />} />
                   <Route path="lab-maintenance" element={<LabMaintenancePage />} />

@@ -57,7 +57,7 @@ interface MenuItem {
 const reportItems: MenuItem[] = [
   { title: "Overview", url: "/dashboard", icon: BarChart3 },
   { title: "Catalog Health", url: "/dashboard/catalog-health", icon: Calendar },
-  { title: "Trending Tracks", url: "/dashboard/top25-tracks", icon: FileText },
+  { title: "Trending Tracks", url: "/dashboard/trending-tracks", icon: FileText },
   { 
     title: "Roadmap", 
     url: "/dashboard/roadmap", 

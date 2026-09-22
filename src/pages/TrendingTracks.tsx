@@ -6,7 +6,7 @@ import { ExternalLink, TrendingUp, ClipboardList, ArrowRight, LogIn, PanelLeft, 
 
 const ADMIN_URL = "https://admin.cloudevents.ai"
 
-export default function Top25Tracks() {
+export default function TrendingTracks() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
