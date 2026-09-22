@@ -375,7 +375,7 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Updates completed",
     detail:
-      "Catalog labs have been refreshed and validated post-build, and all decks have been brought current. The lab-by-lab breakdown is being finalised and will follow separately.",
+      "The Top 15 labs have been refreshed and validated post-build, and all decks have been brought current.",
   },
   {
     title: "Retirements confirmed",
@@ -390,6 +390,6 @@ export const closurePoints: { title: string; detail: string }[] = [
   {
     title: "Next steps",
     detail:
-      "The refreshed catalog set goes live next week. We request sign-off to proceed with the FY27 rollout.",
+      "The refreshed Top 15 set goes live next week. We request sign-off to proceed with the FY27 rollout.",
   },
 ];

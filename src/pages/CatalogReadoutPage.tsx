@@ -42,10 +42,27 @@ import {
   type Readiness,
 } from "@/data/fy27Readout";
 
-// Temporarily hidden: the lab update sections are being reworked and two Top 15
-// entries still lack their post-build summaries. Flip to true to restore — no
-// data, tables or components were removed, only their rendering is gated.
-const SHOW_LAB_UPDATE_SECTIONS: boolean = false;
+// Section visibility, independent of each other. The Top 15 post-build updates
+// are shown; the additional labs section is temporarily hidden while its
+// content is finalised. Flip either one - no data or components are removed,
+// only their rendering is gated.
+const SHOW_TOP15_SECTION: boolean = true;
+const SHOW_ADDITIONAL_LABS_SECTION: boolean = false;
+
+// The updates tab, its search box and the stat row follow from the two above.
+const SHOW_UPDATES_TAB = SHOW_TOP15_SECTION || SHOW_ADDITIONAL_LABS_SECTION;
+const STAT_CARD_COUNT =
+  2 + (SHOW_TOP15_SECTION ? 1 : 0) + (SHOW_ADDITIONAL_LABS_SECTION ? 1 : 0);
+// Tailwind only sees literal class names, so these are spelled out.
+const STAT_GRID_CLASS =
+  STAT_CARD_COUNT === 4
+    ? "grid gap-4 grid-cols-2 lg:grid-cols-4"
+    : STAT_CARD_COUNT === 3
+      ? "grid gap-4 grid-cols-2 lg:grid-cols-3"
+      : "grid gap-4 grid-cols-2";
+const TABS_LIST_CLASS = SHOW_UPDATES_TAB
+  ? "grid w-full grid-cols-2 lg:grid-cols-4"
+  : "grid w-full grid-cols-3";
 
 const statusBadge = (status: DeckStatus) =>
   status === "Done" ? (
@@ -131,7 +148,7 @@ export default function CatalogReadoutPage() {
           {/* The stored subtitle advertises the lab update sections, so it is
               reduced while they are hidden. Restoring the flag restores it. */}
           <p className="text-muted-foreground">
-            {SHOW_LAB_UPDATE_SECTIONS
+            {SHOW_TOP15_SECTION
               ? readoutMeta.subtitle
               : "FY27 retirements · new catalog proposals"}
           </p>
@@ -142,9 +159,8 @@ export default function CatalogReadoutPage() {
         </div>
 
         {/* Stat callouts */}
-        <div className={SHOW_LAB_UPDATE_SECTIONS ? "grid gap-4 grid-cols-2 lg:grid-cols-4" : "grid gap-4 grid-cols-2"}>
-          {SHOW_LAB_UPDATE_SECTIONS && (
-            <>
+        <div className={STAT_GRID_CLASS}>
+          {SHOW_TOP15_SECTION && (
           <Card className="glass-card">
             <CardHeader className="pb-2">
               <CardDescription>Top 15 refreshed</CardDescription>
@@ -155,6 +171,8 @@ export default function CatalogReadoutPage() {
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">Decks updated post-build</CardContent>
           </Card>
+          )}
+          {SHOW_ADDITIONAL_LABS_SECTION && (
           <Card className="glass-card">
             <CardHeader className="pb-2">
               <CardDescription>Additional labs</CardDescription>
@@ -165,7 +183,6 @@ export default function CatalogReadoutPage() {
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">Reviewed & validated</CardContent>
           </Card>
-            </>
           )}
           <Card className="glass-card">
             <CardHeader className="pb-2">
@@ -186,7 +203,7 @@ export default function CatalogReadoutPage() {
         </div>
 
         {/* Search - only filters the lab update tables, so it hides with them */}
-        {SHOW_LAB_UPDATE_SECTIONS && (
+        {SHOW_UPDATES_TAB && (
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -199,17 +216,18 @@ export default function CatalogReadoutPage() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue={SHOW_LAB_UPDATE_SECTIONS ? "updates" : "retirements"} className="w-full">
-          <TabsList className={SHOW_LAB_UPDATE_SECTIONS ? "grid w-full grid-cols-2 lg:grid-cols-4" : "grid w-full grid-cols-3"}>
-            {SHOW_LAB_UPDATE_SECTIONS && <TabsTrigger value="updates">Lab & Deck Updates</TabsTrigger>}
+        <Tabs defaultValue={SHOW_UPDATES_TAB ? "updates" : "retirements"} className="w-full">
+          <TabsList className={TABS_LIST_CLASS}>
+            {SHOW_UPDATES_TAB && <TabsTrigger value="updates">Lab & Deck Updates</TabsTrigger>}
             <TabsTrigger value="retirements">FY27 Retirements</TabsTrigger>
             <TabsTrigger value="proposals">New Proposals</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
 
-          {/* Lab & Deck Updates - temporarily hidden */}
-          {SHOW_LAB_UPDATE_SECTIONS && (
+          {/* Lab & Deck Updates */}
+          {SHOW_UPDATES_TAB && (
           <TabsContent value="updates" className="space-y-6">
+            {SHOW_TOP15_SECTION && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -224,7 +242,9 @@ export default function CatalogReadoutPage() {
                 <LabUpdatesTable rows={filteredTop15} />
               </CardContent>
             </Card>
+            )}
 
+            {SHOW_ADDITIONAL_LABS_SECTION && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -239,6 +259,7 @@ export default function CatalogReadoutPage() {
                 <LabUpdatesTable rows={filteredAdditional} />
               </CardContent>
             </Card>
+            )}
           </TabsContent>
           )}
 
