@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast'
 import { isNonEmptyString } from '@/lib/validation'
 import api from "@/lib/api";
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
+import { isNonLabEventFormat } from '@/lib/rmpEventFilters'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
 import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -54,12 +55,17 @@ interface RoadmapItem {
   rmpAdminUrl?: string;
   rmpRegistrationsPageUrl?: string;
   rmpStatus?: string;
+  rmpEventFormat?: string;
 }
 
 /** Map raw catalog items (type 'roadmapItem') to UI roadmap items */
 function mapCatalogListToRoadmap(list: any[]): RoadmapItem[] {
+  // TTT and Custom Tech requests have their own pages and need no hands-on lab
+  // build, so they are not lab roadmap work. Older imports predate that routing
+  // and are still stored as roadmapItem; hide them here. Nothing is deleted —
+  // every write on this page is per-item, and both pages still show them.
   return list
-    .filter((i: any) => i.type === 'roadmapItem')
+    .filter((i: any) => i.type === 'roadmapItem' && !isNonLabEventFormat(i.rmpEventFormat))
     .map((r: any, idx: number) => ({
       id: String(r.id || r._id || `temp_${idx}`),
       sr: Number(r.sr || idx + 1),
@@ -80,7 +86,8 @@ function mapCatalogListToRoadmap(list: any[]): RoadmapItem[] {
       source: r.source || '',
       rmpAdminUrl: r.rmpAdminUrl || '',
       rmpRegistrationsPageUrl: r.rmpRegistrationsPageUrl || '',
-      rmpStatus: r.rmpStatus || ''
+      rmpStatus: r.rmpStatus || '',
+      rmpEventFormat: r.rmpEventFormat || ''
     }))
 }
 

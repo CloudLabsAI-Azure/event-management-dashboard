@@ -1,5 +1,23 @@
 import { announcementMonth, formatAnnouncementMonth, matchesAnnouncementSearch } from './announcements'
-import type { RmpEventRequest } from '@/types/rmpEvents'
+import type { RmpEventFormat, RmpEventRequest } from '@/types/rmpEvents'
+
+/**
+ * Formats that have their own page and never belong in the lab roadmap.
+ * Train-the-Trainer and Custom Tech events involve no hands-on lab build.
+ */
+const NON_LAB_EVENT_FORMATS: readonly RmpEventFormat[] = ['Train-The-Trainer', 'Custom Tech Event']
+
+const normalizeEventFormat = (value: string | null | undefined) =>
+  String(value ?? '').trim().normalize('NFKC').toLowerCase().replace(/[\s_‐-―-]+/g, ' ')
+
+/**
+ * Exact source-format match, mirroring the backend scanner. Never matches a
+ * title, a loose acronym or a substring, so a lab titled "... for TTT" stays.
+ */
+export function isNonLabEventFormat(value: string | null | undefined): boolean {
+  const normalized = normalizeEventFormat(value)
+  return normalized !== '' && NON_LAB_EVENT_FORMATS.some(format => normalizeEventFormat(format) === normalized)
+}
 
 export interface RmpEventFilters {
   month: string
