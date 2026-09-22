@@ -309,7 +309,7 @@ export default function Announcements() {
               <a href={dateRange ? `https://admin.cloudevents.ai/catalogue?content_release_datefrom=${dateRange.from}&content_release_dateto=${dateRange.to}&pagenumber=1&pagesize=10` : 'https://admin.cloudevents.ai/catalogue'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">Same timeframe in RMP <ExternalLink className="h-3.5 w-3.5" /></a>
             </CardContent></Card>
             <Link to="/dashboard/catalog-readout" className="block rounded-xl border border-primary/20 bg-primary/5 p-5 transition-colors hover:bg-primary/10">
-              <ClipboardList className="mb-3 h-6 w-6 text-primary" /><h2 className="font-semibold">Catalog Review FY27</h2>
+              <ClipboardList className="mb-3 h-6 w-6 text-primary" /><h2 className="font-semibold">Catalog Review FY27 Q1</h2>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">The published reference for confirmed retirements, planned removals, replacements, and new proposals.</p>
               <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">Explore the review <ArrowRight className="h-3.5 w-3.5" /></span>
             </Link>

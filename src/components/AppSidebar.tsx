@@ -70,7 +70,7 @@ const reportItems: MenuItem[] = [
     ]
   },
   { title: "Localized Tracks", url: "/dashboard/localized-tracks", icon: Globe },
-  { title: "Catalog Review FY27", url: "/dashboard/catalog-readout", icon: ClipboardList },
+  { title: "Catalog Review FY27 Q1", url: "/dashboard/catalog-readout", icon: ClipboardList },
   { title: "Train the Trainer", url: "/dashboard/ttt", icon: GraduationCap },
   { title: "Announcements", url: "/dashboard/announcements", icon: Megaphone },
   { title: "Participant Feedback", url: "/dashboard/participant-feedback", icon: MessageSquare },
