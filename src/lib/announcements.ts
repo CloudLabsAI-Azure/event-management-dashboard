@@ -189,7 +189,7 @@ export function buildAnnouncementData(catalog: unknown, retirements: readonly Re
   }
   for (const retirement of retirements) {
     if (!retirement.title) continue
-    const kind = retirement.bucket === 'FY26 — already removed' ? 'retired'
+    const kind = retirement.bucket === 'FY26 — already removed' || retirement.bucket === 'FY27 — already removed' ? 'retired'
       : retirement.bucket === 'FY27 — pending removal' ? 'planned-retirement' : null
     if (!kind) continue
     const name = normalized(retirement.title)

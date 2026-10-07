@@ -57,7 +57,7 @@ The page derives a read-only feed rather than inserting generated announcements 
 | New Release | Catalogue `Popularity` includes the exact `New Release` tag | Optional highlight filter within content release results; **not** a `myevents` request or a local roadmap entry. |
 | RMP retirement | Catalogue `IsRetired === true` | Explicit current retirement state. `IsHide` alone is not retirement. RMP does not supply a retirement date in the observed response. |
 | Added / retired update | Existing `trackChange` records | Explicit administrator-confirmed catalog changes. |
-| Confirmed retirement | FY27 review entries labeled `FY26 — already removed` | Previously confirmed retirement; the effective date is not fabricated. |
+| Confirmed retirement | FY27 review entries labeled `FY26 — already removed` or `FY27 — already removed` | Confirmed retirement in the stated fiscal year; the effective date is not fabricated. |
 | Planned retirement | FY27 review entries labeled `FY27 — pending removal` | A plan, not an already-retired lab. |
 | Team notice / PDF | Existing `generalAnnouncement` / `pdfCatalog` records | Preserved administrator-managed content. |
 

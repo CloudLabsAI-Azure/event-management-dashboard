@@ -184,11 +184,11 @@ export default function CatalogReadoutPage() {
           )}
           <Card className="glass-card">
             <CardHeader className="pb-2">
-              <CardDescription>Retirements</CardDescription>
+              <CardDescription>Tracks already removed</CardDescription>
               <CardTitle className="text-3xl">{retirementSummary.totalRemoved}</CardTitle>
             </CardHeader>
             <CardContent className="text-xs text-muted-foreground">
-              {retirementSummary.fy26Removed} FY26 · {retirementSummary.fy27Pending} FY27 pending
+              {retirementSummary.fy26Removed} FY26 removed · {retirementSummary.fy27Removed} FY27 removed · {retirementSummary.fy27Pending} FY27 pending
             </CardContent>
           </Card>
           <Card className="glass-card">

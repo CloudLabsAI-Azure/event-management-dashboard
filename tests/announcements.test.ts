@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildAnnouncementData, formatAnnouncementDate, safeResourceUrl, announcementMonth, filterLabUpdates, groupLabUpdatesByMonth } from '../src/lib/announcements.ts'
-import { retirements } from '../src/data/fy27Readout.ts'
+import { closurePoints, retirements, retirementSummary } from '../src/data/fy27Readout.ts'
 import type { RmpCatalogueItem } from '../src/types/rmpCatalogue.ts'
 import { contentReleaseRangeError, defaultContentReleaseRange } from '../src/lib/contentReleaseDates.ts'
 
@@ -52,12 +52,43 @@ test('manual roadmap items are not catalogue releases either', () => {
   assert.equal(result.labUpdates.length, 0)
 })
 
-test('confirmed FY26 retirements and planned FY27 removals stay separate', () => {
+test('confirmed FY26 and FY27 retirements stay separate from the remaining FY27 plan', () => {
   const result = buildAnnouncementData([], retirements)
-  assert.equal(result.labUpdates.filter(item => item.kind === 'retired').length, 19)
-  assert.equal(result.labUpdates.filter(item => item.kind === 'planned-retirement').length, 3)
+  assert.equal(result.labUpdates.filter(item => item.kind === 'retired').length, 21)
+  assert.equal(result.labUpdates.filter(item => item.kind === 'retired' && item.dateLabel === 'FY26 — already removed').length, 19)
+  assert.equal(result.labUpdates.filter(item => item.kind === 'retired' && item.dateLabel === 'FY27 — already removed').length, 2)
+  assert.deepEqual(result.labUpdates.filter(item => item.kind === 'planned-retirement').map(item => item.title), ['Microsoft Dev Box for Developers'])
   assert.ok(result.labUpdates.every(item => item.date === null))
   assert.ok(result.labUpdates.every(item => !item.manualRecord))
+})
+
+test('the two confirmed FY27 removals retain their year and reasons and appear as retired announcements', () => {
+  const confirmed = [
+    ['AI Developer — Microsoft Foundry and Semantic Kernel Fundamentals', 'Outdated; replaced by the three Foundry agent labs.'],
+    ['Analytics in MIDP with Microsoft Fabric', 'Synapse deprecated; replaced by Fabric Lakehouses.'],
+  ]
+  const { labUpdates } = buildAnnouncementData([], retirements)
+  for (const [title, reason] of confirmed) {
+    const track = retirements.find(item => item.title === title)
+    assert.equal(track?.bucket, 'FY27 — already removed')
+    assert.equal(track.reason, reason)
+    const update = labUpdates.find(item => item.title === title)
+    assert.equal(update?.kind, 'retired')
+    assert.equal(update.status, 'Confirmed retirement')
+    assert.equal(update.dateLabel, 'FY27 — already removed')
+    assert.equal(update.date, null, 'confirmation must not invent a retirement date')
+  }
+})
+
+test('retirement totals and closure text match the records without counting pending tracks as removed', () => {
+  assert.equal(retirementSummary.fy26Removed, 19)
+  assert.equal(retirementSummary.fy27Removed, 2)
+  assert.equal(retirementSummary.fy27Pending, 1)
+  assert.equal(retirementSummary.totalRemoved, 21)
+  assert.equal(retirementSummary.totalRemoved + retirementSummary.fy27Pending, retirements.length)
+  assert.match(retirementSummary.note, /21 tracks already removed — 19 in FY26 and 2 in FY27/)
+  assert.match(retirementSummary.note, /1 FY27 track remains pending/)
+  assert.equal(closurePoints.find(point => point.title === 'Retirements confirmed')?.detail, retirementSummary.note)
 })
 
 test('manual retirement supersedes an undated reference and a planned removal', () => {
@@ -65,6 +96,7 @@ test('manual retirement supersedes an undated reference and a planned removal', 
     { id: 'retired', sr: 14, type: 'trackChange', trackName: 'Example — Lab', changeType: 'removed', changeDate: '2026-09-07', notes: 'Confirmed' },
   ], [
     { title: 'example - lab', reason: 'Old reference', bucket: 'FY26 — already removed' },
+    { title: 'Example Lab', reason: 'Confirmed FY27 removal', bucket: 'FY27 — already removed' },
     { title: 'Example Lab', reason: 'Pending', bucket: 'FY27 — pending removal' },
   ])
   assert.equal(result.labUpdates.length, 1)
@@ -168,6 +200,7 @@ test('live RMP retirement supersedes stale FY27 retirement plans/reference dupli
   const result = buildAnnouncementData([], [
     { title: 'Example catalogue lab', reason: 'Pending', bucket: 'FY27 — pending removal' },
     { title: 'Example catalogue lab', reason: 'Removed', bucket: 'FY26 — already removed' },
+    { title: 'Example catalogue lab', reason: 'Confirmed FY27 removal', bucket: 'FY27 — already removed' },
   ], [release({ kind: 'retired' })])
   assert.equal(result.labUpdates.length, 1)
   assert.equal(result.labUpdates[0].source, 'RMP Catalog')

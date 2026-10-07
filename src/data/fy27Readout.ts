@@ -5,7 +5,7 @@
 
 export type LabStatus = "Ready" | "In progress";
 export type Readiness = "LabGuide preview" | "TOC provided";
-export type RetirementBucket = "FY26 — already removed" | "FY27 — pending removal";
+export type RetirementBucket = "FY26 — already removed" | "FY27 — already removed" | "FY27 — pending removal";
 
 export interface LabUpdate {
   title: string;
@@ -281,12 +281,12 @@ export const retirements: RetiredTrack[] = [
   {
     title: "AI Developer — Microsoft Foundry and Semantic Kernel Fundamentals",
     reason: "Outdated; replaced by the three Foundry agent labs.",
-    bucket: "FY27 — pending removal",
+    bucket: "FY27 — already removed",
   },
   {
     title: "Analytics in MIDP with Microsoft Fabric",
     reason: "Synapse deprecated; replaced by Fabric Lakehouses.",
-    bucket: "FY27 — pending removal",
+    bucket: "FY27 — already removed",
   },
   {
     title: "Microsoft Dev Box for Developers",
@@ -315,12 +315,17 @@ export const retirements: RetiredTrack[] = [
   { title: "Migrating DB From Single Server To Flexible Postgres SQL Server", reason: "Outdated content, deprecated services", bucket: "FY26 — already removed", replacement: "" },
 ];
 
+const fy26Removed = retirements.filter(track => track.bucket === "FY26 — already removed").length;
+const fy27Removed = retirements.filter(track => track.bucket === "FY27 — already removed").length;
+const fy27Pending = retirements.filter(track => track.bucket === "FY27 — pending removal").length;
+
 export const retirementSummary = {
-  totalRemoved: 22,
-  fy26Removed: 19,
-  fy27Pending: 3,
+  totalRemoved: fy26Removed + fy27Removed,
+  fy26Removed,
+  fy27Removed,
+  fy27Pending,
   note:
-    "22 tracks retired in total — 19 in FY26 and 3 in FY27. The 3 FY27 tracks are pending catalog-team approval to retire on schedule.",
+    `${fy26Removed + fy27Removed} tracks already removed — ${fy26Removed} in FY26 and ${fy27Removed} in FY27. ${fy27Pending} FY27 ${fy27Pending === 1 ? "track remains" : "tracks remain"} pending catalog-team approval.`,
 };
 
 // ── Section 3: New catalog items proposed for FY27 ──────────────────────────
@@ -379,8 +384,7 @@ export const closurePoints: { title: string; detail: string }[] = [
   },
   {
     title: "Retirements confirmed",
-    detail:
-      "22 tracks have been retired — 19 in FY26 and 3 in FY27; 3 remain pending catalog-team approval to retire on schedule.",
+    detail: retirementSummary.note,
   },
   {
     title: "New proposals ready",
