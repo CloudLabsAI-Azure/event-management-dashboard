@@ -64,12 +64,12 @@ jobs:
                           continue
                       content = logs.read(entry).decode('utf-8', errors='replace')[-200_000:]
                       findings = []
-                        platform = []
+                      platform = []
                       for line in content.splitlines()[-300:]:
                           if re.search(r'\b(container|site|startup|image|port|command|exit|error|failed|npm|node|oryx|listen|quota|memory|probe|blocked)\b', line, re.I) and not re.search(r'authorization|password|secret|token|sas|credential|connectionstring|client.id|tenant.id|subscription.id', line, re.I):
-                            safe = re.sub(r'https?://[^\s\'"<>]+', '[URL]', line)
-                            safe = re.sub(r'[\w.+-]+@[\w.-]+\.[a-zA-Z]+', '[EMAIL]', safe)
-                            platform.append(safe[:350])
+                              safe = re.sub(r'https?://[^\s\'"<>]+', '[URL]', line)
+                              safe = re.sub(r'[\w.+-]+@[\w.-]+\.[a-zA-Z]+', '[EMAIL]', safe)
+                              platform.append(safe[:350])
                           signals = re.findall(r'ERR_[A-Z_]+|EADDRINUSE|ENOSPC|EACCES|ECONNREFUSED|AuthenticationFailed|AuthorizationPermissionMismatch|SyntaxError|ReferenceError|TypeError|Backend running on|container has exited|Container .*?didn.t respond to HTTP pings|Container .*?failed to start|Container .*?initialized successfully', line)
                           missing = re.findall(r'Cannot find (?:package|module) [\'"]([@./a-zA-Z0-9_-]+)[\'"]', line)
                           frames = re.findall(r'/home/site/wwwroot/(?:backend|node_modules)/[a-zA-Z0-9_@./-]+:\d+(?::\d+)?', line)
