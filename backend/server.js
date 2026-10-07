@@ -27,8 +27,9 @@ const { RmpApiError, fetchAllRequests, getRequestDetail, classifyRequest, isLoca
 const { createRmpTokenCache } = await import('./rmpTokenCache.js');
 const { createRmpCatalogueStore, registerRmpCatalogueRoutes } = await import('./rmpCatalogueSync.js');
 const { registerRmpTttRoutes } = await import('./rmpTttService.js');
+const { createRmpTttImporter, registerRmpTttImportRoutes } = await import('./rmpTttImport.js');
 const { registerRmpCustomTechRoutes } = await import('./rmpCustomTechService.js');
-import { rmpRequestImportsEnabled, RMP_REQUEST_IMPORTS_PAUSED_REASON, visibleLabResource, visibleDashboardData, preserveHiddenRmpImports } from './rmpRequestPolicy.js';
+import { rmpRequestImportsEnabled, RMP_REQUEST_IMPORTS_PAUSED_REASON, visibleLabResource, visibleDashboardData, preserveHiddenRmpImports, isExplicitTttSave } from './rmpRequestPolicy.js';
 import { withLock, getLockStatus } from './writeLock.js';
 
 const app = express();
@@ -2088,6 +2089,24 @@ const rmpCatalogueSync = createRmpCatalogueStore({
 registerRmpCatalogueRoutes(app, { requireAuth, tokenCache: rmpTokenCache, catalogueSync: rmpCatalogueSync });
 // Explicit read-only TTT scanning does not re-enable the paused request importer.
 registerRmpTttRoutes(app, { requireAuth });
+const importTttRequests = createRmpTttImporter({
+  withLock,
+  isConflict: error => error instanceof ConcurrencyError,
+  readSnapshot: async () => {
+    if (STORAGE_MODE !== 'blob') return { data: await readData(), etag: null };
+    const snapshot = await readDataFromBlob();
+    // The legacy reader returns {} on errors. Never turn a failed read into an
+    // unconditional write that replaces all existing dashboard data.
+    if (!snapshot.etag) throw new Error('Cannot safely read the dashboard storage version.');
+    return snapshot;
+  },
+  writeSnapshot: async (data, etag) => {
+    if (STORAGE_MODE !== 'blob') return writeData(data);
+    _lastEtag = await writeDataToBlob(data, { etag });
+    _invalidateReadCache();
+  },
+});
+registerRmpTttImportRoutes(app, { requireAdmin, importRequests: importTttRequests, logAudit });
 registerRmpCustomTechRoutes(app, { requireAuth });
 let _rmpSyncRunning = false;
 
@@ -2196,6 +2215,7 @@ async function runRmpSync(b2cToken, triggeredBy = 'system') {
       const nowIso = new Date().toISOString();
       for (const item of data.catalog) {
         if (!item || !item.rmpRequestUniqueName || item.source !== 'rmp') continue;
+        if (isExplicitTttSave(item)) continue; // Explicit local snapshots keep their editable fields.
         const req = requestByGuid.get(String(item.rmpRequestUniqueName).toUpperCase());
         if (!req) continue; // not visible to this account / no longer in RMP — leave untouched
         if (created.includes(item)) continue; // just created this run

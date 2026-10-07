@@ -4,7 +4,8 @@ import { test } from 'node:test'
 import vm from 'node:vm'
 import { createRmpTokenCache } from '../backend/rmpTokenCache.js'
 import { RmpApiError } from '../backend/rmpService.js'
-import { RMP_REQUEST_IMPORTS_PAUSED_REASON } from '../backend/rmpRequestPolicy.js'
+import { isExplicitTttSave, RMP_REQUEST_IMPORTS_PAUSED_REASON } from '../backend/rmpRequestPolicy.js'
+import { createRmpTttImporter, registerRmpTttImportRoutes } from '../backend/rmpTttImport.js'
 
 function token(subject: string) {
   const payload = Buffer.from(JSON.stringify({ sub: subject, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')
@@ -22,7 +23,7 @@ type Handler = (req: { body?: Record<string, unknown>; user?: { email: string } 
  * startup otherwise writes its data schema and can start live integration jobs.
  * Storage and upstream calls are synthetic, isolated in a VM sandbox.
  */
-function harness(options: { deny?: string; upstreamError?: RmpApiError; requestImportsEnabled?: boolean } = {}) {
+function harness(options: { deny?: string; upstreamError?: RmpApiError; requestImportsEnabled?: boolean; stored?: Record<string, unknown> } = {}) {
   const source = readFileSync(new URL('../backend/server.js', import.meta.url), 'utf8')
   const start = source.indexOf('const rmpTokenCache = createRmpTokenCache();')
   const end = source.indexOf("app.get('/api/:resource',", start)
@@ -38,7 +39,7 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError; requestI
   } })
   let writes = 0
   let fetches = 0
-  let stored: Record<string, unknown> = { catalog: [], _rmpSync: {} }
+  let stored: Record<string, unknown> = structuredClone(options.stored || { catalog: [], _rmpSync: {} })
   const register = (path: string, ...callbacks: Handler[]) => handlers.set(path, callbacks[callbacks.length - 1])
   const context = vm.createContext({
     RMP_REQUEST_IMPORTS_ENABLED: options.requestImportsEnabled ?? true,
@@ -47,11 +48,14 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError; requestI
     createRmpCatalogueStore: () => ({ queueRefresh: async () => { catalogueQueued++; return { refreshing: false } } }),
     registerRmpCatalogueRoutes: () => {},
     registerRmpTttRoutes: () => {},
+    createRmpTttImporter, registerRmpTttImportRoutes, isExplicitTttSave,
     registerRmpCustomTechRoutes: () => {},
     path: { join: (...parts: string[]) => parts.join('/') },
     __dirname: 'fixture',
     app: { get: register, post: register },
     requireAuth: () => {},
+    requireAdmin: () => {},
+    STORAGE_MODE: 'local',
     RmpApiError,
     process: { env: {} },
     console: { log() {}, error() {} },
@@ -84,6 +88,7 @@ function harness(options: { deny?: string; upstreamError?: RmpApiError; requestI
   }
   return {
     cache, call, getWrites: () => writes, getFetches: () => fetches, getReads: () => reads,
+    getData: () => stored,
     getProbes: () => probes, getCatalogueQueued: () => catalogueQueued,
     runCore: () => vm.runInContext("runRmpSync('synthetic-fixture', 'test')", context),
   }
@@ -170,4 +175,11 @@ test('status exposes the temporary pause while retaining a usable catalogue toke
   assert.equal(response.requestSyncEnabled, false)
   assert.equal(response.importedLabsVisible, false)
   assert.equal(response.tokenAvailable, true)
+})
+
+test('the legacy importer does not overwrite explicitly saved TTT snapshots or notes when enabled', async () => {
+  const session = { id: 'saved-ttt', type: 'tttSession', source: 'rmp', rmpImportMode: 'ttt-scan', rmpRequestUniqueName: 'REQUEST-FIXTURE', rmpStatus: 'Approved', status: 'Scheduled', sessionDate: '2026-10-07', notes: 'Keep the local edits' }
+  const app = harness({ stored: { catalog: [session], _rmpSync: { lastSync: '2026-10-01T00:00:00Z', processedRequestIds: ['REQUEST-FIXTURE'] } } })
+  await app.runCore()
+  assert.deepEqual((app.getData().catalog as object[])[0], session)
 })

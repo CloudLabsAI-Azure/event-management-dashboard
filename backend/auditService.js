@@ -81,7 +81,7 @@ async function writeAuditLog(entries) {
 
     const content = JSON.stringify(data, null, 2);
     
-    await auditBlockBlobClient.upload(content, content.length, {
+    await auditBlockBlobClient.upload(content, Buffer.byteLength(content, 'utf8'), {
       blobHTTPHeaders: {
         blobContentType: 'application/json'
       }

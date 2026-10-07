@@ -1,6 +1,6 @@
 // Kill switch: request-based RMP lab imports run only when
 // RMP_REQUEST_IMPORTS_ENABLED is exactly "true"; otherwise they are hidden and
-// paused. The separate Admin Center catalogue release feed is unaffected.
+// paused. Explicit TTT saves and the separate catalogue release feed are unaffected.
 export const RMP_REQUEST_IMPORTS_PAUSED_REASON = 'RMP lab onboarding imports are temporarily paused.';
 
 export function rmpRequestImportsEnabled(env = process.env) {
@@ -13,12 +13,18 @@ export function isRmpRequestImport(item) {
     || (typeof item.rmpRequestUniqueName === 'string' && item.rmpRequestUniqueName.trim() !== '');
 }
 
+/** Only individually opted-in TTT sessions bypass the automatic import pause. */
+export function isExplicitTttSave(item) {
+  return item?.type === 'tttSession' && item.rmpImportMode === 'ttt-scan';
+}
+
+const isHiddenRmpImport = item => isRmpRequestImport(item) && !isExplicitTttSave(item);
 const LAB_RESOURCES = ['catalog', 'tracks', 'events'];
 
 /** Response-only projection. Never use this for internal read/modify/write. */
 export function visibleLabResource(resource, items, enabled = false) {
   if (enabled || !LAB_RESOURCES.includes(resource) || !Array.isArray(items)) return items;
-  return items.filter(item => !isRmpRequestImport(item));
+  return items.filter(item => !isHiddenRmpImport(item));
 }
 
 export function visibleDashboardData(data, enabled = false) {
@@ -38,7 +44,7 @@ export function preserveHiddenRmpImports(payload, stored, enabled = false) {
   if (enabled) return payload;
   const result = { ...payload };
   for (const resource of LAB_RESOURCES) {
-    const hidden = Array.isArray(stored[resource]) ? stored[resource].filter(isRmpRequestImport) : [];
+    const hidden = Array.isArray(stored[resource]) ? stored[resource].filter(isHiddenRmpImport) : [];
     if (hidden.length === 0) continue;
     const ids = new Set(hidden.map(item => item.id || item._id).filter(Boolean).map(String));
     const serials = new Set(hidden.map(item => item.sr).filter(value => value !== undefined && value !== null).map(String));

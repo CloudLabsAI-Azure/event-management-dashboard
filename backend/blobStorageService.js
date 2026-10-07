@@ -148,7 +148,7 @@ export async function writeDataToBlob(data, options = {}) {
     }
     
     // Upload to blob (conditional if ETag provided)
-    const uploadResponse = await blockBlobClient.upload(content, content.length, uploadOptions);
+    const uploadResponse = await blockBlobClient.upload(content, Buffer.byteLength(content, 'utf8'), uploadOptions);
     const newEtag = uploadResponse.etag || null;
     
     console.log(`✅ Data written successfully to blob storage. Timestamp: ${timestamp} ${updateTimestamp ? '(updated)' : '(preserved)'} (New ETag: ${newEtag ? newEtag.substring(0, 16) + '...' : 'none'})`);

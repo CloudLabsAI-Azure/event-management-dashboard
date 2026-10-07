@@ -7,22 +7,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GraduationCap, Users, Calendar, Edit, Trash2, Plus, RefreshCw, ExternalLink } from "lucide-react"
-import { useState, useEffect } from "react"
-import { useMsal } from "@azure/msal-react"
+import { GraduationCap, Users, Calendar, Edit, Trash2, Plus, Download, ExternalLink } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from '@/components/AuthProvider'
 import { useToast } from '@/hooks/use-toast'
 import api from '@/lib/api'
-import { triggerRmpSync } from '@/lib/rmpSync'
 import EntityEditDialog from '@/components/EntityEditDialog'
 import { checkDuplicateEventId } from '@/lib/services/eventIdService'
 import { useDirtyFields } from '@/hooks/use-dirty-fields'
-import { useRmpRequestSyncEnabled } from '@/hooks/use-rmp-request-sync'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RmpTttScanPanel } from '@/components/ttt/RmpTttScanPanel'
 import { formatAnnouncementDate } from '@/lib/announcements'
+import type { SavedTttSessionIdentity } from '@/types/rmpTtt'
 
-interface TTTSession {
+interface TTTSession extends SavedTttSessionIdentity {
   id?: string
   sr: number
   eventId?: string
@@ -47,9 +45,9 @@ const getStatusBadge = (status: string) => {
 
 export default function TTTPage() {
   const { userRole: role } = useAuth()
-  const requestSyncEnabled = useRmpRequestSyncEnabled()
   const { toast } = useToast()
   const [tttSessions, setTttSessions] = useState<TTTSession[]>([])
+  const [activeTab, setActiveTab] = useState('local')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<TTTSession | null>(null)
   const [editForm, setEditForm] = useState<TTTSession>({
@@ -62,18 +60,14 @@ export default function TTTPage() {
   })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await api.get('/api/catalog')
+      const res = await api.get<Array<Partial<TTTSession> & { type?: string; _id?: string; courseName?: string }>>('/api/catalog')
       const items = Array.isArray(res.data) ? res.data : []
       
       const sessions = items
-        .filter((i: any) => i.type === 'tttSession')
-        .map((i: any) => ({
+        .filter(i => i.type === 'tttSession')
+        .map(i => ({
           id: String(i.id || i._id || ''),
           sr: Number(i.sr || 0),
           eventId: String(i.eventId || ''),
@@ -82,7 +76,8 @@ export default function TTTPage() {
           status: i.status || 'Scheduled',
           notes: i.notes || '',
           source: i.source || '',
-          rmpAdminUrl: i.rmpAdminUrl || ''
+          rmpAdminUrl: i.rmpAdminUrl || '',
+          rmpRequestUniqueName: i.rmpRequestUniqueName || ''
         }))
       
       // Viewing/scanning TTT is read-only. A past date does not prove delivery;
@@ -98,6 +93,7 @@ export default function TTTPage() {
       })
       
       setTttSessions(sortedSessions)
+      return true
     } catch (err) {
       console.error('Error loading TTT sessions:', err)
       toast({
@@ -105,8 +101,11 @@ export default function TTTPage() {
         description: "Could not load TTT sessions",
         variant: "destructive"
       })
+      return false
     }
-  }
+  }, [toast])
+
+  useEffect(() => { void loadData() }, [loadData])
 
   const handleAdd = () => {
     setEditingSession(null)
@@ -119,39 +118,6 @@ export default function TTTPage() {
       notes: ""
     })
     setIsEditDialogOpen(true)
-  }
-
-  const { instance: msalInstance } = useMsal()
-  const [rmpSyncing, setRmpSyncing] = useState(false)
-
-  // Manually pull new onboarding requests from RMP (TTT requests land here)
-  const handleRmpSync = async () => {
-    setRmpSyncing(true)
-    try {
-      const result = await triggerRmpSync(msalInstance)
-      const imported = result.imported || 0
-      const updated = result.updated || 0
-      toast({
-        title: 'RMP sync complete',
-        description: result.baselined
-          ? `Baseline established: ${result.fetched ?? 0} existing RMP requests marked as seen. Only new requests will be imported from now on.`
-          : imported > 0 || updated > 0
-            ? `${imported} imported (${result.tttCount || 0} TTT, ${result.roadmapCount || 0} roadmap, ${result.customCount || 0} custom lab)${updated > 0 ? ` · ${updated} updated` : ''}.`
-            : `No new requests or changes (${result.fetched ?? 0} fetched from RMP).`
-      })
-      if (imported > 0 || updated > 0) await loadData()
-    } catch (err: any) {
-      const data = err?.response?.data
-      toast({
-        title: 'RMP sync failed',
-        description: data?.requiresReauth
-          ? 'Sign out and back in with your CloudLabs account, then retry.'
-          : (data?.error || err?.message || 'Unknown error'),
-        variant: 'destructive'
-      })
-    } finally {
-      setRmpSyncing(false)
-    }
   }
 
   const dirty = useDirtyFields<TTTSession>()
@@ -246,33 +212,33 @@ export default function TTTPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              <GraduationCap className="h-8 w-8 text-primary" />
+              <GraduationCap className="h-8 w-8 shrink-0 text-primary" />
               Train The Trainer (TTT)
             </h1>
             <p className="text-muted-foreground">
               Manage and track Train The Trainer sessions and certifications
             </p>
           </div>
-          {role === 'admin' && requestSyncEnabled && (
+          {role === 'admin' && activeTab === 'local' && (
             <Button
               size="sm"
               variant="outline"
-              disabled={rmpSyncing}
-              onClick={handleRmpSync}
-              title="Fetch new onboarding requests from the CE Request Portal"
+              className="shrink-0"
+              onClick={() => setActiveTab('rmp')}
+              title="Scan Train-The-Trainer requests, then save them to Dashboard sessions"
             >
-              <RefreshCw className={`h-4 w-4 mr-1 ${rmpSyncing ? 'animate-spin' : ''}`} />
-              {rmpSyncing ? 'Syncing…' : 'Sync RMP'}
+              <Download className="h-4 w-4 mr-1" />
+              Import from RMP
             </Button>
           )}
         </div>
 
-        <Tabs defaultValue="local" className="space-y-5">
-          <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="local">Dashboard sessions</TabsTrigger><TabsTrigger value="rmp">RMP scan (read-only)</TabsTrigger></TabsList>
-          <TabsContent value="rmp" forceMount className="data-[state=inactive]:hidden"><RmpTttScanPanel /></TabsContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+          <TabsList className="h-auto flex-wrap justify-start"><TabsTrigger value="local">Dashboard sessions</TabsTrigger><TabsTrigger value="rmp">RMP scan</TabsTrigger></TabsList>
+          <TabsContent value="rmp" forceMount className="data-[state=inactive]:hidden"><RmpTttScanPanel savedSessions={tttSessions} onSaved={loadData} onViewDashboard={() => setActiveTab('local')} /></TabsContent>
           <TabsContent value="local" className="space-y-6">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -306,7 +272,7 @@ export default function TTTPage() {
                   TTT Sessions
                 </CardTitle>
                 <CardDescription>
-                  Saved dashboard sessions. RMP scans are shown separately and never imported automatically.
+                  Saved dashboard sessions. Use the RMP scan to save requests here, or add a session manually.
                 </CardDescription>
               </div>
               {role === 'admin' && (
@@ -447,6 +413,7 @@ export default function TTTPage() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
+                  {editForm.status && !['Scheduled', 'In Progress', 'Completed', 'Cancelled'].includes(editForm.status) && <SelectItem value={editForm.status}>{editForm.status}</SelectItem>}
                   <SelectItem value="Scheduled">Scheduled</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>

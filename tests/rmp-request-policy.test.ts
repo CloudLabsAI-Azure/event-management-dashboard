@@ -49,6 +49,21 @@ test('visibility filtering applies only to lab resources', () => {
   assert.deepEqual(visibleLabResource('users', [manual, imported]), [manual, imported])
 })
 
+test('explicit TTT saves remain visible while other RMP requests stay hidden and the importer stays paused', () => {
+  const saved = { ...imported, id: 'saved-ttt', sr: 100, type: 'tttSession', rmpImportMode: 'ttt-scan' }
+  const unselected = { ...imported, id: 'hidden-ttt', sr: 101, type: 'tttSession' }
+  const otherFormat = { ...imported, rmpImportMode: 'ttt-scan' }
+  const data = { ...stored(), catalog: [manual, saved, unselected, otherFormat] }
+  assert.equal(isRmpRequestImport(saved), true, 'explicit saves retain honest RMP provenance')
+  const response = visibleDashboardData(data)
+  assert.deepEqual(response.catalog, [manual, saved])
+  const roundTrip = preserveHiddenRmpImports({ ...response, catalog: [manual, { ...saved, notes: 'Edited locally' }] }, data)
+  assert.equal(roundTrip.catalog.find(item => item.id === saved.id)?.notes, 'Edited locally')
+  assert.deepEqual(roundTrip.catalog.find(item => item.id === unselected.id), unselected)
+  assert.deepEqual(roundTrip._rmpSync, data._rmpSync)
+  assert.equal(rmpRequestImportsEnabled({}), false)
+})
+
 test('round-tripping filtered data cannot remove hidden imports or reset their baseline', () => {
   const data = stored()
   const filtered = visibleDashboardData(data)
