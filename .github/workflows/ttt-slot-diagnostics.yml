@@ -1,81 +1,35 @@
-name: Temporary read-only TTT slot diagnostics
-
-on:
-  workflow_dispatch:
-
-jobs:
-  diagnose:
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Use existing deployment identity
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_33F692232CD54BC3A4D496E2C35BBE50 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4193EC631077411E8864E8E7E049DA08 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A66B9FF8C84A46DD96137F76DAE9CFE8 }}
-      - name: Read target runtime and sanitized startup diagnostics
-        shell: bash
-        run: |
-          python - <<'PY'
-          import datetime, json, os, re, subprocess, zipfile
-
-          def az(arguments):
-              result = subprocess.run(['az', *arguments, '--only-show-errors', '-o', 'json'], capture_output=True, text=True, timeout=90)
-              if result.returncode:
-                  raise RuntimeError('Read-only Azure command failed: ' + ' '.join(arguments[:3]))
-              return json.loads(result.stdout or 'null')
-
-          app_name = 'MS-Events-MGMT-WebApp'
-          apps = az(['resource', 'list', '--name', app_name, '--resource-type', 'Microsoft.Web/sites'])
-          if len(apps) != 1:
-              raise RuntimeError('The exact target App Service could not be resolved uniquely.')
-          group = apps[0]['resourceGroup']
-          for slot in ['development', None]:
-              target = ['--resource-group', group, '--name', app_name] + (['--slot', slot] if slot else [])
-              site = az(['webapp', 'show', *target])
-              config = az(['webapp', 'config', 'show', *target])
-              settings = {entry['name']: entry['value'] for entry in az(['webapp', 'config', 'appsettings', 'list', *target])}
-              command = (config.get('appCommandLine') or '').strip()
-              known_commands = ['', 'npm start', 'node backend/server.js', 'pm2 start backend/server.js --no-daemon']
-              safe_settings = {}
-              for name in ['STORAGE_MODE', 'NODE_ENV', 'SCM_DO_BUILD_DURING_DEPLOYMENT', 'RMP_REQUEST_IMPORTS_ENABLED', 'PORT', 'WEBSITES_PORT']:
-                  value = settings.get(name)
-                  safe_settings[name] = value if value is None or re.fullmatch(r'(?:blob|local|production|development|true|false|[0-9]+)', value, re.I) else '[nonstandard value]'
-              print(json.dumps({'slot': slot or 'production', 'state': site.get('state'), 'enabled': site.get('enabled'), 'availability': site.get('availabilityState'), 'hostname': site.get('defaultHostName'), 'runtime': config.get('linuxFxVersion'), 'alwaysOn': config.get('alwaysOn'), 'startup': command if command in known_commands else '[custom startup command]', 'settings': safe_settings, 'blobConfigured': bool(settings.get('AZURE_BLOB_SAS_URL')), 'runFromPackage': bool(settings.get('WEBSITE_RUN_FROM_PACKAGE'))}))
-
-          # Download existing logs only. Do not enable logging, restart the slot,
-          # modify settings, upload raw logs as artifacts, or print credentials.
-          archive = os.path.join(os.environ['RUNNER_TEMP'], 'ttt-slot-existing-logs.zip')
-          result = subprocess.run(['az', 'webapp', 'log', 'download', '--resource-group', group, '--name', app_name, '--slot', 'development', '--log-file', archive, '--only-show-errors'], capture_output=True, text=True, timeout=150)
-          if result.returncode or not os.path.isfile(archive):
-              print(json.dumps({'runtimeLogsAvailable': False, 'logDownloadExitCode': result.returncode}))
-          else:
-              with zipfile.ZipFile(archive) as logs:
-                  files = sorted([entry for entry in logs.infolist() if not entry.is_dir()], key=lambda entry: entry.date_time, reverse=True)
-                  print(json.dumps({'logFiles': [{'name': os.path.basename(entry.filename), 'bytes': entry.file_size, 'modified': entry.date_time} for entry in files[:20]]}))
-                  entries = sorted([entry for entry in logs.infolist() if entry.filename.endswith('.log') and ('docker' in entry.filename.lower() or 'failure' in entry.filename.lower())], key=lambda entry: entry.date_time, reverse=True)[:4]
-                  for entry in entries:
-                      if entry.file_size > 10_000_000:
-                          print(json.dumps({'log': os.path.basename(entry.filename), 'oversized': True}))
-                          continue
-                      content = logs.read(entry).decode('utf-8', errors='replace')[-200_000:]
-                      findings = []
-                      platform = []
-                      for line in content.splitlines()[-300:]:
-                          if re.search(r'\b(container|site|startup|image|port|command|exit|error|failed|npm|node|oryx|listen|quota|memory|probe|blocked)\b', line, re.I) and not re.search(r'authorization|password|secret|token|sas|credential|connectionstring|client.id|tenant.id|subscription.id', line, re.I):
-                              safe = re.sub(r'https?://[^\s\'"<>]+', '[URL]', line)
-                              safe = re.sub(r'[\w.+-]+@[\w.-]+\.[a-zA-Z]+', '[EMAIL]', safe)
-                              platform.append(safe[:350])
-                          signals = re.findall(r'ERR_[A-Z_]+|EADDRINUSE|ENOSPC|EACCES|ECONNREFUSED|AuthenticationFailed|AuthorizationPermissionMismatch|SyntaxError|ReferenceError|TypeError|Backend running on|container has exited|Container .*?didn.t respond to HTTP pings|Container .*?failed to start|Container .*?initialized successfully', line)
-                          missing = re.findall(r'Cannot find (?:package|module) [\'"]([@./a-zA-Z0-9_-]+)[\'"]', line)
-                          frames = re.findall(r'/home/site/wwwroot/(?:backend|node_modules)/[a-zA-Z0-9_@./-]+:\d+(?::\d+)?', line)
-                          exceptions = re.findall(r'(?:[a-zA-Z_$][a-zA-Z0-9_$.]* is not (?:defined|a function)|Cannot access [\'"][a-zA-Z_$][a-zA-Z0-9_$]*[\'"] before initialization|Unexpected token [\'"][^\'"]{1,12}[\'"])', line)
-                          if signals or missing or frames or exceptions:
-                              findings.append({'signals': signals, 'missingModule': missing, 'frames': frames, 'exception': exceptions})
-                      print(json.dumps({'log': os.path.basename(entry.filename), 'modified': entry.date_time, 'findings': findings[-25:], 'platform': platform[-25:]}))
-              os.remove(archive)
-          PY
+{
+  "name": "Temporary isolated TTT runtime validation",
+  "on": { "workflow_dispatch": {} },
+  "jobs": {
+    "isolated-runtime": {
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 8,
+      "permissions": { "actions": "read", "contents": "read" },
+      "steps": [
+        {
+          "uses": "actions/checkout@v4",
+          "with": { "sparse-checkout": ".github/scripts" }
+        },
+        {
+          "uses": "actions/setup-node@v4",
+          "with": { "node-version": "20.20.2" }
+        },
+        {
+          "name": "Download the exact successful development build",
+          "uses": "actions/download-artifact@v4",
+          "with": {
+            "name": "node-app",
+            "path": "isolated-artifact",
+            "run-id": 37656130344,
+            "github-token": "${{ github.token }}"
+          }
+        },
+        {
+          "name": "Exercise real server with isolated source and storage",
+          "run": "node .github/scripts/ttt-isolated-runtime.mjs"
+        }
+      ]
+    }
+  }
+}
