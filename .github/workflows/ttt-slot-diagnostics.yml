@@ -57,7 +57,7 @@ jobs:
               with zipfile.ZipFile(archive) as logs:
                   files = sorted([entry for entry in logs.infolist() if not entry.is_dir()], key=lambda entry: entry.date_time, reverse=True)
                   print(json.dumps({'logFiles': [{'name': os.path.basename(entry.filename), 'bytes': entry.file_size, 'modified': entry.date_time} for entry in files[:20]]}))
-                  entries = sorted([entry for entry in logs.infolist() if entry.filename.endswith('.log') and 'docker' in entry.filename.lower()], key=lambda entry: entry.date_time, reverse=True)[:6]
+                  entries = sorted([entry for entry in logs.infolist() if entry.filename.endswith('.log') and ('docker' in entry.filename.lower() or 'failure' in entry.filename.lower())], key=lambda entry: entry.date_time, reverse=True)[:4]
                   for entry in entries:
                       if entry.file_size > 10_000_000:
                           print(json.dumps({'log': os.path.basename(entry.filename), 'oversized': True}))
